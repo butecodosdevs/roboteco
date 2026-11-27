@@ -30,7 +30,7 @@ Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
 | `LOG_LEVEL` | no | `info` (default); `debug` for more |
 | `SENTRY_DSN` | no | error reporting, off when empty |
 | `HEALTH_PORT` | no | serves `GET /health` and the panel when set |
-| `PANEL_TOKEN` | no | 16+ char secret that opens the read-only panel at `/`; panel stays off when unset |
+| `PANEL_TOKEN` | no | 16+ char secret that opens the panel at `/` and is the first login password; panel stays off when unset |
 | `GUILD_DATA_RETENTION_DAYS` | no | days to keep a server's data after the bot leaves (default 30) |
 | `PLUGIN_REGISTRY` | no | plugin registry to load (default `plugins/registry.json`, empty; `plugins/registry.example.json` loads the examples) |
 | `DISCORD_GUILD_ID` | no | your test server ID. When set, `deploy-commands` registers commands on that server instantly instead of globally |

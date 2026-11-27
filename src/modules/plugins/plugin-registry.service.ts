@@ -29,6 +29,8 @@ const registrySchema = z.object({
     z.object({
       id: z.string().regex(/^[a-z0-9-]{1,32}$/),
       wasm: z.string(),
+      /** `false` keeps the definition on disk but out of the runtime. */
+      enabled: z.boolean().default(true),
       permissions: z.array(z.enum(permissions)).default([]),
       allowedHosts: z.array(z.string()).optional(),
     }),
@@ -66,6 +68,7 @@ export class PluginRegistryService {
   ): Promise<void> {
     this.failed.clear();
     for (const definition of await this.definitions(path)) {
+      if (!definition.enabled) continue;
       try {
         const wasm = resolve(path, '../..', definition.wasm);
         this.add(await this.engine.load({ ...definition, wasm }), reserved);

@@ -11,7 +11,7 @@
   <aside class="rail">
     <div class="brand">
       <div class="mark" id="brandmark"></div>
-      <div class="txt"><b>roboteco</b><span id="foot-tag">bot</span></div>
+      <div class="txt"><b>roboteco</b><span id="foot-tag">painel</span></div>
     </div>
     <nav class="nav" id="nav">
       <i>Servidor</i>
@@ -20,12 +20,14 @@
       <a data-go="resources"><span class="ic"></span>Recursos</a>
       <i>Plataforma</i>
       <a data-go="plugins"><span class="ic"></span>Plugins<span class="count" id="nav-plugins">0</span></a>
+      <a data-go="settings"><span class="ic"></span>Configurações</a>
       <a data-go="about"><span class="ic"></span>Como funciona</a>
     </nav>
     <div class="foot">
       <div class="row"><span style="display:inline-flex;align-items:center;gap:6px"><i class="dot"></i>Gateway</span><b id="foot-ping">—</b></div>
       <div class="row"><span>Servidores</span><b id="foot-guilds">—</b></div>
-      <div class="row"><span>Plugins</span><b id="foot-active">0</b></div>
+      <div class="row"><span>Plugins ativos</span><b id="foot-active">0</b></div>
+      <button class="foot-out" data-act="logout"><span class="ic"></span>Sair</button>
     </div>
   </aside>
   <main><div class="wrap" id="view"></div></main>
@@ -37,17 +39,19 @@ const ICON = {
   mod: '<path d="M8 2.6 3.4 4.4v3.4c0 2.6 1.9 4.9 4.6 5.6 2.7-.7 4.6-3 4.6-5.6V4.4L8 2.6Z"/><path d="m6 8 1.5 1.5L10.2 6.7"/>',
   resources: '<rect x="2.4" y="2.4" width="4.6" height="4.6" rx="1"/><rect x="9" y="2.4" width="4.6" height="4.6" rx="1"/><rect x="2.4" y="9" width="4.6" height="4.6" rx="1"/><rect x="9" y="9" width="4.6" height="4.6" rx="1"/>',
   plugins: '<path d="M6 2.6v2.1a1.4 1.4 0 0 1-1.4 1.4H2.6v4.4h2a1.4 1.4 0 0 1 1.4 1.4v1.5h4.4v-1.5a1.4 1.4 0 0 1 1.4-1.4h2V6.1h-2A1.4 1.4 0 0 0 10.4 4.7V2.6z"/>',
+  settings: '<circle cx="8" cy="8" r="2.1"/><path d="M8 2.2v1.4M8 12.4v1.4M2.2 8h1.4M12.4 8h1.4M3.9 3.9l1 1M11.1 11.1l1 1M12.1 3.9l-1 1M4.9 11.1l-1 1"/>',
   about: '<circle cx="8" cy="8" r="5.9"/><path d="M8 7.2v3.4M8 5.3v.3"/>',
   sun: '<circle cx="8" cy="8" r="2.8"/><path d="M8 1.8v1M8 13.2v1M1.8 8h1M13.2 8h1M3.7 3.7l.7.7M11.6 11.6l.7.7M12.3 3.7l-.7.7M4.4 11.6l-.7.7"/>',
   moon: '<path d="M9.4 2.5a5.4 5.4 0 1 0 4.1 8 4.4 4.4 0 0 1-4.1-8Z"/>',
   check: '<path d="m3.2 8.3 2.9 2.9 6.7-6.7"/>',
+  out: '<path d="M6.4 4.6V3.2H2.8v9.6h3.6v-1.4M9.4 5.6 11.8 8l-2.4 2.4M11.4 8H6.2"/>',
   brand: '<path d="M3.5 3.5h9v9h-9z"/><path d="M6.3 6.3h3.4v3.4H6.3z"/>',
 };
 const icon = (n, s = 14) => `<svg viewBox="0 0 16 16" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n] || ""}</svg>`;
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const initials = (name) => {
   const words = (name || "?").trim().split(/[\s-]+/).filter(Boolean);
   return (words.length > 1 ? words.slice(0, 2).map((w) => w[0]) : [words[0]?.slice(0, 2) ?? "?"]).join("").toUpperCase();
@@ -55,34 +59,37 @@ const initials = (name) => {
 const nf = (n) => Number(n ?? 0).toLocaleString("pt-BR");
 const plural = (n, one, many) => `${nf(n)} ${n === 1 ? one : many}`;
 const when = (iso) => { const d = new Date(iso); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${d.toTimeString().slice(0, 5)}`; };
+const kb = (bytes) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 const storedTheme = (() => { try { return localStorage.getItem("theme") || ""; } catch { return ""; } })();
 if (storedTheme) document.documentElement.dataset.theme = storedTheme;
 const isDark = () => (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
-const token = (() => { try { return localStorage.getItem("panel-token") || ""; } catch { return ""; } })();
 
-let state = { view: "overview", guild: null, toastT: null };
+let state = { view: "overview", guild: null, toastT: null, login: false, password: false, off: false };
 let meta = null;
 let data = null;
 let plugins = null;
 let pluginError = null;
+let settings = null;
 
-function toast(msg) {
+function toast(msg, bad) {
   const t = $("#toast");
-  t.innerHTML = `<span class="g">${icon("check", 13)}</span>${esc(msg)}`;
-  t.className = "toast on";
+  t.innerHTML = `<span class="${bad ? "r" : "g"}">${icon(bad ? "about" : "check", 13)}</span>${esc(msg)}`;
+  t.className = `toast on${bad ? " bad" : ""}`;
   clearTimeout(state.toastT);
-  state.toastT = setTimeout(() => (t.className = "toast"), 2600);
+  state.toastT = setTimeout(() => (t.className = "toast"), 3200);
 }
 
 async function api(path, init) {
   const res = await fetch(path, {
     method: init?.method ?? "GET",
-    headers: { "x-panel-token": token, ...(init?.body !== undefined && { "content-type": "application/json" }) },
+    credentials: "same-origin",
+    headers: { ...(init?.body !== undefined && { "content-type": "application/json" }) },
     ...(init?.body !== undefined && { body: JSON.stringify(init.body) }),
   });
   const payload = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(payload?.error ?? (res.status === 401 ? "token" : res.status === 503 ? "disabled" : `HTTP ${res.status}`));
+  if (res.status === 401) { showLogin(); throw new Error("sessão expirada; entre de novo"); }
+  if (!res.ok) throw new Error(payload?.error ?? (res.status === 503 ? "painel desligado" : `HTTP ${res.status}`));
   return payload;
 }
 
@@ -114,9 +121,9 @@ function skeletonFor(v) {
   if (v === "overview") return skHead() + skMetrics() + `<div class="cols"><div class="stack">${skList(4)}${skList(3)}</div><div class="stack"><section class="card pad">${sk("120px", 11)}<div style="margin-top:14px">${skBars(5)}</div></section><section class="card pad">${sk("96px", 11)}<div style="margin-top:14px">${skDl(5)}</div></section></div></div>`;
   if (v === "mod") return skHead() + `<div class="stack">${skTable(8)}</div>`;
   if (v === "resources") return skHead() + `<div class="cols"><div class="stack">${skMetrics(2)}${skTable(4)}</div><div class="stack">${skList(3)}<section class="card pad">${sk("120px", 11)}<div style="margin-top:14px">${skBars(4)}</div></section></div></div>`;
-  if (v === "plugins") return skHead() + skTable(4);
-  if (v === "about") return skHead() + `<div class="cols"><div class="stack">${skList(4)}</div><div class="stack">${skList(3)}</div></div>`;
-  return skHead() + skMetrics() + skList();
+  if (v === "plugins") return skHead() + `<div class="stack">${skCardH("220px")}${skCardH("180px")}</div>`;
+  if (v === "settings") return skHead() + `<div class="stack">${skTable(5)}${skList(2)}</div>`;
+  return skHead() + `<div class="cols"><div class="stack">${skList(4)}</div><div class="stack">${skList(3)}</div></div>`;
 }
 
 const shell = (head, body) => `<div class="topbar">${guildPicker()}<div class="sp"></div>
@@ -151,7 +158,7 @@ function viewOverview() {
     <div class="metric"><div class="lbl">Casos de moderação</div><div class="val">${nf(k.cases)}</div><div class="delta">Desde o começo do servidor</div></div>
     <div class="metric"><div class="lbl">Tickets abertos</div><div class="val">${nf(k.openTickets)}</div><div class="delta">${plural(k.openReports, "denúncia aberta", "denúncias abertas")}</div></div>
     <div class="metric"><div class="lbl">Sugestões pendentes</div><div class="val">${nf(k.pendingSuggestions)}</div><div class="delta">${plural(k.liveGiveaways, "sorteio rolando", "sorteios rolando")}</div></div>
-    <div class="metric"><div class="lbl">Feeds assinados</div><div class="val">${nf(k.feeds)}</div><div class="delta">${k.failingFeeds ? `${plural(k.failingFeeds, "feed falhando", "feeds falhando")}` : "Todos respondendo"}</div></div>
+    <div class="metric"><div class="lbl">Feeds assinados</div><div class="val">${nf(k.feeds)}</div><div class="delta">${k.failingFeeds ? plural(k.failingFeeds, "feed falhando", "feeds falhando") : "Todos respondendo"}</div></div>
   </div>`;
 
   const cases = `<section class="card tblwrap">
@@ -169,7 +176,7 @@ function viewOverview() {
   </section>`;
 
   const counters = `<section class="card pad">
-    <div style="font-size:12.5px;font-weight:600;margin-bottom:12px">Tudo que está ligado</div>
+    <div class="sec-title">Tudo que está ligado</div>
     <div class="bars-list">
       ${[["Comandos próprios", k.commands], ["Cargos por reação", k.selfRoles], ["Aniversários", k.birthdays], ["Convites rastreados", k.invites], ["Posts agendados", k.scheduledPosts], ["Canais de drop", k.drops], ["Salas de voz temporárias", k.hubs]]
         .map(([nm, v]) => `<div class="b"><span class="nm">${nm}</span><span class="v">${nf(v)}</span><div class="track"><i style="width:${Math.min(100, Number(v) ? 18 + Math.log10(Number(v) + 1) * 26 : 0)}%"></i></div></div>`).join("")}
@@ -189,7 +196,7 @@ function caseTable(cases, limit) {
       <td><span class="tag ${actionCls[r.action] ?? ""}">${esc(actionLabel[r.action] ?? r.action)}</span></td>
       <td class="mono">${esc(r.targetId)}</td>
       <td class="mono dim">${esc(r.moderatorId)}</td>
-      <td class="muted" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.reason ?? "sem motivo")}</td>
+      <td class="muted cell-clip" title="${esc(r.reason ?? "")}">${esc(r.reason ?? "sem motivo")}</td>
       <td class="r dim num">${when(r.createdAt)}</td>
     </tr>`).join("")}</tbody>
   </table></div>`;
@@ -217,14 +224,14 @@ function viewResources() {
   const k = c();
   const head = pageHead("Recursos", "Os módulos que estão ligados no bot e o que cada um guardou até agora.");
   const cards = [
-    ["Sugestões", k.pendingSuggestions, "esperando decisão", "suggestions"],
-    ["Sorteios", k.liveGiveaways, "rolando agora", "giveaways"],
-    ["Aniversários", k.birthdays, "cadastrados", "birthdays"],
-    ["Convites", k.invites, "entradas rastreadas", "invites"],
-    ["Comandos próprios", k.commands, "criados pela equipe", "custom-commands"],
-    ["Cargos por reação", k.selfRoles, "no painel de cargos", "roles"],
-    ["Posts agendados", k.scheduledPosts, "na fila", "scheduled-posts"],
-    ["Mensagens no starboard", k.starboardEntries, "salvas", "starboard"],
+    ["Sugestões", k.pendingSuggestions, "esperando decisão"],
+    ["Sorteios", k.liveGiveaways, "rolando agora"],
+    ["Aniversários", k.birthdays, "cadastrados"],
+    ["Convites", k.invites, "entradas rastreadas"],
+    ["Comandos próprios", k.commands, "criados pela equipe"],
+    ["Cargos por reação", k.selfRoles, "no painel de cargos"],
+    ["Posts agendados", k.scheduledPosts, "na fila"],
+    ["Mensagens no starboard", k.starboardEntries, "salvas"],
   ];
   const grid = `<div class="metrics">${cards.slice(0, 4).map(([nm, v, d]) => `<div class="metric"><div class="lbl">${nm}</div><div class="val">${nf(v)}</div><div class="delta">${d}</div></div>`).join("")}</div>
     <div class="metrics" style="margin-top:12px">${cards.slice(4).map(([nm, v, d]) => `<div class="metric"><div class="lbl">${nm}</div><div class="val">${nf(v)}</div><div class="delta">${d}</div></div>`).join("")}</div>`;
@@ -232,7 +239,7 @@ function viewResources() {
   const feeds = `<section class="card tblwrap">
     <div class="card-h"><h2>Feeds</h2><span class="sub">${plural(k.failingFeeds, "falhando", "falhando")}</span></div>
     ${(data?.feeds ?? []).length ? `<table><thead><tr><th>Feed</th><th>Endereço</th><th class="r">Falhas seguidas</th></tr></thead><tbody>
-      ${data.feeds.map((f) => `<tr><td>${esc(f.title)}</td><td class="mono dim" style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.url)}</td>
+      ${data.feeds.map((f) => `<tr><td>${esc(f.title)}</td><td class="mono dim cell-clip" title="${esc(f.url)}">${esc(f.url)}</td>
         <td class="r num" style="color:${f.failures ? "var(--red)" : "var(--text-3)"}">${f.failures}</td></tr>`).join("")}
     </tbody></table>` : emptyRow("Nenhum feed assinado.")}
   </section>`;
@@ -241,11 +248,11 @@ function viewResources() {
     <div class="card-h"><h2>Canais especiais</h2></div>
     <div class="rows">
       ${(data?.drops ?? []).map((d) => `<div class="row-item"><div class="tile">D</div><div class="row-main">
-        <div class="name">Drop a cada ${d.every} mensagens</div><div class="meta">canal <span class="mono">${esc(d.channelId)}</span> · ${nf(d.xp)} XP · ${plural(d.winners, "vencedor", "vencedores")}</div></div></div>`).join("")}
+        <div class="name">Drop a cada ${d.every} mensagens</div><div class="meta">canal <span class="mono">${esc(d.channelId)}</span><span class="sepdot"></span>${nf(d.xp)} XP<span class="sepdot"></span>${plural(d.winners, "vencedor", "vencedores")}</div></div></div>`).join("")}
       ${(data?.hubs ?? []).map((h) => `<div class="row-item"><div class="tile">V</div><div class="row-main">
-        <div class="name">Hub de voz temporária</div><div class="meta">canal <span class="mono">${esc(h.channelId)}</span> · limite ${h.userLimit || "livre"} · fecha vazio em ${h.emptyTimeoutSeconds}s</div></div></div>`).join("")}
+        <div class="name">Hub de voz temporária</div><div class="meta">canal <span class="mono">${esc(h.channelId)}</span><span class="sepdot"></span>limite ${h.userLimit || "livre"}<span class="sepdot"></span>fecha vazio em ${h.emptyTimeoutSeconds}s</div></div></div>`).join("")}
       ${data?.counting ? `<div class="row-item"><div class="tile">#</div><div class="row-main">
-        <div class="name">Contador</div><div class="meta">canal <span class="mono">${esc(data.counting.channelId)}</span> · recorde ${nf(data.counting.record)}</div></div>
+        <div class="name">Contador</div><div class="meta">canal <span class="mono">${esc(data.counting.channelId)}</span><span class="sepdot"></span>recorde ${nf(data.counting.record)}</div></div>
         <div class="row-end"><span class="num">${nf(data.counting.current)}<span> atual</span></span></div></div>` : ""}
       ${(data?.drops ?? []).length || (data?.hubs ?? []).length || data?.counting ? "" : emptyRow("Nenhum canal especial configurado.")}
     </div>
@@ -262,77 +269,76 @@ const PERMISSIONS = [
 
 const permTag = (p) => `<span class="tag code" title="${PERMISSIONS.find(([n]) => n === p)?.[1] ?? ""}">${esc(p)}</span>`;
 
+function pluginStatus(p) {
+  if (!p.enabled) return `<span class="stat"><i class="dot"></i>inativo</span>`;
+  if (!p.present) return `<span class="stat warn"><i class="dot"></i>sem WASM</span>`;
+  if (p.failure) return `<span class="stat err"><i class="dot"></i>falhou ao carregar</span>`;
+  if (p.loaded) return `<span class="stat ok"><i class="dot"></i>carregado</span>`;
+  return `<span class="stat warn"><i class="dot"></i>não carregado</span>`;
+}
+
 function pluginCard(p) {
-  const status = !p.present
-    ? `<span class="stat warn"><i class="dot"></i>sem WASM</span>`
-    : p.failure
-      ? `<span class="stat err"><i class="dot"></i>falhou ao carregar</span>`
-      : p.loaded
-        ? `<span class="stat ok"><i class="dot"></i>carregado</span>`
-        : `<span class="stat warn"><i class="dot"></i>não carregado</span>`;
   const missing = p.required.filter((r) => !p.permissions.includes(r));
-  return `<section class="card" data-plugin="${esc(p.id)}">
-    <div class="card-h" style="align-items:flex-start">
-      <div style="display:flex;gap:9px;align-items:center;min-width:0">
-        <div class="tile" style="width:27px;height:27px;border-radius:5px;font-size:11px">${esc(initials(p.id.replace(/-/g, " ")))}</div>
-        <div style="min-width:0">
-          <div style="font-weight:500;font-size:13px">${esc(p.id)}${p.version ? `<span class="dim" style="font-weight:400;font-size:11.5px;margin-left:6px">${esc(p.version)}</span>` : ""}</div>
-          <div class="mono dim" style="margin-top:1px">${esc(p.wasm)}</div>
-          ${p.source ? `<div class="dim" style="margin-top:1px;font-size:11.5px">fonte em <span class="mono">${esc(p.source.dir)}</span> · ${esc(p.source.toolchain)}${p.source.available ? "" : " (não instalado)"}</div>` : ""}
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto">
-        ${status}
-        ${p.source ? `<button class="btn sm" data-act="plugin-build" data-id="${esc(p.id)}" ${p.source.available ? "" : `disabled title="${esc(p.source.toolchain)} não está instalado"`}>Compilar</button>` : ""}
-        <button class="btn sm" data-act="plugin-remove" data-id="${esc(p.id)}">Remover</button>
-      </div>
+  const buildable = p.source && p.source.available;
+  return `<section class="card plug" data-plugin="${esc(p.id)}">
+  <div class="plug-head">
+    <div class="tile">${esc(initials(p.id.replace(/-/g, " ")))}</div>
+    <div class="plug-title">
+      <div class="nm">${esc(p.id)}${p.version ? `<span class="ver">${esc(p.version)}</span>` : ""}</div>
+      <div class="path mono">${esc(p.wasm)}</div>
     </div>
-    ${p.failure ? `<div class="attn" style="border-top:1px solid var(--line)"><span class="stat err">erro</span><div class="txt mono" style="font-size:11.5px">${esc(p.failure)}</div></div>` : ""}
-    <div class="sep"></div>
-    <div class="pad" style="padding-bottom:12px">
-      <div class="sec">Comandos${p.autocompletes ? ' · autocomplete' : ''}</div>
-      ${p.commands.length ? `<div class="rows">${p.commands.map((c) => `<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:12.5px">
-        <span class="mono">/${esc(c.name)}</span>
-        <span class="muted" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.description)}</span>
-        ${c.options.length ? `<span class="dim mono" style="margin-left:auto;flex:0 0 auto">${esc(c.options.join(" · "))}</span>` : ""}
-      </div>`).join("")}</div>` : `<div class="dim" style="font-size:12px">nenhum — o plugin não carregou, então os comandos não foram publicados</div>`}
+    ${pluginStatus(p)}
+    <div class="plug-actions">
+      ${p.source ? `<button class="btn sm" data-act="plugin-build" data-id="${esc(p.id)}" ${buildable ? "" : `disabled title="${esc(p.source.toolchain)} não está instalado"`}>Compilar</button>` : ""}
+      <button class="btn sm" data-act="plugin-deploy" data-id="${esc(p.id)}" ${p.loaded ? "" : `disabled title="o plugin não está carregado"`}>Publicar</button>
+      <button class="btn sm" data-act="plugin-toggle" data-id="${esc(p.id)}" data-next="${p.enabled ? "0" : "1"}">${p.enabled ? "Inativar" : "Ativar"}</button>
+      <button class="btn sm danger" data-act="plugin-remove" data-id="${esc(p.id)}">Remover</button>
     </div>
-    <div class="sep"></div>
-    <div class="pad" style="padding-top:12px">
-      <div class="sec">Permissões que o WASM pede</div>
-      <div class="chips" style="margin-bottom:10px">${p.required.length ? p.required.map(permTag).join("") : `<span class="dim" style="font-size:12px">só as funções base</span>`}</div>
-      ${missing.length ? `<div class="callout amber" style="font-size:11.5px;color:var(--amber);margin-bottom:10px">faltam ${missing.map(permTag).join(" ")} — o plugin não carrega assim</div>` : ""}
-      ${PERMISSIONS.map(([name, description]) => `<label class="cap-row" style="padding:6px 0;border-top:0;align-items:center">
-        <input type="checkbox" data-act="plugin-perm" data-id="${esc(p.id)}" data-perm="${name}" ${p.permissions.includes(name) ? "checked" : ""}>
-        <span><span class="nm mono">${name}</span><span class="ds" style="display:block;margin-top:0">${description}</span></span>
-      </label>`).join("")}
-      ${p.permissions.includes("http") ? `<div style="margin-top:8px">
-        <div class="sec" style="margin-bottom:5px">Hosts liberados</div>
-        <input data-act="plugin-hosts" data-id="${esc(p.id)}" value="${esc((p.allowedHosts ?? []).join(", "))}" placeholder="api.exemplo.com, outro.com">
-        <div class="hint">separados por vírgula · sem eles a permissão http não faz nada</div>
-      </div>` : ""}
-    </div>
-  </section>`;
+  </div>
+  ${p.failure && p.enabled ? `<div class="attn"><span class="stat err">erro</span><div class="txt mono">${esc(p.failure)}</div></div>` : ""}
+  <div class="plug-sec">
+    <div class="sec">Comandos${p.autocompletes ? ' <span class="tag">autocomplete</span>' : ""}</div>
+    ${p.commands.length ? `<ul class="cmds">${p.commands.map((cmd) => `<li>
+      <span class="mono name">/${esc(cmd.name)}</span>
+      <span class="desc" title="${esc(cmd.description)}">${esc(cmd.description)}</span>
+      ${cmd.options.length ? `<span class="opts">${cmd.options.map((o) => `<span class="tag code">${esc(o)}</span>`).join("")}</span>` : ""}
+    </li>`).join("")}</ul>` : `<div class="hint">nenhum comando — ${p.enabled ? "o plugin não carregou, então nada foi publicado" : "o plugin está inativo"}</div>`}
+  </div>
+  <div class="plug-sec">
+    <div class="sec">Permissões que o WASM pede</div>
+    <div class="chips">${p.required.length ? p.required.map(permTag).join("") : `<span class="hint">só as funções base</span>`}</div>
+    ${missing.length ? `<div class="callout amber">faltam ${missing.map(permTag).join(" ")} — o plugin não carrega assim</div>` : ""}
+    <div class="perms">${PERMISSIONS.map(([name, description]) => `<label class="cap-row">
+      <input type="checkbox" data-act="plugin-perm" data-id="${esc(p.id)}" data-perm="${name}" ${p.permissions.includes(name) ? "checked" : ""}>
+      <span class="nm mono">${name}</span>
+      <span class="ds">${description}</span>
+    </label>`).join("")}</div>
+    ${p.permissions.includes("http") ? `<label class="field">
+      <span class="sec">Hosts liberados</span>
+      <input data-act="plugin-hosts" data-id="${esc(p.id)}" value="${esc((p.allowedHosts ?? []).join(", "))}" placeholder="api.exemplo.com, outro.com">
+      <span class="hint">separados por vírgula — sem eles a permissão http não faz nada</span>
+    </label>` : ""}
+  </div>
+</section>`;
 }
 
 function viewPlugins() {
   const list = plugins ?? [];
   const head = pageHead(
     "Plugins",
-    "Cada plugin é um WASM isolado. Aqui você escolhe as permissões, recarrega os arquivos e publica os comandos no Discord.",
-    `<button class="btn" data-act="plugins-refresh">Recarregar</button><button class="btn pri" data-act="plugins-deploy">Publicar comandos</button>`,
+    "Cada plugin é um WASM isolado. Aqui você escolhe as permissões, compila, publica os comandos no Discord e inativa sem apagar nada.",
+    `<button class="btn" data-act="plugins-refresh">Recarregar</button><button class="btn" data-act="plugins-deploy">Publicar todos</button>`,
   );
   if (pluginError) return shell(head, `<section class="card pad"><div class="stat err"><i class="dot"></i>${esc(pluginError)}</div></section>`);
-  const body = `${list.length ? list.map(pluginCard).join('<div style="height:12px"></div>') : `<section class="card">${emptyRow("Nenhum plugin no registry. Instale um abaixo.")}</section>`}
+  const body = `${list.length ? `<div class="plug-list">${list.map(pluginCard).join("")}</div>` : `<section class="card">${emptyRow("Nenhum plugin no registry. Envie um .wasm ou .zip abaixo.")}</section>`}
   <section class="card pad" style="margin-top:12px">
-    <div style="font-size:12.5px;font-weight:600;margin-bottom:10px">Instalar</div>
-    <div class="set-row" style="padding:0 0 10px;border-top:0;gap:10px;flex-wrap:wrap">
-      <label style="flex:1;min-width:120px"><div class="sec" style="margin-bottom:4px">id</div><input id="new-id" placeholder="meu-plugin"></label>
-      <label style="flex:2;min-width:220px"><div class="sec" style="margin-bottom:4px">.wasm ou .zip</div><input id="new-file" type="file" accept=".wasm,.zip,application/zip,application/wasm"></label>
-      <button class="btn pri" data-act="plugin-upload" style="align-self:flex-end">Enviar</button>
+    <div class="sec-title">Instalar ou atualizar</div>
+    <div class="install">
+      <label class="field"><span class="sec">id</span><input id="new-id" placeholder="meu-plugin" pattern="[a-z0-9-]{1,32}"></label>
+      <label class="field"><span class="sec">.wasm ou .zip</span><input id="new-file" type="file" accept=".wasm,.zip,application/zip,application/wasm"></label>
+      <button class="btn pri" data-act="plugin-upload">Enviar</button>
     </div>
-    <div class="sep"></div>
-    <div class="hint">Monte o zip como está descrito em <span class="mono">docs/concepts/plugin-package.md</span>: o <span class="mono">&lt;id&gt;.wasm</span> na raiz. O painel lê o arquivo em memória e grava só <span class="mono">plugins/dist/&lt;id&gt;.wasm</span> — nada mais do zip toca o disco.</div>
+    <div class="hint">O zip precisa ter <span class="mono">&lt;id&gt;.wasm</span> na raiz — o resto do formato está em <span class="mono">docs/concepts/plugin-package.md</span>. O painel lê tudo em memória e grava só <span class="mono">plugins/dist/&lt;id&gt;.wasm</span>; nada mais do zip toca o disco. Enviar o mesmo id de novo substitui o arquivo e mantém as permissões.</div>
   </section>`;
   return shell(head, body);
 }
@@ -353,35 +359,80 @@ function applyPlugins(payload) {
   render();
 }
 
+function viewSettings() {
+  const head = pageHead("Configurações", "O que o bot usa para falar com o Discord. Salvar grava em <span class=\"mono\">panel/settings.json</span>; algumas coisas só valem depois de reiniciar.", "");
+  if (!settings) return shell(head, `<section class="card">${emptyRow("Carregando…")}</section>`);
+  const rows = settings.fields.map((f) => {
+    const state = f.value === null ? "vazio" : f.active ? "ativo" : "salvo, reinicie";
+    const cls = f.value === null ? "" : f.active ? "ok" : "warn";
+    return `<div class="set-row">
+    <div class="set-label">
+      <div class="nm">${esc(f.label)}</div>
+      <div class="hint">${esc(f.hint)}</div>
+    </div>
+    <div class="set-input">
+      <input data-setting="${esc(f.key)}" type="${f.secret ? "password" : "text"}" autocomplete="off" spellcheck="false"
+        value="${esc(f.value ?? "")}" placeholder="${f.secret ? "não definido" : ""}">
+      <span class="stat ${cls}" ${f.restart && f.value !== null ? `title="lido na inicialização"` : ""}><i class="dot"></i>${state}</span>
+    </div>
+  </div>`;
+  }).join("");
+  const actions = `<section class="card pad" style="margin-top:12px">
+    <div class="sec-title">Aplicar</div>
+    <div class="hint" style="margin-bottom:10px">Salvar só escreve o arquivo. Token, Application ID, servidor de testes e nível de log são lidos na inicialização — depois de salvar, reinicie o bot.</div>
+    <div class="actions"><button class="btn pri" data-act="settings-save">Salvar</button><button class="btn" data-act="settings-restart">Reiniciar o bot</button></div>
+  </section>`;
+  const password = `<section class="card pad" style="margin-top:12px">
+    <div class="sec-title">Senha do painel</div>
+    <div class="hint" style="margin-bottom:10px">${state.password ? "Trocar a senha encerra todas as sessões abertas." : "O primeiro acesso usa o PANEL_TOKEN como senha. Depois de entrar, troque aqui — o token deixa de valer como senha."}</div>
+    <div class="pw">
+      <label class="field"><span class="sec">senha atual</span><input id="pw-current" type="password" autocomplete="current-password"></label>
+      <label class="field"><span class="sec">senha nova (8+)</span><input id="pw-next" type="password" autocomplete="new-password"></label>
+      <button class="btn" data-act="password-save">Trocar senha</button>
+    </div>
+  </section>`;
+  return shell(head, `<section class="card">${rows}</section>${actions}${password}`);
+}
+
+async function loadSettings() {
+  try {
+    settings = await api("/api/panel/settings");
+  } catch (err) {
+    settings = { fields: [], error: err.message };
+  }
+}
+
 function viewAbout() {
-  const head = pageHead("Como funciona", "O painel é uma leitura do mesmo Postgres que o bot usa. Nada aqui escreve no banco.");
+  const head = pageHead("Como funciona", "O painel fala com o mesmo processo do bot: mesma porta do /health, mesmo Postgres, mesmas variáveis de ambiente.");
   const steps = [
-    ["O bot resolve os módulos na inicialização", "Cada módulo liga comandos, eventos e tarefas agendadas. O <span class='mono'>AppModule</span> é o único lugar que importa todos."],
-    ["Os comandos são registrados no Discord", "<span class='mono'>pnpm deploy-commands</span> publica os comandos de barra embutidos e os que os plugins declaram no manifesto."],
-    ["Os dados caem no Postgres", "Moderação, níveis, tickets, sorteios, feeds, lembretes — cada módulo tem sua tabela, e o Drizzle mantém o schema versionado."],
-    ["O painel lê esse mesmo banco", "As rotas <span class='mono'>/api/panel</span> rodam SELECT atrás de um token. Se o bot estiver fora do ar, o painel mostra o último estado do banco, não uma simulação."],
+    ["O bot monta os módulos na inicialização", "Cada módulo liga comandos, eventos e tarefas. O <span class='mono'>AppModule</span> é o único lugar que importa todos; o <span class='mono'>PanelModule</span> liga login e configurações."],
+    ["O login guarda uma senha, não um token", "A primeira senha é o <span class='mono'>PANEL_TOKEN</span>. O que fica em <span class='mono'>panel/auth.json</span> é um hash scrypt em arquivo 0600, e a sessão é um cookie HttpOnly com 12 horas de validade."],
+    ["Os comandos vão para o Discord", "Publicar manda um PUT que substitui a lista inteira do servidor. Por isso cada card reenvia os embutidos e todos os plugins carregados: publicar um não apaga os outros."],
+    ["Os dados caem no Postgres", "Moderação, níveis, tickets, sorteios, feeds, lembretes — cada módulo tem sua tabela e o Drizzle mantém o schema versionado."],
+    ["O painel lê esse mesmo banco", "As rotas <span class='mono'>/api/panel</span> rodam SELECT. Se o bot estiver fora do ar, você vê o último estado gravado, não uma simulação."],
+    ["Plugins são arquivos, não código no bot", "Um <span class='mono'>.wasm</span> em <span class='mono'>plugins/dist</span> com entrada em <span class='mono'>plugins/registry.json</span>. Inativar só marca <span class='mono'>enabled: false</span>; remover tira do registry e deixa o arquivo no disco."],
   ];
   const list = `<section class="card">
     <div class="card-h"><h2>Do evento do Discord até esta tela</h2></div>
     <div class="rows">${steps.map(([t, d], i) => `<div class="row-item" style="align-items:flex-start">
       <div class="tile">${i + 1}</div>
-      <div class="row-main"><div class="name">${t}</div><div class="desc" style="white-space:normal;line-height:1.5">${d}</div></div>
+      <div class="row-main"><div class="name">${t}</div><div class="desc wrap">${d}</div></div>
     </div>`).join("")}</div>
   </section>`;
   const env = `<section class="card pad">
-    <div style="font-size:12.5px;font-weight:600;margin-bottom:12px">Este processo</div>
+    <div class="sec-title">Este processo</div>
     <dl class="dl">
       <dt>Bot</dt><dd>${esc(meta?.bot?.tag ?? "—")}</dd>
       <dt>Gateway</dt><dd>${meta?.ping == null ? "—" : `${meta.ping} ms`}</dd>
       <dt>Servidores</dt><dd>${nf(meta?.guilds?.length ?? 0)}</dd>
-      <dt>Plugins</dt><dd>${nf(plugins?.length ?? meta?.plugins?.length ?? 0)}</dd>
-      <dt>Token</dt><dd>${token ? "configurado neste navegador" : "ausente"}</dd>
+      <dt>Plugins</dt><dd>${nf((plugins ?? []).filter((p) => p.loaded).length)} ativos de ${nf(plugins?.length ?? meta?.plugins?.length ?? 0)}</dd>
+      <dt>Sessão</dt><dd>${state.login ? "senha do painel" : "PANEL_TOKEN no header"}</dd>
     </dl>
   </section>`;
   const caveat = `<section class="card pad">
-    <div style="font-size:12.5px;font-weight:600;margin-bottom:8px">Limites conhecidos</div>
-    <div class="callout" style="font-size:12px;color:var(--text-3);line-height:1.6">
-      O painel lê o banco e não escreve nele. A exceção é a tela de plugins, que edita <span class="mono">plugins/registry.json</span> e republica os comandos — ações dentro do Discord (banir, encerrar sorteio) continuam nos comandos.
+    <div class="sec-title">O que este painel escreve</div>
+    <div class="callout">
+      Só três coisas: <span class="mono">panel/settings.json</span>, <span class="mono">panel/auth.json</span> e <span class="mono">plugins/</span> (registry, dist e fontes compiladas). O banco continua sendo escrito só pelos comandos dentro do Discord.
     </div>
   </section>`;
   return shell(head, `<div class="cols"><div class="stack">${list}</div><div class="stack">${env}${caveat}</div></div>`);
@@ -394,24 +445,24 @@ function paintHead() {
     const ico = b.querySelector(".ic");
     if (ico && !ico.childElementCount) ico.innerHTML = icon(b.dataset.go, 13);
   });
+  const out = $(".foot-out .ic");
+  if (out && !out.childElementCount) out.innerHTML = icon("out", 13);
   $("#nav-cases").textContent = nf(data?.counters?.cases ?? 0);
   $("#nav-plugins").textContent = nf(plugins?.length ?? meta?.plugins?.length ?? 0);
   $("#foot-guilds").textContent = nf(meta?.guilds?.length ?? 0);
   $("#foot-ping").textContent = meta?.ping == null ? "—" : `${meta.ping} ms`;
   $("#foot-active").textContent = nf((plugins ?? []).filter((p) => p.loaded).length);
-  $("#foot-tag").textContent = "painel";
 }
 
 function render() {
   const v = state.view;
-  if (v === "plugins" && plugins === null) {
-    loadPlugins().then(render);
-    return;
-  }
+  if (v === "plugins" && plugins === null) { loadPlugins().then(render); return; }
+  if (v === "settings" && settings === null) { loadSettings().then(render); return; }
   let html;
   if (v === "mod") html = viewMod();
   else if (v === "resources") html = viewResources();
   else if (v === "plugins") html = viewPlugins();
+  else if (v === "settings") html = viewSettings();
   else if (v === "about") html = viewAbout();
   else html = viewOverview();
   $("#view").innerHTML = html;
@@ -425,36 +476,51 @@ function navigate(next) {
   $("#view").innerHTML = skeletonFor(next);
   paintHead();
   $("main").scrollTop = 0;
-  setTimeout(() => { if (tokenId === navToken) render(); }, 380);
+  setTimeout(() => { if (tokenId === navToken) render(); }, 320);
 }
 
-function authScreen(message) {
-  $("#view").innerHTML = `<div class="auth"><form id="auth-form">
+function showLogin(message) {
+  meta = null; data = null; plugins = null; settings = null;
+  const first = !state.login;
+  $("#view").innerHTML = `<div class="auth"><form id="auth-form" class="auth-card">
+    <div class="auth-mark">${icon("brand", 16)}</div>
     <h1>Painel do roboteco</h1>
-    <p>${esc(message || "Cole o token do painel para ver os dados deste bot.")}</p>
-    <input id="auth-token" type="password" autocomplete="current-password" placeholder="token do painel" autofocus>
-    <div class="row"><button class="btn pri" type="submit">Entrar</button></div>
-    <p class="dim" style="font-size:11.5px">O token é o valor de <span class="mono">PANEL_TOKEN</span> no ambiente do bot.</p>
+    <p>${esc(message || (first ? "Primeiro acesso: a senha é o PANEL_TOKEN do ambiente do bot." : "Entre com a senha do painel."))}</p>
+    <input type="text" autocomplete="username" value="painel" hidden>
+    <input id="auth-password" type="password" autocomplete="current-password" placeholder="senha" autofocus required>
+    <button class="btn pri" type="submit">Entrar</button>
+    <p class="hint">${state.off ? "Sem <span class='mono'>PANEL_TOKEN</span> (16+ caracteres) no ambiente do bot o painel não abre." : state.password ? "A senha fica em <span class='mono'>panel/auth.json</span> como hash scrypt, e a sessão dura 12 horas." : "Depois de entrar, troque a senha em Configurações: o PANEL_TOKEN deixa de servir como senha."}</p>
   </form></div>`;
+  document.body.classList.add("auth-mode");
 }
+
+const clearAuthMode = () => document.body.classList.remove("auth-mode");
 
 async function boot() {
-  if (!token) return authScreen();
-  $("#view").innerHTML = skeletonFor("overview");
+  let status = null;
+  try {
+    status = await api("/api/panel/auth/status");
+  } catch (err) {
+    state.off = err.message === "painel desligado";
+    return showLogin(state.off ? "O painel está desligado neste processo." : `Não consegui falar com o bot: ${err.message}`);
+  }
+  state.login = Boolean(status.password);
+  state.password = Boolean(status.password);
+  if (!status.authenticated) return showLogin();
   try {
     meta = await api("/api/panel/guilds");
   } catch (err) {
-    if (err.message === "disabled") return authScreen("O painel está desligado. Defina PANEL_TOKEN no ambiente do bot e reinicie.");
-    if (err.message === "token") return authScreen("Token inválido. Tente de novo.");
-    return authScreen(`Não consegui falar com o bot: ${err.message}`);
+    return showLogin(`Não consegui falar com o bot: ${err.message}`);
   }
   state.guild = meta.guilds[0]?.id ?? null;
   if (!state.guild) {
     $("#view").innerHTML = shell(pageHead("Sem servidores", "O bot está no ar mas não entrou em nenhum servidor ainda."), "");
+    clearAuthMode();
     paintHead();
     return;
   }
   await loadGuild();
+  clearAuthMode();
   render();
 }
 
@@ -465,31 +531,40 @@ async function loadGuild() {
 async function pluginAction(act) {
   const id = act.dataset.id;
   const button = act;
+  const busy = (label) => { button.disabled = true; button.textContent = label; };
   try {
     if (act.dataset.act === "plugins-refresh") {
-      button.disabled = true;
-      button.textContent = "Recarregando…";
+      busy("Recarregando…");
       const payload = await api("/api/panel/plugins/refresh", { method: "POST", body: {} });
       plugins = payload.plugins;
-      toast(`${plural(payload.plugins.filter((p) => p.loaded).length, "plugin carregado", "plugins carregados")}`);
+      toast(plural(payload.plugins.filter((p) => p.loaded).length, "plugin carregado", "plugins carregados"));
       render();
     } else if (act.dataset.act === "plugins-deploy") {
-      button.disabled = true;
-      button.textContent = "Publicando…";
+      busy("Publicando…");
       const payload = await api("/api/panel/plugins/deploy", { method: "POST", body: {} });
       plugins = payload.plugins;
       toast(`${plural(payload.commands, "comando publicado", "comandos publicados")} em ${payload.guild}`);
       render();
+    } else if (act.dataset.act === "plugin-deploy") {
+      busy("Publicando…");
+      const payload = await api(`/api/panel/plugins/${encodeURIComponent(id)}/deploy`, { method: "POST", body: {} });
+      plugins = payload.plugins;
+      toast(`${id}: ${plural(payload.plugin ?? 0, "comando publicado", "comandos publicados")}, o resto foi mantido`);
+      render();
     } else if (act.dataset.act === "plugin-build") {
-      button.disabled = true;
-      button.textContent = "Compilando…";
+      busy("Compilando…");
       const payload = await api(`/api/panel/plugins/${encodeURIComponent(id)}/build`, { method: "POST", body: {} });
       plugins = payload.plugins;
       const fresh = payload.plugins.find((p) => p.id === id);
-      toast(`${id}: ${payload.log}${fresh?.loaded ? "" : " — não carregou, veja o erro"}`);
+      toast(`${id}: ${payload.log}${fresh?.loaded ? "" : " — não carregou, veja o erro"}`, !fresh?.loaded);
       render();
+    } else if (act.dataset.act === "plugin-toggle") {
+      const next = act.dataset.next === "1";
+      busy(next ? "Ativando…" : "Inativando…");
+      applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { enabled: next } }));
+      toast(`${id}: ${next ? "ativado" : "inativado"}${next ? "" : " — os comandos saem na próxima publicação"}`);
     } else if (act.dataset.act === "plugin-remove") {
-      if (!confirm(`Remover ${id} do registry? O arquivo .wasm continua no disco.`)) return;
+      if (!confirm(`Remover ${id} do registry? O .wasm continua no disco, mas os comandos saem da próxima publicação.`)) return;
       applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "DELETE" }));
       toast(`${id} saiu do registry`);
     } else if (act.dataset.act === "plugin-perm") {
@@ -502,26 +577,53 @@ async function pluginAction(act) {
     } else if (act.dataset.act === "plugin-upload") {
       const name = $("#new-id").value.trim();
       const file = $("#new-file").files?.[0];
-      if (!name) return toast("Preencha o id");
-      if (!file) return toast("Escolha o .wasm ou o .zip");
-      button.disabled = true;
-      button.textContent = "Enviando…";
+      if (!/^[a-z0-9-]{1,32}$/.test(name)) return toast("O id aceita só a-z, 0-9 e hífen (até 32)", true);
+      if (!file) return toast("Escolha o .wasm ou o .zip", true);
+      busy("Enviando…");
       const res = await fetch(`/api/panel/plugins/${encodeURIComponent(name)}/upload`, {
         method: "POST",
-        headers: { "x-panel-token": token, "content-type": file.type || "application/octet-stream" },
+        credentials: "same-origin",
+        headers: { "content-type": file.type || "application/octet-stream" },
         body: file,
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? `HTTP ${res.status}`);
       plugins = payload.plugins;
       const fresh = payload.plugins.find((p) => p.id === name);
-      toast(`${name}: ${Math.round(payload.bytes / 1024)} KB${payload.entry ? ` de ${payload.entry}` : ""}${fresh?.loaded ? "" : " — não carregou, veja o erro"}`);
+      toast(`${name}: ${kb(payload.bytes)}${payload.entry ? ` de ${payload.entry}` : ""}${fresh?.loaded ? "" : " — não carregou, veja o erro"}`, !fresh?.loaded);
       render();
+    } else if (act.dataset.act === "settings-save") {
+      busy("Salvando…");
+      // Only send what changed: a masked secret left untouched must not be erased with "".
+      const body = {};
+      for (const input of $$("[data-setting]")) {
+        const field = settings.fields.find((f) => f.key === input.dataset.setting);
+        if (field && input.value === (field.value ?? "")) continue;
+        body[input.dataset.setting] = input.value.trim();
+      }
+      if (!Object.keys(body).length) { render(); return toast("Nada mudou."); }
+      settings = await api("/api/panel/settings", { method: "PUT", body });
+      render();
+      toast("Salvo. Reinicie o bot para aplicar o que é lido na inicialização.", true);
+    } else if (act.dataset.act === "settings-restart") {
+      if (!confirm("Reiniciar o bot agora? A sessão do painel cai.")) return;
+      busy("Reiniciando…");
+      const payload = await api("/api/panel/settings", { method: "POST", body: { action: "restart" } });
+      toast(payload.restarted ? "Reiniciando — volte em alguns segundos" : "Este ambiente não deixa o painel reiniciar o processo", !payload.restarted);
+      button.disabled = false;
+      button.textContent = "Reiniciar o bot";
+    } else if (act.dataset.act === "password-save") {
+      const current = $("#pw-current").value;
+      const password = $("#pw-next").value;
+      if (password.length < 8) return toast("A senha nova precisa de 8 caracteres ou mais", true);
+      busy("Trocando…");
+      await api("/api/panel/auth/password", { method: "POST", body: { current, password } });
+      toast("Senha trocada. Entre de novo com a senha nova.");
+      showLogin("Senha trocada. Entre de novo com a senha nova.");
     }
   } catch (err) {
-    toast(`Falhou: ${err.message}`);
-    button.disabled = false;
-    render();
+    toast(`Falhou: ${err.message}`, true);
+    if (button.isConnected) { button.disabled = false; render(); }
   }
 }
 
@@ -535,7 +637,12 @@ document.addEventListener("click", (e) => {
     try { localStorage.setItem("theme", document.documentElement.dataset.theme); } catch {}
     return render();
   }
-  if (act.dataset.act?.startsWith("plugin") || act.dataset.act?.startsWith("plugins")) {
+  if (act.dataset.act === "logout") {
+    return api("/api/panel/auth/logout", { method: "POST", body: {} })
+      .catch(() => null)
+      .then(() => showLogin("Você saiu."));
+  }
+  if (/^plugin|^plugins|^settings|^password/.test(act.dataset.act ?? "")) {
     e.preventDefault();
     return pluginAction(act);
   }
@@ -550,21 +657,29 @@ document.addEventListener("change", async (e) => {
     applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { allowedHosts: hosts } }));
     toast(`${id}: ${plural(hosts.length, "host liberado", "hosts liberados")}`);
   } catch (err) {
-    toast(`Falhou: ${err.message}`);
+    toast(`Falhou: ${err.message}`, true);
   }
 });
 
 document.addEventListener("submit", async (e) => {
   if (e.target.id !== "auth-form") return;
   e.preventDefault();
-  const value = $("#auth-token").value.trim();
-  try { localStorage.setItem("panel-token", value); } catch {}
-  location.reload();
+  const button = e.target.querySelector("button");
+  const password = $("#auth-password").value;
+  button.disabled = true;
+  button.textContent = "Entrando…";
+  try {
+    await api("/api/panel/auth/login", { method: "POST", body: { password } });
+    await boot();
+  } catch (err) {
+    state.login = false;
+    showLogin(`Não entrou: ${err.message}`);
+  }
 });
 
 boot();
 setInterval(async () => {
-  if (!meta || !state.guild) return;
+  if (!meta || !state.guild || state.view === "settings") return;
   try {
     meta = await api("/api/panel/guilds");
     await loadGuild();

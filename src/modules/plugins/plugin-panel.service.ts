@@ -76,7 +76,7 @@ export class PluginPanelService {
     return {
       id: definition.id,
       wasm: definition.wasm,
-      enabled: this.registry.get(definition.id) !== undefined,
+      enabled: definition.enabled,
       present,
       loaded: loaded !== undefined,
       version: loaded?.version ?? null,
@@ -124,6 +124,7 @@ export class PluginPanelService {
       definition.id === id
         ? {
             ...definition,
+            ...(changes.enabled !== undefined && { enabled: changes.enabled }),
             ...(changes.permissions && { permissions: changes.permissions }),
             ...(changes.allowedHosts && { allowedHosts: changes.allowedHosts }),
           }
@@ -167,6 +168,7 @@ export class PluginPanelService {
     const definition: PluginDefinitionEntry = {
       id,
       wasm,
+      enabled: current?.enabled ?? true,
       // A re-upload without the query flags keeps what is already granted.
       permissions: (query.get('permissions')
         ? split(query.get('permissions'))
@@ -211,16 +213,25 @@ export class PluginPanelService {
     return this.list();
   }
 
-  async deploy(): Promise<{ commands: number; guild: string }> {
+  /**
+   * A deploy is a bulk PUT, so Discord replaces whatever is not in the body. The body is therefore
+   * always built-ins + every loaded plugin: publishing one card re-sends the rest so they are not
+   * silently deleted. A disabled plugin is not loaded, so its commands do go away.
+   */
+  async deploy(id?: string): Promise<{ commands: number; guild: string; plugin: number | null }> {
     const body = [...commandCatalog()];
-    for (const plugin of this.registry.all()) {
-      body.push(...plugin.commands.map((spec) => this.manifests.toCommandJSON(spec)));
+    let plugin: number | null = null;
+    for (const loaded of this.registry.all()) {
+      body.push(...loaded.commands.map((spec) => this.manifests.toCommandJSON(spec)));
+      if (loaded.id === id) plugin = loaded.commands.length;
     }
-    return this.deployer.deploy(body);
+    if (id && plugin === null) throw new Error(`plugin ${id} não está carregado`);
+    return { ...(await this.deployer.deploy(body)), plugin };
   }
 }
 
 const updateSchema = z.object({
+  enabled: z.boolean().optional(),
   permissions: z.array(z.enum(permissions)).optional(),
   allowedHosts: z.array(z.string().min(1).max(253)).optional(),
 });
@@ -256,7 +267,7 @@ export function registerPluginPanel(): void {
       const { log, plugins } = await panel.build(id);
       return { body: { log, plugins, registry: await registry.definitions() } };
     } else if (action === 'deploy' && method === 'POST') {
-      const result = await panel.deploy();
+      const result = await panel.deploy(id);
       return { body: { ...result, plugins: await panel.list() } };
     } else if (id && method === 'DELETE') {
       next = await panel.remove(id);

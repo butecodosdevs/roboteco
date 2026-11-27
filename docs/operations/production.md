@@ -53,21 +53,16 @@ Migrations must stay backwards-compatible for one release. The old bot keeps run
 
 ### Panel
 
-The same port serves a read-only panel at `/` with `web/`. It needs `PANEL_TOKEN` (16+ characters); without it every `/api/panel` call answers `401` and the page asks for the token. The panel reads the same Postgres as the bot and never writes, so it shows real numbers even while the gateway is reconnecting.
+The same port serves the panel at `/` with `web/`. It needs `PANEL_TOKEN` (16+ characters); without it every `/api/panel` call answers `503` and the page says the panel is off. The panel reads the same Postgres as the bot, so it shows real numbers even while the gateway is reconnecting.
 
 ```sh
 PANEL_TOKEN=$(openssl rand -hex 24) pnpm dev
-# http://127.0.0.1:3000 → paste the token
+# http://127.0.0.1:3000 → a senha do primeiro acesso é esse PANEL_TOKEN
 ```
 
-The token goes in a request header, so it stays out of access logs and out of the URL bar history. `scripts/panel-preview.ts` serves the panel with a stub guild and no Discord login, which is enough to work on the UI:
+The first login takes `PANEL_TOKEN` as the password and stores a scrypt hash of it in `panel/auth.json` (mode `0600`); from then on the token is no longer a password. A login creates a `panel_session` cookie (HttpOnly, SameSite=Strict, 12 h), and the session lives in memory, so a restart logs everyone out. Change the password in Configurações. Scripts and CI still use the `x-panel-token` header — the query string is ignored on purpose so tokens never land in access logs.
 
-```sh
-DATABASE_URL=postgres://roboteco:roboteco@localhost:5432/roboteco \
-S3_ENDPOINT=http://localhost:3900 S3_ACCESS_KEY_ID=x S3_SECRET_ACCESS_KEY=x S3_BUCKET=roboteco \
-DISCORD_TOKEN=x DISCORD_CLIENT_ID=x PANEL_TOKEN=dev-panel-token-123456 \
-  pnpm exec tsx scripts/panel-preview.ts
-```
+Two files are written by the panel and both belong on a volume: `panel/auth.json` (password hash) and `panel/settings.json` (token, application id, log level). Settings are applied to `process.env` before `config` is parsed, so a change needs a restart; `ROBOTECO_RESTART=docker` lets the panel restart the container itself, otherwise the button says so.
 
 ### Backups
 

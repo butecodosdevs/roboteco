@@ -17,6 +17,7 @@ import { InvitesModule } from '@/modules/invites/invites.module';
 import { LevelsModule } from '@/modules/levels/levels.module';
 import { LogsModule } from '@/modules/logs/logs.module';
 import { ModerationModule } from '@/modules/moderation/moderation.module';
+import { PanelModule } from '@/modules/panel/panel.module';
 import { PingModule } from '@/modules/ping/ping.module';
 import { PluginsModule } from '@/modules/plugins/plugins.module';
 import { PrivacyModule } from '@/modules/privacy/privacy.module';
@@ -64,6 +65,7 @@ import { WelcomeModule } from '@/modules/welcome/welcome.module';
     InvitesModule,
     AutomodModule,
     EmbedsModule,
+    PanelModule,
     ...(config.env === 'development' ? [DevModule] : []),
   ],
 })

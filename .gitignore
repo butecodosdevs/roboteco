@@ -161,4 +161,6 @@ backups/
 
 # compiled plugins
 plugins/dist/
+# Panel runtime state (password hash, settings written by the Configurações tab).
+/panel/
 plugins/**/target/

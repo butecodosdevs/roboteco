@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import type { Client } from 'discord.js';
 import { and, count, desc, eq, gt, isNull } from 'drizzle-orm';
 import { db, schema } from '@/db';
+import { isPublicPanelSegment, panelSessionValid } from './panel-auth';
 import { panelRoute } from './panel-routes';
 
 export interface PanelEvent {
@@ -17,23 +18,28 @@ export const isPanelPath = (path: string) => path.startsWith('/api/panel');
 
 const registryPath = resolve('plugins/registry.json');
 
-const json = (response: ServerResponse, status: number, body: unknown) => {
+const json = (response: ServerResponse, status: number, body: unknown, headers = {}) => {
   response
     .writeHead(status, {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
+      ...headers,
     })
     .end(JSON.stringify(body));
 };
 
-function authorized(request: IncomingMessage, token?: string): boolean {
-  if (!token) return false;
-  return request.headers['x-panel-token'] === token;
+/**
+ * A cookie is what the browser sends; the header is what the scripts send. Both are checked, but
+ * only the header path is allowed while no password has been set yet.
+ */
+async function authorized(request: IncomingMessage, token?: string): Promise<boolean> {
+  if (request.headers['x-panel-token'] === token && token) return true;
+  return panelSessionValid(request);
 }
 
 const total = async (query: Promise<{ total: number }[]>) => (await query)[0]?.total ?? 0;
 
-async function plugins() {
+async function pluginFiles() {
   const raw = await readFile(resolve(registryPath), 'utf8').catch(() => null);
   if (!raw) return [];
   const { plugins: list } = JSON.parse(raw) as {
@@ -214,12 +220,14 @@ export async function handlePanel(
     json(response, 503, { error: 'disabled' });
     return;
   }
-  if (!authorized(request, token)) {
-    json(response, 401, { error: 'token' });
+
+  const [head, ...segments] = url.pathname.split('/').filter(Boolean).slice(2);
+
+  if (!isPublicPanelSegment(head) && !(await authorized(request, token))) {
+    json(response, 401, { error: 'unauthorized' });
     return;
   }
 
-  const [head, ...segments] = url.pathname.split('/').filter(Boolean).slice(2);
   if (head && head !== 'guilds') {
     const route = panelRoute(head);
     if (!route) {
@@ -227,8 +235,15 @@ export async function handlePanel(
       return;
     }
     try {
-      const reply = await route({ segments, query: url.searchParams, method, body, client });
-      json(response, reply.status ?? 200, reply.body);
+      const reply = await route({
+        segments,
+        query: url.searchParams,
+        method,
+        body,
+        client,
+        request,
+      });
+      json(response, reply.status ?? 200, reply.body, reply.headers);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       json(response, 400, { error: message });
@@ -250,7 +265,7 @@ export async function handlePanel(
         : null,
       ping: client.ws.ping,
       guilds,
-      plugins: await plugins(),
+      plugins: await pluginFiles(),
     });
     return;
   }

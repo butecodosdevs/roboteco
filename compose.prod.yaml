@@ -74,8 +74,14 @@ services:
     environment:
       <<: *app-env
       HEALTH_PORT: "3000"
+      # Lets the Configurações tab restart the container after saving a new token.
+      ROBOTECO_RESTART: docker
     ports:
       - "${HEALTH_PUBLISH_PORT:-3000}:3000"
+    volumes:
+      # Uploads and settings live outside the image, so a redeploy keeps them.
+      - ./panel:/app/panel
+      - ./plugins:/app/plugins
     depends_on:
       migrate:
         condition: service_completed_successfully
