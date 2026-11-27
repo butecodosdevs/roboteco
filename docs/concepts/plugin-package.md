@@ -1,76 +1,38 @@
 # Plugin package
 
-O painel instala plugins por upload. Esta página descreve exatamente o que o arquivo enviado pode conter e o que o bot faz com ele.
-
-## Enviando pelo painel
-
-Abra a aba **Plugins**, preencha o `id` e escolha o arquivo em **.wasm ou .zip**, depois **Enviar**.
-
-O `id` é o nome do plugin no `plugins/registry.json`. Use letras minúsculas, números e hífen, até 32 caracteres — `coin`, `daily-xp`, `welcome-2`.
-
-O upload aceita duas formas:
-
-| Arquivo | O que é lido |
-| --- | --- |
-| `coin.wasm` | O próprio arquivo, sem descompactar nada |
-| `coin.zip` | Uma entrada `.wasm` de dentro do zip |
-
-O resultado é sempre o mesmo: o painel grava `plugins/dist/<id>.wasm` e registra `{ id, wasm, permissions }` no registry. O nome do arquivo que você enviou não importa: o que manda é o `id` digitado no painel.
-
-## Estrutura do zip
-
-O zip precisa ter um `.wasm` na raiz — ou em qualquer pasta, mas com o nome igual ao `id` quando houver mais de um:
-
-```text
-coin.zip
-├── coin.wasm          # obrigatório, é o que vai para plugins/dist/
-├── README.md          # opcional, ignorado
-├── LICENSE            # opcional, ignorado
-└── docs/              # opcional, ignorado
-    └── usage.md
-```
-
-Regras que o leitor aplica:
-
-- **Um `.wasm` só.** Se o zip tiver dois ou mais, o nome precisa ser exatamente `<id>.wasm`. A mensagem de erro lista os candidatos e pede o rename.
-- **Extensão `.wasm`, sem diferenciar maiúsculas.** `Coin.WASM` também é aceito.
-- **O resto é ignorado.** README, licença, pasta `docs/`, `package.json`: nada disso é extraído. Só os bytes da entrada escolhida saem do zip, e o único caminho escrito é `plugins/dist/<id>.wasm`.
-- **Compressão `store` ou `deflate`.** Qualquer outro método é recusado com o número do método.
-- **Limites:** 32 MB para o corpo do upload e para o `.wasm` descompactado, 512 entradas no zip. Acima disso a resposta é `413 arquivo maior que o limite` ou `zip grande demais`.
-- **Zip64 não é suportado.** Zips normais, gerados por `zip`, Finder, `Compress-Archive` e afins, funcionam.
-- **O arquivo precisa ser WASM de verdade.** O leitor confere o magic `\0asm`; um `.txt` renomeado para `.wasm` é recusado antes de qualquer escrita.
-
-### Exemplo
+O painel **não** instala plugins: ele lista o que está em `plugins/registry.json`, liga/desliga comandos e mostra o uso. Instalar é no repositório, com dois arquivos:
 
 ```sh
-# compilar
-pnpm plugins:build              # gera plugins/dist/coin.wasm
-
-# empacotar com a documentação junto (opcional)
-cd plugins/dist
-zip -q /tmp/coin.zip coin.wasm README.md
-
-# enviar pelo painel: id "coin", arquivo /tmp/coin.zip
+pnpm plugins:build              # gera plugins/dist/<id>.wasm a partir de plugins/<id>-go ou -rust
 ```
 
-## O que o bot faz com o arquivo
+| Onde | O que é |
+| --- | --- |
+| `plugins/dist/<id>.wasm` | O binário. Fica fora do git (`.gitignore`), por isso precisa ser compilado em cada máquina. |
+| `plugins/registry.json` | Uma entrada `{ id, wasm, enabled, permissions, allowedHosts? }` por plugin. |
 
-1. Lê o upload inteiro em memória e valida o magic.
-2. Grava `plugins/dist/<id>.wasm`.
-3. Atualiza `plugins/registry.json` e recarrega os plugins em memória.
-4. Mostra no card o que carregou: versão, comandos e as permissões que o WASM importa.
+```json
+{
+  "plugins": [
+    { "id": "coin", "wasm": "plugins/dist/coin.wasm", "enabled": true, "permissions": ["kv"] }
+  ]
+}
+```
 
-O painel nunca compila o que você envia. Se o plugin depende de uma permissão (`kv`, `xp.grant`, `http`) e ela não está marcada, o arquivo fica instalado mas o card mostra `faltam ...`. Marque a caixa para liberar. `http` ainda exige os hosts em `allowedHosts`.
+O `id` é o nome do plugin: letras minúsculas, números e hífen, até 32 caracteres — `coin`, `daily-xp`, `welcome-2`.
 
-Se o WASM não puder ser lido, ou se os comandos dele colidirem com um comando embutido ou de outro plugin, a instalação é desfeita: o `.wasm` anterior e o registry voltam ao que eram, e a resposta traz o motivo entre parênteses.
+## O que o bot faz
 
-## Reenviar o mesmo `id`
+1. Lê `registry.json` no boot.
+2. Carrega o `.wasm` de cada entrada com `enabled: true`.
+3. Confere as permissões que o WASM importa contra a lista `permissions`; o que faltar aparece no card como `faltam ...`.
+4. Publica os comandos no Discord (`pnpm deploy-plugins`, ou o botão **Publicar no Discord** no painel).
 
-Enviar de novo com o mesmo `id` é como se publica uma versão nova: o arquivo é substituído e as permissões já concedidas são mantidas, a menos que o upload traga `?permissions=` explícito.
+Se o WASM não puder ser lido, ou se os comandos dele colidirem com um comando embutido ou de outro plugin, o plugin não carrega e o card mostra o motivo. O resto continua funcionando.
 
-## Plugin sem upload
+## Atualizar uma versão
 
-O repositório também aceita plugins colocados à mão: ponha o `.wasm` em `plugins/dist/` e descreva o plugin em `plugins/registry.json`. O painel também lista esses, e o botão **Compilar** refaz o WASM a partir de `plugins/<id>-go` ou `plugins/<id>-rust` quando a toolchain está instalada na máquina do bot.
+Recompile com `pnpm plugins:build`, suba o novo `.wasm` para `plugins/dist/` e clique em **Recarregar** no painel. As permissões já concedidas no registry são mantidas.
 
 ## Ver também
 

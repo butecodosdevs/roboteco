@@ -19,6 +19,8 @@ import {
   type UserContextMenuCommandInteraction,
 } from 'discord.js';
 import { inject, On, type PluginCaller, type PluginScope } from '@/core';
+import { isCommandDisabled } from '@/core/command-toggles';
+import { recordUsage } from '@/core/command-usage';
 import { Cooldowns, replyCooldown } from '@/core/cooldown';
 import { translator } from '@/i18n';
 import {
@@ -181,7 +183,11 @@ export class InteractionCreateEvent {
       if (entry.spec.guildOnly && !interaction.inGuild()) {
         return this.fail(interaction, 'guildOnly', entry.plugin.id);
       }
+      if (isCommandDisabled(entry.spec.name)) return undefined;
       if (await this.refuse(interaction, entry.plugin, entry.spec)) return;
+      if (interaction.inGuild()) {
+        recordUsage(interaction.guildId, entry.spec.name, interaction.user.id, 'plugin');
+      }
       return this.answer(interaction, entry.plugin, commandInput(interaction, entry.plugin));
     }
 
@@ -221,7 +227,7 @@ export class InteractionCreateEvent {
 
   private async autocomplete(interaction: AutocompleteInteraction) {
     const entry = this.registry.command(interaction.commandName);
-    if (!entry) return;
+    if (!entry || isCommandDisabled(entry.spec.name)) return;
     const focused = interaction.options.getFocused(true);
     const input = commandInput(interaction, entry.plugin);
     const choices = await this.engine

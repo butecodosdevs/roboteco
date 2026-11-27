@@ -69,13 +69,42 @@ assert.equal(
   'built-in commands need a session',
 );
 const commands = (await (await fetch(`${base}/api/panel/commands`, { headers: auth })).json()) as {
-  modules: { module: string; commands: { name: string; description: string }[] }[];
+  modules: { module: string; commands: { name: string; code: string }[] }[];
+  disabled: string[];
 };
 assert.ok(commands.modules.length > 0, 'built-in commands are grouped by module');
 assert.ok(
-  commands.modules.every((m) => m.commands.length > 0 && m.commands.every((c) => c.name)),
+  commands.modules.every((m) => m.commands.length > 0 && m.commands.every((c) => c.name && c.code)),
   'every group has named commands',
 );
+assert.ok(Array.isArray(commands.disabled), 'the toggle list is always present');
+assert.equal(
+  (
+    await fetch(`${base}/api/panel/commands`, {
+      method: 'PUT',
+      headers: { ...auth, 'content-type': 'application/json' },
+      body: '{"commands":["nao-existe"],"enabled":false}',
+    })
+  ).status,
+  400,
+  'an unknown command is refused instead of written to the toggle file',
+);
+const disabled = (await (
+  await fetch(`${base}/api/panel/commands`, {
+    method: 'PUT',
+    headers: { ...auth, 'content-type': 'application/json' },
+    body: '{"commands":["rank"],"enabled":false}',
+  })
+).json()) as { disabled: string[] };
+assert.deepEqual(disabled.disabled, ['rank'], 'disabling a command is persisted');
+const restored = (await (
+  await fetch(`${base}/api/panel/commands`, {
+    method: 'PUT',
+    headers: { ...auth, 'content-type': 'application/json' },
+    body: '{"commands":["rank"],"enabled":true}',
+  })
+).json()) as { disabled: string[] };
+assert.deepEqual(restored.disabled, [], 'enabling it again clears the toggle');
 assert.equal((await fetch(`${base}/api/panel/settings`)).status, 401, 'settings needs a session');
 assert.equal((await fetch(`${base}/api/panel/settings`, { headers: auth })).status, 200);
 assert.equal(

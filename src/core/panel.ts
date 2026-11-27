@@ -3,7 +3,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { resolve } from 'node:path';
 import type { Client } from 'discord.js';
 import { and, count, desc, eq, gt, isNull } from 'drizzle-orm';
+import { z } from 'zod';
 import { db, schema } from '@/db';
+import { disabledCommands, setCommandsEnabled } from './command-toggles';
+import { usageReport } from './command-usage';
 import { commandCatalog, commandOwners } from './lifecycle';
 import { isPublicPanelSegment, panelSessionValid } from './panel-auth';
 import { panelRoute } from './panel-routes';
@@ -57,10 +60,16 @@ async function pluginFiles() {
   );
 }
 
-/** Built-in commands grouped by the module that declared them. Read-only in the panel. */
-function builtInModules() {
+/** Built-in commands grouped by the module that declared them, with the panel's toggles. */
+async function builtInModules(guildId: string | undefined) {
   const owners = commandOwners();
-  const groups = new Map<string, { name: string; description: string }[]>();
+  const disabled = new Set(disabledCommands());
+  const usage = guildId ? await usageReport(guildId, 30) : null;
+  const used = new Map((usage?.commands ?? []).map((row) => [row.command, row.total]));
+  const groups = new Map<
+    string,
+    { name: string; code: string; description: string; disabled: boolean; uses: number }[]
+  >();
   for (const command of commandCatalog()) {
     const owner = owners[command.name];
     if (!owner) continue;
@@ -71,17 +80,26 @@ function builtInModules() {
     const group = groups.get(owner) ?? [];
     group.push({
       name: localized?.['pt-BR'] ?? command.name,
+      code: command.name,
       description:
         descriptions?.['pt-BR'] ?? ('description' in command ? (command.description ?? '') : ''),
+      disabled: disabled.has(command.name),
+      uses: used.get(command.name) ?? 0,
     });
     groups.set(owner, group);
   }
   return [...groups]
     .map(([module, commands]) => ({
       module,
-      commands: commands.sort((a, b) => a.name.localeCompare(b.name)),
+      commands: commands.sort((a, b) => b.uses - a.uses || a.name.localeCompare(b.name)),
+      uses: commands.reduce((sum, command) => sum + command.uses, 0),
     }))
-    .sort((a, b) => b.commands.length - a.commands.length || a.module.localeCompare(b.module));
+    .sort(
+      (a, b) =>
+        b.uses - a.uses ||
+        b.commands.length - a.commands.length ||
+        a.module.localeCompare(b.module),
+    );
 }
 
 async function summary(guildId: string) {
@@ -256,7 +274,7 @@ export async function handlePanel(
     return;
   }
 
-  if (head && head !== 'guilds' && head !== 'commands') {
+  if (head && head !== 'guilds' && head !== 'commands' && head !== 'usage') {
     const route = panelRoute(head);
     if (!route) {
       json(response, 404, { error: 'unknown route' });
@@ -299,7 +317,34 @@ export async function handlePanel(
   }
 
   if (url.pathname === '/api/panel/commands') {
-    json(response, 200, { modules: builtInModules() });
+    const guildId = url.searchParams.get('guild') ?? guilds[0]?.id;
+    if (method !== 'GET' && method !== 'PUT') {
+      json(response, 405, { error: `método ${method} não suportado` });
+      return;
+    }
+    if (method === 'PUT') {
+      const { commands, enabled } = z
+        .object({ commands: z.array(z.string().min(1)).max(200), enabled: z.boolean() })
+        .parse(body ?? {});
+      const known = new Set([...commandCatalog().map((c) => c.name)]);
+      const unknown = commands.filter((name) => !known.has(name));
+      if (unknown.length > 0)
+        json(response, 400, { error: `comando desconhecido: ${unknown.join(', ')}` });
+      else setCommandsEnabled(commands, enabled);
+      if (unknown.length > 0) return;
+    }
+    json(response, 200, { modules: await builtInModules(guildId), disabled: disabledCommands() });
+    return;
+  }
+
+  if (url.pathname === '/api/panel/usage') {
+    const guildId = url.searchParams.get('guild') ?? guilds[0]?.id;
+    if (!guildId) {
+      json(response, 400, { error: 'no guild' });
+      return;
+    }
+    const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? 30), 1), 365);
+    json(response, 200, await usageReport(guildId, days));
     return;
   }
 

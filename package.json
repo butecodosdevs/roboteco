@@ -19,7 +19,6 @@
     "lint": "biome check . && pnpm lint:structure",
     "lint:structure": "tsx scripts/lint-structure.ts",
     "panel:check": "tsx scripts/panel-check.ts",
-    "zip:check": "tsx scripts/zip-check.ts",
     "format": "biome check --write .",
     "services:up": "docker compose up -d --wait",
     "services:down": "docker compose down",

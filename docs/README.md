@@ -25,7 +25,7 @@ Each concept page has the same shape: **what it is**, **what it's for**, **how i
 | [Context menus](concepts/context-menus.md) | right-click → Report message |
 | [Scheduled jobs](concepts/jobs.md) | reminders |
 | [Plugins (WASM)](concepts/plugins.md) | Community plugins in Rust or Go: commands, menus, buttons, forms, events and scheduled runs, acting through permission-checked capabilities in a sandbox |
-| [Plugin package](concepts/plugin-package.md) | what goes inside an upload: the zip layout the panel accepts |
+| [Plugin package](concepts/plugin-package.md) | where a plugin lives on disk: `plugins/dist/<id>.wasm` plus the `registry.json` entry |
 | [Structure rules](concepts/structure-rules.md) | fixing a failing lint |
 
 ## Examples from this repository

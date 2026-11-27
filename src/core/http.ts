@@ -16,14 +16,10 @@ const types: Record<string, string> = {
 
 const webDir = resolve('web');
 const maxJsonBytes = 64 * 1024;
-const maxUploadBytes = 32 * 1024 * 1024;
 
 class BodyTooLarge extends Error {}
 
-/**
- * Reads the request into memory. JSON bodies are parsed; anything else (`application/zip`,
- * `application/wasm`) arrives as a Buffer, which is what the plugin upload route expects.
- */
+/** Reads the request into memory. JSON bodies are parsed; anything else arrives as a Buffer. */
 async function readBody(request: IncomingMessage, limit: number): Promise<unknown> {
   if (request.method === 'GET' || request.method === 'HEAD') return undefined;
   const chunks: Buffer[] = [];
@@ -70,12 +66,11 @@ export function startHttpServer(
         return;
       }
       if (isPanelPath(url.pathname)) {
-        const upload = url.pathname.endsWith('/upload');
         await handlePanel(request, response, url, {
           client,
           token: options.panelToken,
           method: request.method ?? 'GET',
-          body: await readBody(request, upload ? maxUploadBytes : maxJsonBytes),
+          body: await readBody(request, maxJsonBytes),
         });
         return;
       }

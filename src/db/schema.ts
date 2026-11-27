@@ -417,3 +417,20 @@ export const pluginMessages = pgTable(
   },
   (table) => [index('plugin_messages_guild_idx').on(table.guildId)],
 );
+
+/** One row per command run, so the panel can chart usage without a metrics backend. */
+export const commandUsage = pgTable(
+  'command_usage',
+  {
+    id: serial('id').primaryKey(),
+    guildId: text('guild_id').notNull(),
+    command: text('command').notNull(),
+    userId: text('user_id').notNull(),
+    source: text('source', { enum: ['builtin', 'plugin'] }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('command_usage_guild_idx').on(table.guildId, table.usedAt),
+    index('command_usage_command_idx').on(table.guildId, table.command, table.usedAt),
+  ],
+);

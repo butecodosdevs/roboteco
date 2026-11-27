@@ -73,6 +73,7 @@ let data = null;
 let plugins = null;
 let pluginError = null;
 let builtins = null;
+let usage = null;
 let settings = null;
 
 function toast(msg, bad) {
@@ -280,32 +281,65 @@ function pluginStatus(p) {
   return `<span class="stat warn"><i class="dot"></i>não carregado</span>`;
 }
 
+const cmdToggle = (cmd, scope) => `<button class="sw${cmd.disabled ? "" : " on"}" role="switch" aria-checked="${cmd.disabled ? "false" : "true"}" data-act="cmd-toggle" data-scope="${esc(scope)}" data-cmd="${esc(cmd.code)}" data-next="${cmd.disabled ? "1" : "0"}" title="${cmd.disabled ? "ligar" : "desligar"}"><i></i></button>`;
+
+const cmdRow = (cmd, scope) => `<li class="${cmd.disabled ? "off" : ""}">
+  <span class="mono name">/${esc(cmd.name)}</span>
+  <span class="desc" title="${esc(cmd.description)}">${esc(cmd.description)}</span>
+  <span class="uses" title="${plural(cmd.uses, "uso nos últimos 30 dias", "usos nos últimos 30 dias")}">${nf(cmd.uses)}</span>
+  ${cmdToggle(cmd, scope)}
+</li>`;
+
+function sparkline(series, height = 44) {
+  if (!series.length) return "";
+  const max = Math.max(1, ...series.map((d) => d.total));
+  const w = 100 / series.length;
+  return `<div class="spark" style="height:${height}px" role="img" aria-label="usos por dia">${series
+    .map((d, i) => `<i style="left:${(i * w).toFixed(3)}%;width:${w.toFixed(3)}%;height:${Math.max(2, (d.total / max) * 100).toFixed(1)}%" title="${esc(d.day)}: ${nf(d.total)}"><span>${nf(d.total)}</span></i>`)
+    .join("")}</div>`;
+}
+
+function usageCard(usage) {
+  if (!usage) return "";
+  const top = usage.commands.slice(0, 8);
+  const max = Math.max(1, ...top.map((r) => r.total));
+  return `<section class="card pad" style="margin-bottom:12px">
+    <div class="usage-head">
+      <div>
+        <div class="sec-title" style="margin-bottom:2px">Uso de comandos</div>
+        <div class="hint" style="margin:0">${plural(usage.total, "execução", "execuções")} por ${plural(usage.members, "membro", "membros")} nos últimos 30 dias</div>
+      </div>
+      ${sparkline(usage.series)}
+    </div>
+    ${top.length ? `<div class="bars-list" style="margin-top:14px">${top.map((r) => `<div class="b">
+      <span class="nm mono">/${esc(r.command)}</span><span class="v">${nf(r.total)}</span>
+      <div class="track"><i style="width:${((r.total / max) * 100).toFixed(1)}%"></i></div>
+    </div>`).join("")}</div>` : `<div class="hint" style="margin-top:10px">Nenhum comando rodou ainda. O gráfico começa a encher no primeiro uso.</div>`}
+  </section>`;
+}
+
 function pluginCard(p) {
   const missing = p.required.filter((r) => !p.permissions.includes(r));
-  const buildable = p.source && p.source.available;
+  const off = p.commands.filter((c) => c.disabled).length;
   return `<section class="card plug" data-plugin="${esc(p.id)}">
   <div class="plug-head">
     <div class="tile">${esc(initials(p.id.replace(/-/g, " ")))}</div>
     <div class="plug-title">
       <div class="nm">${esc(p.id)}${p.version ? `<span class="ver">${esc(p.version)}</span>` : ""}</div>
-      <div class="path mono">${esc(p.wasm)}</div>
+      <div class="path mono">${esc(p.wasm)}${p.source ? ` · fonte em ${esc(p.source.dir)}` : ""}</div>
     </div>
     ${pluginStatus(p)}
     <div class="plug-actions">
-      ${p.source ? `<button class="btn sm" data-act="plugin-build" data-id="${esc(p.id)}" ${buildable ? "" : `disabled title="${esc(p.source.toolchain)} não está instalado"`}>Compilar</button>` : ""}
+      <span class="tag code" title="usos nos últimos 30 dias">${nf(p.uses)} usos</span>
+      ${off ? `<span class="tag">${off} desligado${off > 1 ? "s" : ""}</span>` : ""}
       <button class="btn sm" data-act="plugin-deploy" data-id="${esc(p.id)}" ${p.loaded ? "" : `disabled title="o plugin não está carregado"`}>Publicar</button>
       <button class="btn sm" data-act="plugin-toggle" data-id="${esc(p.id)}" data-next="${p.enabled ? "0" : "1"}">${p.enabled ? "Inativar" : "Ativar"}</button>
-      <button class="btn sm danger" data-act="plugin-remove" data-id="${esc(p.id)}">Remover</button>
     </div>
   </div>
   ${p.failure && p.enabled ? `<div class="attn"><span class="stat err">erro</span><div class="txt mono">${esc(p.failure)}</div></div>` : ""}
   <div class="plug-sec">
     <div class="sec">Comandos${p.autocompletes ? ' <span class="tag">autocomplete</span>' : ""}</div>
-    ${p.commands.length ? `<ul class="cmds">${p.commands.map((cmd) => `<li>
-      <span class="mono name">/${esc(cmd.name)}</span>
-      <span class="desc" title="${esc(cmd.description)}">${esc(cmd.description)}</span>
-      ${cmd.options.length ? `<span class="opts">${cmd.options.map((o) => `<span class="tag code">${esc(o)}</span>`).join("")}</span>` : ""}
-    </li>`).join("")}</ul>` : `<div class="hint">nenhum comando — ${p.enabled ? "o plugin não carregou, então nada foi publicado" : "o plugin está inativo"}</div>`}
+    ${p.commands.length ? `<ul class="cmds">${p.commands.map((cmd) => cmdRow(cmd, p.id)).join("")}</ul>` : `<div class="hint">nenhum comando — ${p.enabled ? "o plugin não carregou, então nada foi publicado" : "o plugin está inativo"}</div>`}
   </div>
   <div class="plug-sec">
     <div class="sec">Permissões que o WASM pede</div>
@@ -358,6 +392,7 @@ const moduleLabel = (name) => MODULE_LABEL[name] ?? [name.replace(/Module$/, "")
 
 function builtinCard(group) {
   const [label, hint] = moduleLabel(group.module);
+  const off = group.commands.filter((c) => c.disabled).length;
   return `<section class="card plug">
   <div class="plug-head">
     <div class="tile">${esc(initials(label))}</div>
@@ -366,14 +401,14 @@ function builtinCard(group) {
       <div class="path">${esc(hint)}</div>
     </div>
     <span class="stat"><i class="dot"></i>embutido</span>
-    <div class="plug-actions"><span class="tag code">${plural(group.commands.length, "comando", "comandos")}</span></div>
+    <div class="plug-actions">
+      <span class="tag code" title="usos nos últimos 30 dias">${nf(group.uses)} usos</span>
+      ${off ? `<span class="tag">${off} desligado${off > 1 ? "s" : ""}</span>` : ""}
+    </div>
   </div>
   <div class="plug-sec">
     <div class="sec">Comandos</div>
-    <ul class="cmds">${group.commands.map((cmd) => `<li>
-      <span class="mono name">/${esc(cmd.name)}</span>
-      <span class="desc" title="${esc(cmd.description)}">${esc(cmd.description)}</span>
-    </li>`).join("")}</ul>
+    <ul class="cmds">${group.commands.map((cmd) => cmdRow(cmd, "builtin")).join("")}</ul>
   </div>
 </section>`;
 }
@@ -386,38 +421,41 @@ function builtinsBody() {
 
 function viewCommands() {
   const total = (builtins ?? []).reduce((n, g) => n + g.commands.length, 0);
+  const off = (builtins ?? []).reduce((n, g) => n + g.commands.filter((c) => c.disabled).length, 0);
   const head = pageHead(
     "Comandos embutidos",
-    "Os comandos que vêm no bot, agrupados pelo módulo que os declara. Sempre publicados junto com os plugins — não dá para desligar por aqui.",
-    `<span class="tag code">${plural(total, "comando", "comandos")}</span>`,
+    "Os comandos que vêm no bot, agrupados pelo módulo que os declara. Desligar um comando impede o uso e o remove da próxima publicação.",
+    `<button class="btn" data-act="commands-refresh">Recarregar</button><button class="btn" data-act="plugins-deploy-all">Publicar no Discord</button>`,
   );
-  return shell(head, builtinsBody());
+  const meta = `<div class="metrics" style="margin-bottom:12px">
+    <div class="metric"><div class="lbl">Comandos</div><div class="val">${nf(total)}</div><div class="delta">Em ${plural((builtins ?? []).length, "módulo", "módulos")}</div></div>
+    <div class="metric"><div class="lbl">Desligados</div><div class="val">${nf(off)}</div><div class="delta">${off ? "Saem na próxima publicação" : "Todos ligados"}</div></div>
+  </div>`;
+  return shell(head, meta + usageCard(usage) + builtinsBody());
 }
 
-function viewPlugins() {  const list = plugins ?? [];
+function viewPlugins() {
+  const list = plugins ?? [];
   const head = pageHead(
     "Plugins",
-    "Cada plugin é um WASM isolado. Aqui você escolhe as permissões, compila, publica os comandos no Discord e inativa sem apagar nada.",
-    `<button class="btn" data-act="plugins-refresh">Recarregar</button><button class="btn" data-act="plugins-deploy">Publicar todos</button>`,
+    "O que está em <span class=\"mono\">plugins/registry.json</span> e no disco. Ligar, desligar e publicar é por aqui; instalar e compilar é no repositório.",
+    `<button class="btn" data-act="plugins-refresh">Recarregar</button><button class="btn" data-act="plugins-deploy-all">Publicar no Discord</button>`,
   );
   if (pluginError) return shell(head, `<section class="card pad"><div class="stat err"><i class="dot"></i>${esc(pluginError)}</div></section>`);
-  const body = `${list.length ? `<div class="plug-list">${list.map(pluginCard).join("")}</div>` : `<section class="card">${emptyRow("Nenhum plugin no registry. Envie um .wasm ou .zip abaixo.")}</section>`}
+  const body = `${usageCard(usage)}
+  ${list.length ? `<div class="plug-list">${list.map(pluginCard).join("")}</div>` : `<section class="card">${emptyRow("Nenhum plugin no registry. Adicione um .wasm em plugins/dist e a entrada em plugins/registry.json.")}</section>`}
   <section class="card pad" style="margin-top:12px">
-    <div class="sec-title">Instalar ou atualizar</div>
-    <div class="install">
-      <label class="field"><span class="sec">id</span><input id="new-id" placeholder="meu-plugin" pattern="[a-z0-9-]{1,32}"></label>
-      <label class="field"><span class="sec">.wasm ou .zip</span><input id="new-file" type="file" accept=".wasm,.zip,application/zip,application/wasm"></label>
-      <button class="btn pri" data-act="plugin-upload">Enviar</button>
-    </div>
-    <div class="hint">O zip precisa ter <span class="mono">&lt;id&gt;.wasm</span> na raiz — o resto do formato está em <span class="mono">docs/concepts/plugin-package.md</span>. O painel lê tudo em memória e grava só <span class="mono">plugins/dist/&lt;id&gt;.wasm</span>; nada mais do zip toca o disco. Enviar o mesmo id de novo substitui o arquivo e mantém as permissões.</div>
+    <div class="sec-title">Como instalar</div>
+    <div class="hint" style="margin:0">O painel não recebe arquivos. Compile com <span class="mono">pnpm plugins:build</span>, ponha o <span class="mono">.wasm</span> em <span class="mono">plugins/dist</span> e a entrada em <span class="mono">plugins/registry.json</span>; depois clique em Recarregar. O formato está em <span class="mono">docs/concepts/plugins.md</span>.</div>
   </section>`;
   return shell(head, body);
 }
 
 async function loadPlugins() {
   try {
-    const payload = await api("/api/panel/plugins");
+    const payload = await api(`/api/panel/plugins?guild=${encodeURIComponent(state.guild ?? "")}`);
     plugins = payload.plugins;
+    usage = payload.usage;
     pluginError = null;
   } catch (err) {
     pluginError = `não consegui falar com o roteador de plugins: ${err.message}`;
@@ -426,8 +464,13 @@ async function loadPlugins() {
 
 async function loadBuiltins() {
   try {
-    const payload = await api("/api/panel/commands");
+    const payload = await api(`/api/panel/commands?guild=${encodeURIComponent(state.guild ?? "")}`);
     builtins = payload.modules ?? [];
+    usage = usage ?? null;
+    if (!usage) {
+      const report = await api(`/api/panel/usage?guild=${encodeURIComponent(state.guild ?? "")}`).catch(() => null);
+      usage = report ?? null;
+    }
   } catch {
     builtins = [];
   }
@@ -436,6 +479,7 @@ async function loadBuiltins() {
 
 function applyPlugins(payload) {
   if (payload?.plugins) plugins = payload.plugins;
+  if (payload?.usage !== undefined) usage = payload.usage;
   pluginError = null;
   render();
 }
@@ -617,16 +661,19 @@ async function pluginAction(act) {
   const button = act;
   const busy = (label) => { button.disabled = true; button.textContent = label; };
   try {
-    if (act.dataset.act === "plugins-refresh") {
+    if (act.dataset.act === "plugins-refresh" || act.dataset.act === "commands-refresh") {
       busy("Recarregando…");
       const payload = await api("/api/panel/plugins/refresh", { method: "POST", body: {} });
       plugins = payload.plugins;
+      usage = payload.usage ?? usage;
+      builtins = builtins === null ? null : (await api(`/api/panel/commands?guild=${encodeURIComponent(state.guild ?? "")}`)).modules ?? builtins;
       toast(plural(payload.plugins.filter((p) => p.loaded).length, "plugin carregado", "plugins carregados"));
       render();
-    } else if (act.dataset.act === "plugins-deploy") {
+    } else if (act.dataset.act === "plugins-deploy-all" || act.dataset.act === "plugins-deploy") {
       busy("Publicando…");
-      const payload = await api("/api/panel/plugins/deploy", { method: "POST", body: {} });
+      const payload = await api("/api/panel/plugins/deploy/all", { method: "POST", body: {} });
       plugins = payload.plugins;
+      usage = payload.usage ?? usage;
       toast(`${plural(payload.commands, "comando publicado", "comandos publicados")} em ${payload.guild}`);
       render();
     } else if (act.dataset.act === "plugin-deploy") {
@@ -635,22 +682,24 @@ async function pluginAction(act) {
       plugins = payload.plugins;
       toast(`${id}: ${plural(payload.plugin ?? 0, "comando publicado", "comandos publicados")}, o resto foi mantido`);
       render();
-    } else if (act.dataset.act === "plugin-build") {
-      busy("Compilando…");
-      const payload = await api(`/api/panel/plugins/${encodeURIComponent(id)}/build`, { method: "POST", body: {} });
-      plugins = payload.plugins;
-      const fresh = payload.plugins.find((p) => p.id === id);
-      toast(`${id}: ${payload.log}${fresh?.loaded ? "" : " — não carregou, veja o erro"}`, !fresh?.loaded);
+    } else if (act.dataset.act === "cmd-toggle") {
+      const cmd = act.dataset.cmd;
+      const on = act.dataset.next === "1";
+      act.disabled = true;
+      const scope = act.dataset.scope;
+      const query = `?guild=${encodeURIComponent(state.guild ?? "")}`;
+      const path = scope === "builtin" ? `/api/panel/commands${query}` : `/api/panel/plugins/${encodeURIComponent(scope)}/commands${query}`;
+      const payload = await api(path, { method: "PUT", body: { commands: [cmd], enabled: on } });
+      if (payload.modules) builtins = payload.modules;
+      if (payload.plugins) plugins = payload.plugins;
+      if (payload.usage !== undefined) usage = payload.usage;
+      toast(`/${cmd} ${on ? "ligado" : "desligado"}${on ? "" : " — sai da próxima publicação"}`);
       render();
     } else if (act.dataset.act === "plugin-toggle") {
       const next = act.dataset.next === "1";
       busy(next ? "Ativando…" : "Inativando…");
       applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { enabled: next } }));
       toast(`${id}: ${next ? "ativado" : "inativado"}${next ? "" : " — os comandos saem na próxima publicação"}`);
-    } else if (act.dataset.act === "plugin-remove") {
-      if (!confirm(`Remover ${id} do registry? O .wasm continua no disco, mas os comandos saem da próxima publicação.`)) return;
-      applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "DELETE" }));
-      toast(`${id} saiu do registry`);
     } else if (act.dataset.act === "plugin-perm") {
       const plugin = (plugins ?? []).find((p) => p.id === id);
       if (!plugin) return;
@@ -658,24 +707,6 @@ async function pluginAction(act) {
       const next = on ? [...new Set([...plugin.permissions, act.dataset.perm])] : plugin.permissions.filter((p) => p !== act.dataset.perm);
       applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { permissions: next } }));
       toast(`${id}: ${on ? "ganhou" : "perdeu"} ${act.dataset.perm}`);
-    } else if (act.dataset.act === "plugin-upload") {
-      const name = $("#new-id").value.trim();
-      const file = $("#new-file").files?.[0];
-      if (!/^[a-z0-9-]{1,32}$/.test(name)) return toast("O id aceita só a-z, 0-9 e hífen (até 32)", true);
-      if (!file) return toast("Escolha o .wasm ou o .zip", true);
-      busy("Enviando…");
-      const res = await fetch(`/api/panel/plugins/${encodeURIComponent(name)}/upload`, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": file.type || "application/octet-stream" },
-        body: file,
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? `HTTP ${res.status}`);
-      plugins = payload.plugins;
-      const fresh = payload.plugins.find((p) => p.id === name);
-      toast(`${name}: ${kb(payload.bytes)}${payload.entry ? ` de ${payload.entry}` : ""}${fresh?.loaded ? "" : " — não carregou, veja o erro"}`, !fresh?.loaded);
-      render();
     } else if (act.dataset.act === "settings-save") {
       busy("Salvando…");
       // Only send what changed: a masked secret left untouched must not be erased with "".
@@ -726,7 +757,7 @@ document.addEventListener("click", (e) => {
       .catch(() => null)
       .then(() => showLogin("Você saiu."));
   }
-  if (/^plugin|^plugins|^settings|^password/.test(act.dataset.act ?? "")) {
+  if (/^plugin|^plugins|^cmd-toggle|^commands-|^settings|^password/.test(act.dataset.act ?? "")) {
     e.preventDefault();
     return pluginAction(act);
   }

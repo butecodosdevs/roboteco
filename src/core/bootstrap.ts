@@ -3,6 +3,8 @@ import { closeCache } from '@/cache';
 import { closeDb } from '@/db';
 import { t } from '@/i18n';
 import { flushErrors, logger, reportError } from '@/logger';
+import { isCommandDisabled } from './command-toggles';
+import { recordUsage } from './command-usage';
 import { isDelegatedComponent, kindOf, parseCustomId } from './component';
 import { contextMenuKey } from './context-menu';
 import { startHttpServer } from './http';
@@ -37,14 +39,25 @@ function selectIntents(app: ResolvedApp, allowPrivileged: boolean): GatewayInten
 
 async function route(app: ResolvedApp, interaction: Interaction): Promise<unknown> {
   if (interaction.isChatInputCommand()) {
-    return app.commands.get(interaction.commandName)?.handle(interaction);
+    if (isCommandDisabled(interaction.commandName)) return undefined;
+    const handler = app.commands.get(interaction.commandName);
+    if (handler && interaction.inGuild()) {
+      recordUsage(interaction.guildId, handler.name, interaction.user.id, 'builtin');
+    }
+    return handler?.handle(interaction);
   }
   if (interaction.isAutocomplete()) {
+    if (isCommandDisabled(interaction.commandName)) return interaction.respond([]);
     return app.commands.get(interaction.commandName)?.autocomplete(interaction);
   }
   if (interaction.isContextMenuCommand()) {
+    if (isCommandDisabled(interaction.commandName)) return undefined;
     const key = contextMenuKey(interaction.commandType, interaction.commandName);
-    return app.contextMenus.get(key)?.handle(interaction);
+    const handler = app.contextMenus.get(key);
+    if (handler && interaction.inGuild()) {
+      recordUsage(interaction.guildId, handler.name, interaction.user.id, 'builtin');
+    }
+    return handler?.handle(interaction);
   }
   if (interaction.isMessageComponent() || interaction.isModalSubmit()) {
     if (isDelegatedComponent(interaction.customId)) return undefined;
