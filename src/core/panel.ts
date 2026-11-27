@@ -4,6 +4,14 @@ import { resolve } from 'node:path';
 import type { Client } from 'discord.js';
 import { and, count, desc, eq, gt, isNull } from 'drizzle-orm';
 import { db, schema } from '@/db';
+import { panelRoute } from './panel-routes';
+
+export interface PanelEvent {
+  client: Client;
+  token?: string;
+  method: string;
+  body: unknown;
+}
 
 export const isPanelPath = (path: string) => path.startsWith('/api/panel');
 
@@ -199,15 +207,32 @@ export async function handlePanel(
   request: IncomingMessage,
   response: ServerResponse,
   url: URL,
-  client: Client,
-  options: { token?: string },
+  event: PanelEvent,
 ): Promise<void> {
-  if (!options.token) {
+  const { client, token, method, body } = event;
+  if (!token) {
     json(response, 503, { error: 'disabled' });
     return;
   }
-  if (!authorized(request, options.token)) {
+  if (!authorized(request, token)) {
     json(response, 401, { error: 'token' });
+    return;
+  }
+
+  const [head, ...segments] = url.pathname.split('/').filter(Boolean).slice(2);
+  if (head && head !== 'guilds') {
+    const route = panelRoute(head);
+    if (!route) {
+      json(response, 404, { error: 'unknown route' });
+      return;
+    }
+    try {
+      const reply = await route({ segments, query: url.searchParams, method, body, client });
+      json(response, reply.status ?? 200, reply.body);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      json(response, 400, { error: message });
+    }
     return;
   }
 

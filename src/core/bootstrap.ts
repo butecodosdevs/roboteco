@@ -7,7 +7,7 @@ import { isDelegatedComponent, kindOf, parseCustomId } from './component';
 import { contextMenuKey } from './context-menu';
 import { startHttpServer } from './http';
 import { JobRunner } from './job';
-import { registerCommandNames, registerModules } from './lifecycle';
+import { registerCommandCatalog, registerCommandNames, registerModules } from './lifecycle';
 import { privilegedIntents, type ResolvedApp, resolveApp } from './module';
 import type { Type } from './types';
 
@@ -60,6 +60,10 @@ export async function bootstrap(root: Type, options: BootstrapOptions): Promise<
   const app = resolveApp(root);
   registerModules(app.modules);
   registerCommandNames([...app.commands.keys(), ...app.contextMenus.map((m) => m.name)]);
+  registerCommandCatalog([
+    ...[...app.commands.values()].map((command) => command.toJSON()),
+    ...[...app.contextMenus.values()].map((menu) => menu.toJSON()),
+  ]);
   const client = new Client({
     intents: selectIntents(app, options.privilegedIntents),
     partials: app.partials,

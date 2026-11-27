@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { createServer, type Server, type ServerResponse } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, resolve } from 'node:path';
 import type { Client } from 'discord.js';
 import { isCacheReady } from '@/cache';
@@ -15,6 +15,20 @@ const types: Record<string, string> = {
 };
 
 const webDir = resolve('web');
+const maxBodyBytes = 64 * 1024;
+
+async function readJson(request: IncomingMessage): Promise<unknown> {
+  if (request.method === 'GET' || request.method === 'HEAD') return undefined;
+  const chunks: Buffer[] = [];
+  let length = 0;
+  for await (const chunk of request) {
+    length += chunk.length;
+    if (length > maxBodyBytes) throw new Error('body too large');
+    chunks.push(chunk);
+  }
+  if (length === 0) return undefined;
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
 
 async function serveStatic(path: string, response: ServerResponse): Promise<boolean> {
   const name = path === '/' ? 'index.html' : path.slice(1);
@@ -47,7 +61,12 @@ export function startHttpServer(
         return;
       }
       if (isPanelPath(url.pathname)) {
-        await handlePanel(request, response, url, client, { token: options.panelToken });
+        await handlePanel(request, response, url, {
+          client,
+          token: options.panelToken,
+          method: request.method ?? 'GET',
+          body: await readJson(request),
+        });
         return;
       }
       if (request.method === 'GET' && (await serveStatic(url.pathname, response))) return;

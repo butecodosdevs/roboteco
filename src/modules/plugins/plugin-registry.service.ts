@@ -1,10 +1,11 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, rename, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+import { cache } from '@/cache';
 import { config } from '@/config';
 import { Injectable, inject, isBuiltInCommand } from '@/core';
 import { reportError } from '@/logger';
-import { type LoadedPlugin, PluginEngineService } from './plugin-engine.service';
+import { type LoadedPlugin, PluginEngineService, permissions } from './plugin-engine.service';
 import type {
   PluginCommandSpec,
   PluginContextMenuSpec,
@@ -28,13 +29,14 @@ const registrySchema = z.object({
     z.object({
       id: z.string().regex(/^[a-z0-9-]{1,32}$/),
       wasm: z.string(),
-      permissions: z.array(z.string()).default([]),
+      permissions: z.array(z.enum(permissions)).default([]),
       allowedHosts: z.array(z.string()).optional(),
     }),
   ),
 });
 
 export const registryPath = resolve(config.pluginRegistry);
+export type PluginDefinitionEntry = z.infer<typeof registrySchema>['plugins'][number];
 
 @Injectable()
 export class PluginRegistryService {
@@ -42,22 +44,48 @@ export class PluginRegistryService {
   private readonly loaded = new Map<string, LoadedPlugin>();
   private readonly commands = new Map<string, PluginCommandEntry>();
   private readonly menus = new Map<string, PluginMenuEntry>();
+  private readonly failed = new Map<string, string>();
+
+  async definitions(path = registryPath): Promise<PluginDefinitionEntry[]> {
+    const raw = await readFile(path, 'utf8').catch(() => null);
+    if (!raw) return [];
+    return registrySchema.parse(JSON.parse(raw)).plugins;
+  }
+
+  /** Rewrites the registry atomically, so a crash never leaves half a JSON file. */
+  async save(definitions: PluginDefinitionEntry[], path = registryPath): Promise<void> {
+    const body = `${JSON.stringify({ plugins: definitions }, null, 2)}\n`;
+    const temporary = `${path}.tmp`;
+    await writeFile(temporary, body, 'utf8');
+    await rename(temporary, path);
+  }
 
   async loadAll(
     path = registryPath,
     reserved: (name: string) => boolean = isBuiltInCommand,
   ): Promise<void> {
-    const raw = await readFile(path, 'utf8').catch(() => null);
-    if (!raw) return;
-    const { plugins } = registrySchema.parse(JSON.parse(raw));
-    for (const definition of plugins) {
+    this.failed.clear();
+    for (const definition of await this.definitions(path)) {
       try {
         const wasm = resolve(path, '../..', definition.wasm);
         this.add(await this.engine.load({ ...definition, wasm }), reserved);
       } catch (error) {
+        this.failed.set(definition.id, error instanceof Error ? error.message : String(error));
         reportError(error, { plugin: definition.id }, 'Plugin failed to load');
       }
     }
+  }
+
+  async reload(
+    path = registryPath,
+    reserved: (name: string) => boolean = isBuiltInCommand,
+  ): Promise<void> {
+    await this.unloadAll();
+    await this.loadAll(path, reserved);
+  }
+
+  failure(id: string): string | undefined {
+    return this.failed.get(id);
   }
 
   add(plugin: LoadedPlugin, reserved: (name: string) => boolean = isBuiltInCommand): void {
@@ -105,5 +133,10 @@ export class PluginRegistryService {
     this.loaded.clear();
     this.commands.clear();
     this.menus.clear();
+  }
+
+  async purgeGuild(guildId: string): Promise<void> {
+    for (const plugin of this.loaded.values())
+      await cache.del(`plugins:kv:${plugin.id}:${guildId}`);
   }
 }

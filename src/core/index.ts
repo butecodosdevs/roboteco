@@ -38,7 +38,13 @@ export {
 } from './expose';
 export { Injectable, inject, provide } from './injector';
 export { cancelJob, ensureScheduled, Job, schedule } from './job';
-export { eraseUserData, isBuiltInCommand, purgeGuildData } from './lifecycle';
+export {
+  commandCatalog,
+  eraseUserData,
+  isBuiltInCommand,
+  purgeGuildData,
+  registerCommandCatalog,
+} from './lifecycle';
 export {
   Module,
   type OnCommandDeploy,
@@ -47,4 +53,5 @@ export {
   type OnUserErase,
   resolveApp,
 } from './module';
+export { type PanelReply, type PanelRequest, registerPanelRoute } from './panel-routes';
 export type { Type } from './types';

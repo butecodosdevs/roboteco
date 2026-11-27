@@ -64,6 +64,8 @@ const token = (() => { try { return localStorage.getItem("panel-token") || ""; }
 let state = { view: "overview", guild: null, toastT: null };
 let meta = null;
 let data = null;
+let plugins = null;
+let pluginError = null;
 
 function toast(msg) {
   const t = $("#toast");
@@ -73,10 +75,15 @@ function toast(msg) {
   state.toastT = setTimeout(() => (t.className = "toast"), 2600);
 }
 
-async function api(path) {
-  const res = await fetch(path, { headers: { "x-panel-token": token } });
-  if (!res.ok) throw new Error(res.status === 401 ? "token" : res.status === 503 ? "disabled" : `HTTP ${res.status}`);
-  return res.json();
+async function api(path, init) {
+  const res = await fetch(path, {
+    method: init?.method ?? "GET",
+    headers: { "x-panel-token": token, ...(init?.body !== undefined && { "content-type": "application/json" }) },
+    ...(init?.body !== undefined && { body: JSON.stringify(init.body) }),
+  });
+  const payload = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(payload?.error ?? (res.status === 401 ? "token" : res.status === 503 ? "disabled" : `HTTP ${res.status}`));
+  return payload;
 }
 
 const sk = (w, h = 10, r = 4) => `<span class="sk" style="width:${w};height:${h}px;border-radius:${r}px"></span>`;
@@ -247,26 +254,100 @@ function viewResources() {
   return shell(head, `<div class="stack">${grid}${feeds}</div><div style="margin-top:12px">${voice}</div>`);
 }
 
+const PERMISSIONS = [
+  ["kv", "guardar chaves por servidor"],
+  ["xp.grant", "dar XP a um membro"],
+  ["http", "fazer requisições para hosts liberados"],
+];
+
+const permTag = (p) => `<span class="tag code" title="${PERMISSIONS.find(([n]) => n === p)?.[1] ?? ""}">${esc(p)}</span>`;
+
+function pluginCard(p) {
+  const status = p.failure
+    ? `<span class="stat err"><i class="dot"></i>falhou ao carregar</span>`
+    : p.loaded
+      ? `<span class="stat ok"><i class="dot"></i>carregado</span>`
+      : p.present
+        ? `<span class="stat warn"><i class="dot"></i>não carregado</span>`
+        : `<span class="stat warn"><i class="dot"></i>sem WASM</span>`;
+  const missing = p.required.filter((r) => !p.permissions.includes(r));
+  return `<section class="card" data-plugin="${esc(p.id)}">
+    <div class="card-h" style="align-items:flex-start">
+      <div style="display:flex;gap:9px;align-items:center;min-width:0">
+        <div class="tile" style="width:27px;height:27px;border-radius:5px;font-size:11px">${esc(initials(p.id.replace(/-/g, " ")))}</div>
+        <div style="min-width:0">
+          <div style="font-weight:500;font-size:13px">${esc(p.id)}${p.version ? `<span class="dim" style="font-weight:400;font-size:11.5px;margin-left:6px">${esc(p.version)}</span>` : ""}</div>
+          <div class="mono dim" style="margin-top:1px">${esc(p.wasm)}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto">
+        ${status}
+        <button class="btn sm" data-act="plugin-remove" data-id="${esc(p.id)}">Remover</button>
+      </div>
+    </div>
+    ${p.failure ? `<div class="attn" style="border-top:1px solid var(--line)"><span class="stat err">erro</span><div class="txt mono" style="font-size:11.5px">${esc(p.failure)}</div></div>` : ""}
+    <div class="sep"></div>
+    <div class="pad" style="padding-bottom:12px">
+      <div class="sec">Comandos${p.autocompletes ? ' · autocomplete' : ''}</div>
+      ${p.commands.length ? `<div class="rows">${p.commands.map((c) => `<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:12.5px">
+        <span class="mono">/${esc(c.name)}</span>
+        <span class="muted" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.description)}</span>
+        ${c.options.length ? `<span class="dim mono" style="margin-left:auto;flex:0 0 auto">${esc(c.options.join(" · "))}</span>` : ""}
+      </div>`).join("")}</div>` : `<div class="dim" style="font-size:12px">nenhum — o plugin não carregou, então os comandos não foram publicados</div>`}
+    </div>
+    <div class="sep"></div>
+    <div class="pad" style="padding-top:12px">
+      <div class="sec">Permissões que o WASM pede</div>
+      <div class="chips" style="margin-bottom:10px">${p.required.length ? p.required.map(permTag).join("") : `<span class="dim" style="font-size:12px">só as funções base</span>`}</div>
+      ${missing.length ? `<div class="callout amber" style="font-size:11.5px;color:var(--amber);margin-bottom:10px">faltam ${missing.map(permTag).join(" ")} — o plugin não carrega assim</div>` : ""}
+      ${PERMISSIONS.map(([name, description]) => `<label class="cap-row" style="padding:6px 0;border-top:0;align-items:center">
+        <input type="checkbox" data-act="plugin-perm" data-id="${esc(p.id)}" data-perm="${name}" ${p.permissions.includes(name) ? "checked" : ""}>
+        <span><span class="nm mono">${name}</span><span class="ds" style="display:block;margin-top:0">${description}</span></span>
+      </label>`).join("")}
+      ${p.permissions.includes("http") ? `<div style="margin-top:8px">
+        <div class="sec" style="margin-bottom:5px">Hosts liberados</div>
+        <input data-act="plugin-hosts" data-id="${esc(p.id)}" value="${esc((p.allowedHosts ?? []).join(", "))}" placeholder="api.exemplo.com, outro.com">
+        <div class="hint">separados por vírgula · sem eles a permissão http não faz nada</div>
+      </div>` : ""}
+    </div>
+  </section>`;
+}
+
 function viewPlugins() {
-  const list = meta?.plugins ?? [];
-  const head = pageHead("Plugins", "Cada plugin é um arquivo WASM isolado, com só as permissões que a equipe aprovou.");
-  const body = `<section class="card tblwrap">
-    <table><thead><tr><th>Plugin</th><th>Arquivo</th><th>Permissões</th><th>Hosts liberados</th><th class="r">Status</th></tr></thead>
-    <tbody>${list.map((p) => `<tr>
-      <td><div style="display:flex;align-items:center;gap:9px"><div class="tile" style="width:27px;height:27px;border-radius:5px;font-size:11px">${esc(initials(p.id.replace(/-/g, " ")))}</div><div style="font-weight:500">${esc(p.id)}</div></div></td>
-      <td class="mono dim">${esc(p.wasm)}</td>
-      <td>${p.permissions?.length ? `<div class="chips">${p.permissions.map((x) => `<span class="tag code">${esc(x)}</span>`).join("")}</div>` : `<span class="dim">nenhuma</span>`}</td>
-      <td>${p.allowedHosts?.length ? `<div class="chips">${p.allowedHosts.map((x) => `<span class="tag code">${esc(x)}</span>`).join("")}</div>` : `<span class="dim">nenhum</span>`}</td>
-      <td class="r">${p.present ? `<span class="stat ok"><i class="dot"></i>compilado</span>` : `<span class="stat warn"><i class="dot"></i>sem WASM</span>`}</td>
-    </tr>`).join("") || `<tr><td colspan="5">${emptyRow("Nenhum plugin no registry.")}</td></tr>`}</tbody></table>
-  </section>
+  const list = plugins ?? [];
+  const head = pageHead(
+    "Plugins",
+    "Cada plugin é um WASM isolado. Aqui você escolhe as permissões, recarrega os arquivos e publica os comandos no Discord.",
+    `<button class="btn" data-act="plugins-refresh">Recarregar</button><button class="btn pri" data-act="plugins-deploy">Publicar comandos</button>`,
+  );
+  if (pluginError) return shell(head, `<section class="card pad"><div class="stat err"><i class="dot"></i>${esc(pluginError)}</div></section>`);
+  const body = `${list.length ? list.map(pluginCard).join('<div style="height:12px"></div>') : `<section class="card">${emptyRow("Nenhum plugin no registry. Instale um abaixo.")}</section>`}
   <section class="card pad" style="margin-top:12px">
-    <div style="font-size:12.5px;font-weight:600;margin-bottom:8px">O que o painel não faz</div>
-    <p class="muted" style="font-size:12.5px;line-height:1.6;margin:0">
-      Esta tela só lê. Instalar, tirar permissão ou desligar plugin continua sendo editar <span class="mono">plugins/registry.json</span> e reiniciar o bot — o contrato WASM não tem canal de administração em tempo de execução.
-    </p>
+    <div style="font-size:12.5px;font-weight:600;margin-bottom:10px">Instalar do disco</div>
+    <div class="set-row" style="padding:0 0 10px;border-top:0;gap:10px;flex-wrap:wrap">
+      <label style="flex:1;min-width:120px"><div class="sec" style="margin-bottom:4px">id</div><input id="new-id" placeholder="meu-plugin"></label>
+      <label style="flex:2;min-width:200px"><div class="sec" style="margin-bottom:4px">arquivo .wasm</div><input id="new-wasm" placeholder="plugins/dist/meu-plugin.wasm"></label>
+      <button class="btn pri" data-act="plugin-add" style="align-self:flex-end">Instalar</button>
+    </div>
+    <div class="hint">O caminho é relativo à raiz do bot. O plugin só carrega se pedir permissões que você marcou; comece sem nenhuma.</div>
   </section>`;
   return shell(head, body);
+}
+
+async function loadPlugins() {
+  try {
+    const payload = await api("/api/panel/plugins");
+    plugins = payload.plugins;
+    pluginError = null;
+  } catch (err) {
+    pluginError = `não consegui falar com o roteador de plugins: ${err.message}`;
+  }
+}
+
+function applyPlugins(payload) {
+  if (payload?.plugins) plugins = payload.plugins;
+  pluginError = null;
+  render();
 }
 
 function viewAbout() {
@@ -290,14 +371,14 @@ function viewAbout() {
       <dt>Bot</dt><dd>${esc(meta?.bot?.tag ?? "—")}</dd>
       <dt>Gateway</dt><dd>${meta?.ping == null ? "—" : `${meta.ping} ms`}</dd>
       <dt>Servidores</dt><dd>${nf(meta?.guilds?.length ?? 0)}</dd>
-      <dt>Plugins</dt><dd>${nf(meta?.plugins?.length ?? 0)}</dd>
+      <dt>Plugins</dt><dd>${nf(plugins?.length ?? meta?.plugins?.length ?? 0)}</dd>
       <dt>Token</dt><dd>${token ? "configurado neste navegador" : "ausente"}</dd>
     </dl>
   </section>`;
   const caveat = `<section class="card pad">
     <div style="font-size:12.5px;font-weight:600;margin-bottom:8px">Limites conhecidos</div>
     <div class="callout" style="font-size:12px;color:var(--text-3);line-height:1.6">
-      O painel é somente leitura. Ações (banir, encerrar sorteio, trocar permissão de plugin) ainda passam pelos comandos do Discord ou pelo arquivo de registry.
+      O painel lê o banco e não escreve nele. A exceção é a tela de plugins, que edita <span class="mono">plugins/registry.json</span> e republica os comandos — ações dentro do Discord (banir, encerrar sorteio) continuam nos comandos.
     </div>
   </section>`;
   return shell(head, `<div class="cols"><div class="stack">${list}</div><div class="stack">${env}${caveat}</div></div>`);
@@ -311,15 +392,19 @@ function paintHead() {
     if (ico && !ico.childElementCount) ico.innerHTML = icon(b.dataset.go, 13);
   });
   $("#nav-cases").textContent = nf(data?.counters?.cases ?? 0);
-  $("#nav-plugins").textContent = nf(meta?.plugins?.length ?? 0);
+  $("#nav-plugins").textContent = nf(plugins?.length ?? meta?.plugins?.length ?? 0);
   $("#foot-guilds").textContent = nf(meta?.guilds?.length ?? 0);
   $("#foot-ping").textContent = meta?.ping == null ? "—" : `${meta.ping} ms`;
-  $("#foot-active").textContent = nf((meta?.plugins ?? []).filter((p) => p.present).length);
+  $("#foot-active").textContent = nf((plugins ?? []).filter((p) => p.loaded).length);
   $("#foot-tag").textContent = "painel";
 }
 
 function render() {
   const v = state.view;
+  if (v === "plugins" && plugins === null) {
+    loadPlugins().then(render);
+    return;
+  }
   let html;
   if (v === "mod") html = viewMod();
   else if (v === "resources") html = viewResources();
@@ -374,14 +459,75 @@ async function loadGuild() {
   data = await api(`/api/panel?guild=${encodeURIComponent(state.guild)}`);
 }
 
+async function pluginAction(act) {
+  const id = act.dataset.id;
+  const button = act;
+  try {
+    if (act.dataset.act === "plugins-refresh") {
+      button.disabled = true;
+      button.textContent = "Recarregando…";
+      const payload = await api("/api/panel/plugins/refresh", { method: "POST", body: {} });
+      plugins = payload.plugins;
+      toast(`${plural(payload.plugins.filter((p) => p.loaded).length, "plugin carregado", "plugins carregados")}`);
+      render();
+    } else if (act.dataset.act === "plugins-deploy") {
+      button.disabled = true;
+      button.textContent = "Publicando…";
+      const payload = await api("/api/panel/plugins/deploy", { method: "POST", body: {} });
+      plugins = payload.plugins;
+      toast(`${plural(payload.commands, "comando publicado", "comandos publicados")} em ${payload.guild}`);
+      render();
+    } else if (act.dataset.act === "plugin-remove") {
+      if (!confirm(`Remover ${id} do registry? O arquivo .wasm continua no disco.`)) return;
+      applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "DELETE" }));
+      toast(`${id} saiu do registry`);
+    } else if (act.dataset.act === "plugin-perm") {
+      const plugin = (plugins ?? []).find((p) => p.id === id);
+      if (!plugin) return;
+      const on = act.checked;
+      const next = on ? [...new Set([...plugin.permissions, act.dataset.perm])] : plugin.permissions.filter((p) => p !== act.dataset.perm);
+      applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { permissions: next } }));
+      toast(`${id}: ${on ? "ganhou" : "perdeu"} ${act.dataset.perm}`);
+    } else if (act.dataset.act === "plugin-add") {
+      const name = $("#new-id").value.trim();
+      const wasm = $("#new-wasm").value.trim();
+      if (!name || !wasm) return toast("Preencha id e arquivo");
+      applyPlugins(await api("/api/panel/plugins", { method: "POST", body: { id: name, wasm } }));
+      toast(`${name} instalado${plugins.find((p) => p.id === name)?.loaded ? "" : " (ainda não carregou)"}`);
+    }
+  } catch (err) {
+    toast(`Falhou: ${err.message}`);
+    button.disabled = false;
+    render();
+  }
+}
+
 document.addEventListener("click", (e) => {
   const go = e.target.closest("[data-go]");
   if (go) return navigate(go.dataset.go);
   const act = e.target.closest("[data-act]");
-  if (act?.dataset.act === "theme") {
+  if (!act) return;
+  if (act.dataset.act === "theme") {
     document.documentElement.dataset.theme = isDark() ? "light" : "dark";
     try { localStorage.setItem("theme", document.documentElement.dataset.theme); } catch {}
-    render();
+    return render();
+  }
+  if (act.dataset.act?.startsWith("plugin") || act.dataset.act?.startsWith("plugins")) {
+    e.preventDefault();
+    return pluginAction(act);
+  }
+});
+
+document.addEventListener("change", async (e) => {
+  const input = e.target.closest('[data-act="plugin-hosts"]');
+  if (!input) return;
+  const id = input.dataset.id;
+  const hosts = input.value.split(",").map((h) => h.trim()).filter(Boolean);
+  try {
+    applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { allowedHosts: hosts } }));
+    toast(`${id}: ${plural(hosts.length, "host liberado", "hosts liberados")}`);
+  } catch (err) {
+    toast(`Falhou: ${err.message}`);
   }
 });
 

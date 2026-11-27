@@ -25,6 +25,7 @@ import { PluginHostService } from './plugin-host.service';
 import { PluginJobsService } from './plugin-jobs.service';
 import { PluginManifestService } from './plugin-manifest.service';
 import { PluginModerationService } from './plugin-moderation.service';
+import { registerPluginPanel } from './plugin-panel.service';
 import { PluginRegistryService } from './plugin-registry.service';
 import { pluginComponentPrefix } from './plugin-render.service';
 
@@ -61,7 +62,9 @@ export class PluginsModule implements OnReady, OnGuildRemove, OnUserErase, OnCom
   // Services that only expose capabilities: creating them here registers what they expose.
   readonly capabilities = [inject(PluginActionsService), inject(PluginModerationService)];
 
-  onReady(client: Client<true>) {
+  async onReady(client: Client<true>) {
+    // Registered before loading, so the panel answers even when every plugin fails.
+    registerPluginPanel();
     this.discord.attach(client);
     this.domain.on('levels.levelUp', ({ guildId, userId, level, xp }) =>
       this.events.dispatch('levelUp', guildId, null, { userId, level, xp }),
@@ -69,7 +72,7 @@ export class PluginsModule implements OnReady, OnGuildRemove, OnUserErase, OnCom
     this.domain.on('moderation.caseCreated', ({ guildId, ...entry }) =>
       this.events.dispatch('caseCreated', guildId, null, entry),
     );
-    return this.registry.loadAll();
+    await this.registry.loadAll();
   }
 
   async deployCommands(builtIn: ReadonlySet<string>) {

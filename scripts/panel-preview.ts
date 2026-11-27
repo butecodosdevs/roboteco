@@ -1,6 +1,8 @@
 // Temporary harness: serves the panel with a client that is connected to no gateway.
 import { Client, GatewayIntentBits } from 'discord.js';
 import { startHttpServer } from '@/core/http';
+import { registerCommandCatalog } from '@/core/lifecycle';
+import { registerPluginPanel } from '@/modules/plugins/plugin-panel.service';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const guild = {
@@ -12,6 +14,8 @@ const guild = {
 client.guilds.cache.set(guild.id, guild as never);
 Object.assign(client, { user: { tag: 'roboteco#0001', displayAvatarURL: () => '' } });
 
+registerCommandCatalog([]);
+registerPluginPanel();
 startHttpServer(client, 4321, { panelToken: process.env.PANEL_TOKEN });
 console.log('panel on http://127.0.0.1:4321');
 setInterval(() => {}, 1 << 30);
