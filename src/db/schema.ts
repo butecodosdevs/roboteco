@@ -40,6 +40,9 @@ export const guilds = pgTable('guilds', {
     .$type<string[]>()
     .notNull()
     .default([]),
+  embedsEnabled: boolean('embeds_enabled').notNull().default(false),
+  embedsDisabledSites: jsonb('embeds_disabled_sites').$type<string[]>().notNull().default([]),
+  embedsIgnoredChannels: jsonb('embeds_ignored_channels').$type<string[]>().notNull().default([]),
   purgeJobId: integer('purge_job_id'),
   escalationWarnings: integer('escalation_warnings'),
   escalationAction: text('escalation_action', { enum: ['timeout', 'kick', 'ban'] }),

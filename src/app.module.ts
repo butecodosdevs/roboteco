@@ -7,6 +7,7 @@ import { CountingModule } from '@/modules/counting/counting.module';
 import { CustomCommandsModule } from '@/modules/custom-commands/custom-commands.module';
 import { DevModule } from '@/modules/dev/dev.module';
 import { DropsModule } from '@/modules/drops/drops.module';
+import { EmbedsModule } from '@/modules/embeds/embeds.module';
 import { FeedsModule } from '@/modules/feeds/feeds.module';
 import { GiveawaysModule } from '@/modules/giveaways/giveaways.module';
 import { GuildsModule } from '@/modules/guilds/guilds.module';
@@ -60,6 +61,7 @@ import { WelcomeModule } from '@/modules/welcome/welcome.module';
     CountingModule,
     InvitesModule,
     AutomodModule,
+    EmbedsModule,
     ...(config.env === 'development' ? [DevModule] : []),
   ],
 })

@@ -5,6 +5,7 @@ import { countingEnUS } from '@/modules/counting/i18n/en-US';
 import { customCommandsEnUS } from '@/modules/custom-commands/i18n/en-US';
 import { devEnUS } from '@/modules/dev/i18n/en-US';
 import { dropsEnUS } from '@/modules/drops/i18n/en-US';
+import { embedsEnUS } from '@/modules/embeds/i18n/en-US';
 import { feedsEnUS } from '@/modules/feeds/i18n/en-US';
 import { giveawaysEnUS } from '@/modules/giveaways/i18n/en-US';
 import { honeypotEnUS } from '@/modules/honeypot/i18n/en-US';
@@ -63,4 +64,5 @@ export const enUS = {
   counting: countingEnUS,
   invites: invitesEnUS,
   automod: automodEnUS,
+  embeds: embedsEnUS,
 } as const;
