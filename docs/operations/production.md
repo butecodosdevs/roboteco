@@ -51,6 +51,24 @@ Migrations must stay backwards-compatible for one release. The old bot keeps run
 
 `GET /health` on `HEALTH_PORT` returns `200 {"status":"ok"}` once the bot is connected to Discord, and `503` before that. The Docker health check uses it. Point an uptime monitor at `http://<host>:3000/health`; `HEALTH_PUBLISH_PORT` changes the published port.
 
+### Panel
+
+The same port serves a read-only panel at `/` with `web/`. It needs `PANEL_TOKEN` (16+ characters); without it every `/api/panel` call answers `401` and the page asks for the token. The panel reads the same Postgres as the bot and never writes, so it shows real numbers even while the gateway is reconnecting.
+
+```sh
+PANEL_TOKEN=$(openssl rand -hex 24) pnpm dev
+# http://127.0.0.1:3000 → paste the token
+```
+
+The token goes in a request header, so it stays out of access logs and out of the URL bar history. `scripts/panel-preview.ts` serves the panel with a stub guild and no Discord login, which is enough to work on the UI:
+
+```sh
+DATABASE_URL=postgres://roboteco:roboteco@localhost:5432/roboteco \
+S3_ENDPOINT=http://localhost:3900 S3_ACCESS_KEY_ID=x S3_SECRET_ACCESS_KEY=x S3_BUCKET=roboteco \
+DISCORD_TOKEN=x DISCORD_CLIENT_ID=x PANEL_TOKEN=dev-panel-token-123456 \
+  pnpm exec tsx scripts/panel-preview.ts
+```
+
 ### Backups
 
 `backup` writes `backups/roboteco-<UTC timestamp>.dump` every `BACKUP_INTERVAL_HOURS` (default 24) and deletes dumps older than `BACKUP_RETENTION_DAYS` (default 14). A dump is first written as `.partial` and renamed when complete, so a crash never leaves a half-written file that looks valid. Copy `backups/` off the machine (rsync, restic, …), because a backup on the same disk doesn't survive that disk failing.

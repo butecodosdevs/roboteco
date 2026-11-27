@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>roboteco</title>
+<link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark" id="brandmark"></div>
+      <div class="txt"><b>roboteco</b><span id="foot-tag">bot</span></div>
+    </div>
+    <nav class="nav" id="nav">
+      <i>Servidor</i>
+      <a data-go="overview"><span class="ic"></span>Visão geral</a>
+      <a data-go="mod"><span class="ic"></span>Moderação<span class="count" id="nav-cases">0</span></a>
+      <a data-go="resources"><span class="ic"></span>Recursos</a>
+      <i>Plataforma</i>
+      <a data-go="plugins"><span class="ic"></span>Plugins<span class="count" id="nav-plugins">0</span></a>
+      <a data-go="about"><span class="ic"></span>Como funciona</a>
+    </nav>
+    <div class="foot">
+      <div class="row"><span style="display:inline-flex;align-items:center;gap:6px"><i class="dot"></i>Gateway</span><b id="foot-ping">—</b></div>
+      <div class="row"><span>Servidores</span><b id="foot-guilds">—</b></div>
+      <div class="row"><span>Plugins</span><b id="foot-active">0</b></div>
+    </div>
+  </aside>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const ICON = {
+  overview: '<circle cx="8" cy="8" r="5.9"/><path d="M8 4.9v3.3l2 1.3"/>',
+  mod: '<path d="M8 2.6 3.4 4.4v3.4c0 2.6 1.9 4.9 4.6 5.6 2.7-.7 4.6-3 4.6-5.6V4.4L8 2.6Z"/><path d="m6 8 1.5 1.5L10.2 6.7"/>',
+  resources: '<rect x="2.4" y="2.4" width="4.6" height="4.6" rx="1"/><rect x="9" y="2.4" width="4.6" height="4.6" rx="1"/><rect x="2.4" y="9" width="4.6" height="4.6" rx="1"/><rect x="9" y="9" width="4.6" height="4.6" rx="1"/>',
+  plugins: '<path d="M6 2.6v2.1a1.4 1.4 0 0 1-1.4 1.4H2.6v4.4h2a1.4 1.4 0 0 1 1.4 1.4v1.5h4.4v-1.5a1.4 1.4 0 0 1 1.4-1.4h2V6.1h-2A1.4 1.4 0 0 0 10.4 4.7V2.6z"/>',
+  about: '<circle cx="8" cy="8" r="5.9"/><path d="M8 7.2v3.4M8 5.3v.3"/>',
+  sun: '<circle cx="8" cy="8" r="2.8"/><path d="M8 1.8v1M8 13.2v1M1.8 8h1M13.2 8h1M3.7 3.7l.7.7M11.6 11.6l.7.7M12.3 3.7l-.7.7M4.4 11.6l-.7.7"/>',
+  moon: '<path d="M9.4 2.5a5.4 5.4 0 1 0 4.1 8 4.4 4.4 0 0 1-4.1-8Z"/>',
+  check: '<path d="m3.2 8.3 2.9 2.9 6.7-6.7"/>',
+  brand: '<path d="M3.5 3.5h9v9h-9z"/><path d="M6.3 6.3h3.4v3.4H6.3z"/>',
+};
+const icon = (n, s = 14) => `<svg viewBox="0 0 16 16" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n] || ""}</svg>`;
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const initials = (name) => {
+  const words = (name || "?").trim().split(/[\s-]+/).filter(Boolean);
+  return (words.length > 1 ? words.slice(0, 2).map((w) => w[0]) : [words[0]?.slice(0, 2) ?? "?"]).join("").toUpperCase();
+};
+const nf = (n) => Number(n ?? 0).toLocaleString("pt-BR");
+const plural = (n, one, many) => `${nf(n)} ${n === 1 ? one : many}`;
+const when = (iso) => { const d = new Date(iso); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${d.toTimeString().slice(0, 5)}`; };
+
+const storedTheme = (() => { try { return localStorage.getItem("theme") || ""; } catch { return ""; } })();
+if (storedTheme) document.documentElement.dataset.theme = storedTheme;
+const isDark = () => (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
+const token = (() => { try { return localStorage.getItem("panel-token") || ""; } catch { return ""; } })();
+
+let state = { view: "overview", guild: null, toastT: null };
+let meta = null;
+let data = null;
+
+function toast(msg) {
+  const t = $("#toast");
+  t.innerHTML = `<span class="g">${icon("check", 13)}</span>${esc(msg)}`;
+  t.className = "toast on";
+  clearTimeout(state.toastT);
+  state.toastT = setTimeout(() => (t.className = "toast"), 2600);
+}
+
+async function api(path) {
+  const res = await fetch(path, { headers: { "x-panel-token": token } });
+  if (!res.ok) throw new Error(res.status === 401 ? "token" : res.status === 503 ? "disabled" : `HTTP ${res.status}`);
+  return res.json();
+}
+
+const sk = (w, h = 10, r = 4) => `<span class="sk" style="width:${w};height:${h}px;border-radius:${r}px"></span>`;
+const skHead = () => `<div class="head"><div class="txt">
+  <div style="margin-bottom:7px">${sk("64px", 9)}</div>
+  ${sk("210px", 21, 6)}
+  <div style="margin-top:10px">${sk("min(420px, 62%)", 11)}</div>
+</div><div class="actions">${sk("112px", 28, 6)}</div></div>`;
+const skMetrics = (n = 4) => `<div class="metrics">${Array.from({ length: n }, () => `<div class="metric">
+  ${sk("76px", 9)}<div style="margin-top:9px">${sk("88px", 20, 5)}</div><div style="margin-top:8px">${sk("128px", 9)}</div>
+</div>`).join("")}</div>`;
+const skCardH = (w = 118) => `<div class="sk-h">${sk(w + "px", 11)}${sk("46px", 9)}</div>`;
+const skRow = () => `<div class="sk-row">
+  <span class="sk" style="width:29px;height:29px;border-radius:6px"></span>
+  <div class="sk-lines" style="flex:1">${sk("116px", 11)}${sk("212px", 9)}</div>${sk("64px", 9)}
+</div>`;
+const skList = (n = 5) => `<section class="card">${skCardH()}<div>${Array.from({ length: n }, skRow).join("")}</div></section>`;
+const skTable = (rows = 5) => `<section class="card tblwrap"><div class="sk-row" style="padding:9px 16px;border-top:0">
+  ${sk("64px", 9)}${sk("52px", 9)}${sk("44px", 9)}<div style="flex:1"></div>${sk("40px", 9)}
+</div>${Array.from({ length: rows }, () => `<div class="sk-row" style="padding:10px 16px">
+  <span class="sk" style="width:27px;height:27px;border-radius:5px"></span>
+  <div class="sk-lines" style="flex:1">${sk("108px", 11)}${sk("154px", 9)}</div>${sk("52px", 9)}${sk("40px", 9)}
+</div>`).join("")}</section>`;
+const skBars = (n = 6) => `<div class="bars-list">${Array.from({ length: n }, () => `<div class="b">${sk("126px", 10)}<div class="track" style="grid-column:1/-1">${sk("100%", 4, 99)}</div></div>`).join("")}</div>`;
+const skDl = (n = 6) => `<div class="dl">${Array.from({ length: n }, () => `${sk("84px", 10)}${sk("56px", 10)}`).join("")}</div>`;
+
+function skeletonFor(v) {
+  if (v === "overview") return skHead() + skMetrics() + `<div class="cols"><div class="stack">${skList(4)}${skList(3)}</div><div class="stack"><section class="card pad">${sk("120px", 11)}<div style="margin-top:14px">${skBars(5)}</div></section><section class="card pad">${sk("96px", 11)}<div style="margin-top:14px">${skDl(5)}</div></section></div></div>`;
+  if (v === "mod") return skHead() + `<div class="stack">${skTable(8)}</div>`;
+  if (v === "resources") return skHead() + `<div class="cols"><div class="stack">${skMetrics(2)}${skTable(4)}</div><div class="stack">${skList(3)}<section class="card pad">${sk("120px", 11)}<div style="margin-top:14px">${skBars(4)}</div></section></div></div>`;
+  if (v === "plugins") return skHead() + skTable(4);
+  if (v === "about") return skHead() + `<div class="cols"><div class="stack">${skList(4)}</div><div class="stack">${skList(3)}</div></div>`;
+  return skHead() + skMetrics() + skList();
+}
+
+const shell = (head, body) => `<div class="topbar">${guildPicker()}<div class="sp"></div>
+  <button class="iconbtn" data-act="theme" title="Alternar aparência">${icon(isDark() ? "sun" : "moon", 15)}</button>
+  <div class="me"><div class="av">${meta?.bot?.avatar ? `<img src="${esc(meta.bot.avatar)}" alt="">` : ""}</div>${esc(meta?.bot?.tag ?? "—")}</div>
+</div><div class="fade">${head}${body}</div>`;
+
+function guildPicker() {
+  const list = meta?.guilds ?? [];
+  const g = list.find((x) => x.id === state.guild) ?? list[0];
+  if (!g) return `<div class="guild"><div class="av">?</div>sem servidor</div>`;
+  return `<div class="guild"><div class="av">${g.icon ? `<img src="${esc(g.icon)}" alt="">` : esc(initials(g.name))}</div>${esc(g.name)}<em>${nf(g.members)}</em></div>`;
+}
+
+function pageHead(title, lede, actions, eyebrow) {
+  return `<div class="head"><div class="txt">
+    ${eyebrow ? `<div class="eyebrow">${esc(eyebrow)}</div>` : ""}
+    <h1>${esc(title)}</h1>
+    ${lede ? `<p class="lede">${lede}</p>` : ""}
+  </div>${actions ? `<div class="actions">${actions}</div>` : ""}</div>`;
+}
+
+const c = () => data?.counters ?? {};
+const emptyRow = (msg) => `<div class="empty">${esc(msg)}</div>`;
+const actionLabel = { warn: "Advertência", timeout: "Castigo", untimeout: "Fim do castigo", kick: "Expulsão", ban: "Banimento", unban: "Desbanimento" };
+const actionCls = { warn: "warn", timeout: "warn", untimeout: "", kick: "err", ban: "err", unban: "" };
+
+function viewOverview() {
+  const k = c();
+  const head = pageHead("Visão geral", "O que o bot está guardando e fazendo neste servidor agora.");
+  const metrics = `<div class="metrics">
+    <div class="metric"><div class="lbl">Casos de moderação</div><div class="val">${nf(k.cases)}</div><div class="delta">Desde o começo do servidor</div></div>
+    <div class="metric"><div class="lbl">Tickets abertos</div><div class="val">${nf(k.openTickets)}</div><div class="delta">${plural(k.openReports, "denúncia aberta", "denúncias abertas")}</div></div>
+    <div class="metric"><div class="lbl">Sugestões pendentes</div><div class="val">${nf(k.pendingSuggestions)}</div><div class="delta">${plural(k.liveGiveaways, "sorteio rolando", "sorteios rolando")}</div></div>
+    <div class="metric"><div class="lbl">Feeds assinados</div><div class="val">${nf(k.feeds)}</div><div class="delta">${k.failingFeeds ? `${plural(k.failingFeeds, "feed falhando", "feeds falhando")}` : "Todos respondendo"}</div></div>
+  </div>`;
+
+  const cases = `<section class="card tblwrap">
+    <div class="card-h"><h2>Últimos casos</h2><span class="sub">${plural(k.cases, "caso", "casos")}</span></div>
+    ${caseTable(data?.cases ?? [], 6)}
+  </section>`;
+
+  const activity = `<section class="card">
+    <div class="card-h"><h2>Quem mais conversa</h2><span class="sub">${plural(k.leveledMembers, "membro com XP", "membros com XP")}</span></div>
+    <div class="rows">${(data?.leaders ?? []).map((l, i) => `<div class="row-item">
+      <div class="tile">${i + 1}</div>
+      <div class="row-main"><div class="name">${esc(l.userId)}</div><div class="meta">nível ${nf(l.level)}</div></div>
+      <div class="row-end"><span class="num">${nf(l.xp)}<span> XP</span></span></div>
+    </div>`).join("") || emptyRow("Ninguém ganhou XP ainda.")}</div>
+  </section>`;
+
+  const counters = `<section class="card pad">
+    <div style="font-size:12.5px;font-weight:600;margin-bottom:12px">Tudo que está ligado</div>
+    <div class="bars-list">
+      ${[["Comandos próprios", k.commands], ["Cargos por reação", k.selfRoles], ["Aniversários", k.birthdays], ["Convites rastreados", k.invites], ["Posts agendados", k.scheduledPosts], ["Canais de drop", k.drops], ["Salas de voz temporárias", k.hubs]]
+        .map(([nm, v]) => `<div class="b"><span class="nm">${nm}</span><span class="v">${nf(v)}</span><div class="track"><i style="width:${Math.min(100, Number(v) ? 18 + Math.log10(Number(v) + 1) * 26 : 0)}%"></i></div></div>`).join("")}
+    </div>
+  </section>`;
+
+  return shell(head, metrics + `<div class="cols"><div class="stack">${cases}${activity}</div><div class="stack">${counters}</div></div>`);
+}
+
+function caseTable(cases, limit) {
+  const rows = limit ? cases.slice(0, limit) : cases;
+  if (!rows.length) return emptyRow("Nenhum caso registrado neste servidor.");
+  return `<div class="tblwrap"><table>
+    <thead><tr><th>#</th><th>Ação</th><th>Alvo</th><th>Quem aplicou</th><th>Motivo</th><th class="r">Quando</th></tr></thead>
+    <tbody>${rows.map((r) => `<tr>
+      <td class="mono dim">${r.number}</td>
+      <td><span class="tag ${actionCls[r.action] ?? ""}">${esc(actionLabel[r.action] ?? r.action)}</span></td>
+      <td class="mono">${esc(r.targetId)}</td>
+      <td class="mono dim">${esc(r.moderatorId)}</td>
+      <td class="muted" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.reason ?? "sem motivo")}</td>
+      <td class="r dim num">${when(r.createdAt)}</td>
+    </tr>`).join("")}</tbody>
+  </table></div>`;
+}
+
+function viewMod() {
+  const k = c();
+  const by = Object.fromEntries((data?.byAction ?? []).map((r) => [r.action, r.total]));
+  const bans = (by.ban ?? 0) + (by.kick ?? 0);
+  const punishments = (by.warn ?? 0) + (by.timeout ?? 0);
+  const head = pageHead("Moderação", "Cada advertência, castigo, expulsão e banimento que o bot aplicou, com quem aplicou e por quê.");
+  const metrics = `<div class="metrics">
+    <div class="metric"><div class="lbl">Casos no total</div><div class="val">${nf(k.cases)}</div><div class="delta">Numeração contínua por servidor</div></div>
+    <div class="metric"><div class="lbl">Denúncias abertas</div><div class="val">${nf(k.openReports)}</div><div class="delta">Aguardando alguém olhar</div></div>
+    <div class="metric"><div class="lbl">Tickets abertos</div><div class="val">${nf(k.openTickets)}</div><div class="delta">Conversas com a equipe</div></div>
+    <div class="metric"><div class="lbl">Banimentos</div><div class="val">${nf(bans)}</div><div class="delta">${plural(punishments, "castigo e advertência", "castigos e advertências")}</div></div>
+  </div>`;
+  return shell(head, metrics + `<div style="margin-top:12px"><section class="card">
+    <div class="card-h"><h2>Histórico</h2><span class="sub">${plural(k.cases, "caso", "casos")}</span></div>
+    ${caseTable(data?.cases ?? [])}
+  </section></div>`);
+}
+
+function viewResources() {
+  const k = c();
+  const head = pageHead("Recursos", "Os módulos que estão ligados no bot e o que cada um guardou até agora.");
+  const cards = [
+    ["Sugestões", k.pendingSuggestions, "esperando decisão", "suggestions"],
+    ["Sorteios", k.liveGiveaways, "rolando agora", "giveaways"],
+    ["Aniversários", k.birthdays, "cadastrados", "birthdays"],
+    ["Convites", k.invites, "entradas rastreadas", "invites"],
+    ["Comandos próprios", k.commands, "criados pela equipe", "custom-commands"],
+    ["Cargos por reação", k.selfRoles, "no painel de cargos", "roles"],
+    ["Posts agendados", k.scheduledPosts, "na fila", "scheduled-posts"],
+    ["Mensagens no starboard", k.starboardEntries, "salvas", "starboard"],
+  ];
+  const grid = `<div class="metrics">${cards.slice(0, 4).map(([nm, v, d]) => `<div class="metric"><div class="lbl">${nm}</div><div class="val">${nf(v)}</div><div class="delta">${d}</div></div>`).join("")}</div>
+    <div class="metrics" style="margin-top:12px">${cards.slice(4).map(([nm, v, d]) => `<div class="metric"><div class="lbl">${nm}</div><div class="val">${nf(v)}</div><div class="delta">${d}</div></div>`).join("")}</div>`;
+
+  const feeds = `<section class="card tblwrap">
+    <div class="card-h"><h2>Feeds</h2><span class="sub">${plural(k.failingFeeds, "falhando", "falhando")}</span></div>
+    ${(data?.feeds ?? []).length ? `<table><thead><tr><th>Feed</th><th>Endereço</th><th class="r">Falhas seguidas</th></tr></thead><tbody>
+      ${data.feeds.map((f) => `<tr><td>${esc(f.title)}</td><td class="mono dim" style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.url)}</td>
+        <td class="r num" style="color:${f.failures ? "var(--red)" : "var(--text-3)"}">${f.failures}</td></tr>`).join("")}
+    </tbody></table>` : emptyRow("Nenhum feed assinado.")}
+  </section>`;
+
+  const voice = `<section class="card">
+    <div class="card-h"><h2>Canais especiais</h2></div>
+    <div class="rows">
+      ${(data?.drops ?? []).map((d) => `<div class="row-item"><div class="tile">D</div><div class="row-main">
+        <div class="name">Drop a cada ${d.every} mensagens</div><div class="meta">canal <span class="mono">${esc(d.channelId)}</span> · ${nf(d.xp)} XP · ${plural(d.winners, "vencedor", "vencedores")}</div></div></div>`).join("")}
+      ${(data?.hubs ?? []).map((h) => `<div class="row-item"><div class="tile">V</div><div class="row-main">
+        <div class="name">Hub de voz temporária</div><div class="meta">canal <span class="mono">${esc(h.channelId)}</span> · limite ${h.userLimit || "livre"} · fecha vazio em ${h.emptyTimeoutSeconds}s</div></div></div>`).join("")}
+      ${data?.counting ? `<div class="row-item"><div class="tile">#</div><div class="row-main">
+        <div class="name">Contador</div><div class="meta">canal <span class="mono">${esc(data.counting.channelId)}</span> · recorde ${nf(data.counting.record)}</div></div>
+        <div class="row-end"><span class="num">${nf(data.counting.current)}<span> atual</span></span></div></div>` : ""}
+      ${(data?.drops ?? []).length || (data?.hubs ?? []).length || data?.counting ? "" : emptyRow("Nenhum canal especial configurado.")}
+    </div>
+  </section>`;
+
+  return shell(head, `<div class="stack">${grid}${feeds}</div><div style="margin-top:12px">${voice}</div>`);
+}
+
+function viewPlugins() {
+  const list = meta?.plugins ?? [];
+  const head = pageHead("Plugins", "Cada plugin é um arquivo WASM isolado, com só as permissões que a equipe aprovou.");
+  const body = `<section class="card tblwrap">
+    <table><thead><tr><th>Plugin</th><th>Arquivo</th><th>Permissões</th><th>Hosts liberados</th><th class="r">Status</th></tr></thead>
+    <tbody>${list.map((p) => `<tr>
+      <td><div style="display:flex;align-items:center;gap:9px"><div class="tile" style="width:27px;height:27px;border-radius:5px;font-size:11px">${esc(initials(p.id.replace(/-/g, " ")))}</div><div style="font-weight:500">${esc(p.id)}</div></div></td>
+      <td class="mono dim">${esc(p.wasm)}</td>
+      <td>${p.permissions?.length ? `<div class="chips">${p.permissions.map((x) => `<span class="tag code">${esc(x)}</span>`).join("")}</div>` : `<span class="dim">nenhuma</span>`}</td>
+      <td>${p.allowedHosts?.length ? `<div class="chips">${p.allowedHosts.map((x) => `<span class="tag code">${esc(x)}</span>`).join("")}</div>` : `<span class="dim">nenhum</span>`}</td>
+      <td class="r">${p.present ? `<span class="stat ok"><i class="dot"></i>compilado</span>` : `<span class="stat warn"><i class="dot"></i>sem WASM</span>`}</td>
+    </tr>`).join("") || `<tr><td colspan="5">${emptyRow("Nenhum plugin no registry.")}</td></tr>`}</tbody></table>
+  </section>
+  <section class="card pad" style="margin-top:12px">
+    <div style="font-size:12.5px;font-weight:600;margin-bottom:8px">O que o painel não faz</div>
+    <p class="muted" style="font-size:12.5px;line-height:1.6;margin:0">
+      Esta tela só lê. Instalar, tirar permissão ou desligar plugin continua sendo editar <span class="mono">plugins/registry.json</span> e reiniciar o bot — o contrato WASM não tem canal de administração em tempo de execução.
+    </p>
+  </section>`;
+  return shell(head, body);
+}
+
+function viewAbout() {
+  const head = pageHead("Como funciona", "O painel é uma leitura do mesmo Postgres que o bot usa. Nada aqui escreve no banco.");
+  const steps = [
+    ["O bot resolve os módulos na inicialização", "Cada módulo liga comandos, eventos e tarefas agendadas. O <span class='mono'>AppModule</span> é o único lugar que importa todos."],
+    ["Os comandos são registrados no Discord", "<span class='mono'>pnpm deploy-commands</span> publica os comandos de barra embutidos e os que os plugins declaram no manifesto."],
+    ["Os dados caem no Postgres", "Moderação, níveis, tickets, sorteios, feeds, lembretes — cada módulo tem sua tabela, e o Drizzle mantém o schema versionado."],
+    ["O painel lê esse mesmo banco", "As rotas <span class='mono'>/api/panel</span> rodam SELECT atrás de um token. Se o bot estiver fora do ar, o painel mostra o último estado do banco, não uma simulação."],
+  ];
+  const list = `<section class="card">
+    <div class="card-h"><h2>Do evento do Discord até esta tela</h2></div>
+    <div class="rows">${steps.map(([t, d], i) => `<div class="row-item" style="align-items:flex-start">
+      <div class="tile">${i + 1}</div>
+      <div class="row-main"><div class="name">${t}</div><div class="desc" style="white-space:normal;line-height:1.5">${d}</div></div>
+    </div>`).join("")}</div>
+  </section>`;
+  const env = `<section class="card pad">
+    <div style="font-size:12.5px;font-weight:600;margin-bottom:12px">Este processo</div>
+    <dl class="dl">
+      <dt>Bot</dt><dd>${esc(meta?.bot?.tag ?? "—")}</dd>
+      <dt>Gateway</dt><dd>${meta?.ping == null ? "—" : `${meta.ping} ms`}</dd>
+      <dt>Servidores</dt><dd>${nf(meta?.guilds?.length ?? 0)}</dd>
+      <dt>Plugins</dt><dd>${nf(meta?.plugins?.length ?? 0)}</dd>
+      <dt>Token</dt><dd>${token ? "configurado neste navegador" : "ausente"}</dd>
+    </dl>
+  </section>`;
+  const caveat = `<section class="card pad">
+    <div style="font-size:12.5px;font-weight:600;margin-bottom:8px">Limites conhecidos</div>
+    <div class="callout" style="font-size:12px;color:var(--text-3);line-height:1.6">
+      O painel é somente leitura. Ações (banir, encerrar sorteio, trocar permissão de plugin) ainda passam pelos comandos do Discord ou pelo arquivo de registry.
+    </div>
+  </section>`;
+  return shell(head, `<div class="cols"><div class="stack">${list}</div><div class="stack">${env}${caveat}</div></div>`);
+}
+
+function paintHead() {
+  $("#brandmark").innerHTML = icon("brand", 13);
+  $$(".nav a").forEach((b) => {
+    b.classList.toggle("on", b.dataset.go === state.view);
+    const ico = b.querySelector(".ic");
+    if (ico && !ico.childElementCount) ico.innerHTML = icon(b.dataset.go, 13);
+  });
+  $("#nav-cases").textContent = nf(data?.counters?.cases ?? 0);
+  $("#nav-plugins").textContent = nf(meta?.plugins?.length ?? 0);
+  $("#foot-guilds").textContent = nf(meta?.guilds?.length ?? 0);
+  $("#foot-ping").textContent = meta?.ping == null ? "—" : `${meta.ping} ms`;
+  $("#foot-active").textContent = nf((meta?.plugins ?? []).filter((p) => p.present).length);
+  $("#foot-tag").textContent = "painel";
+}
+
+function render() {
+  const v = state.view;
+  let html;
+  if (v === "mod") html = viewMod();
+  else if (v === "resources") html = viewResources();
+  else if (v === "plugins") html = viewPlugins();
+  else if (v === "about") html = viewAbout();
+  else html = viewOverview();
+  $("#view").innerHTML = html;
+  paintHead();
+}
+
+let navToken = 0;
+function navigate(next) {
+  const tokenId = ++navToken;
+  state.view = next;
+  $("#view").innerHTML = skeletonFor(next);
+  paintHead();
+  $("main").scrollTop = 0;
+  setTimeout(() => { if (tokenId === navToken) render(); }, 380);
+}
+
+function authScreen(message) {
+  $("#view").innerHTML = `<div class="auth"><form id="auth-form">
+    <h1>Painel do roboteco</h1>
+    <p>${esc(message || "Cole o token do painel para ver os dados deste bot.")}</p>
+    <input id="auth-token" type="password" autocomplete="current-password" placeholder="token do painel" autofocus>
+    <div class="row"><button class="btn pri" type="submit">Entrar</button></div>
+    <p class="dim" style="font-size:11.5px">O token é o valor de <span class="mono">PANEL_TOKEN</span> no ambiente do bot.</p>
+  </form></div>`;
+}
+
+async function boot() {
+  if (!token) return authScreen();
+  $("#view").innerHTML = skeletonFor("overview");
+  try {
+    meta = await api("/api/panel/guilds");
+  } catch (err) {
+    if (err.message === "disabled") return authScreen("O painel está desligado. Defina PANEL_TOKEN no ambiente do bot e reinicie.");
+    if (err.message === "token") return authScreen("Token inválido. Tente de novo.");
+    return authScreen(`Não consegui falar com o bot: ${err.message}`);
+  }
+  state.guild = meta.guilds[0]?.id ?? null;
+  if (!state.guild) {
+    $("#view").innerHTML = shell(pageHead("Sem servidores", "O bot está no ar mas não entrou em nenhum servidor ainda."), "");
+    paintHead();
+    return;
+  }
+  await loadGuild();
+  render();
+}
+
+async function loadGuild() {
+  data = await api(`/api/panel?guild=${encodeURIComponent(state.guild)}`);
+}
+
+document.addEventListener("click", (e) => {
+  const go = e.target.closest("[data-go]");
+  if (go) return navigate(go.dataset.go);
+  const act = e.target.closest("[data-act]");
+  if (act?.dataset.act === "theme") {
+    document.documentElement.dataset.theme = isDark() ? "light" : "dark";
+    try { localStorage.setItem("theme", document.documentElement.dataset.theme); } catch {}
+    render();
+  }
+});
+
+document.addEventListener("submit", async (e) => {
+  if (e.target.id !== "auth-form") return;
+  e.preventDefault();
+  const value = $("#auth-token").value.trim();
+  try { localStorage.setItem("panel-token", value); } catch {}
+  location.reload();
+});
+
+boot();
+setInterval(async () => {
+  if (!meta || !state.guild) return;
+  try {
+    meta = await api("/api/panel/guilds");
+    await loadGuild();
+    paintHead();
+  } catch { /* mantém a última leitura */ }
+}, 15000);
+</script>
+</body>
+</html>

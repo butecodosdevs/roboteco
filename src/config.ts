@@ -23,6 +23,11 @@ const schema = z.object({
     .optional()
     .transform((v) => v || undefined),
   HEALTH_PORT: z.coerce.number().int().positive().optional(),
+  PANEL_TOKEN: z
+    .string()
+    .min(16, 'PANEL_TOKEN must be at least 16 characters')
+    .optional()
+    .transform((v) => v || undefined),
   GUILD_DATA_RETENTION_DAYS: z.coerce.number().int().min(0).default(30),
   PLUGIN_REGISTRY: z.string().min(1).default('plugins/registry.json'),
   DISCORD_GUILD_ID: z
@@ -50,6 +55,7 @@ export const config = {
   logLevel: parsed.data.LOG_LEVEL,
   sentryDsn: parsed.data.SENTRY_DSN,
   healthPort: parsed.data.HEALTH_PORT,
+  panelToken: parsed.data.PANEL_TOKEN,
   guildDataRetentionDays: parsed.data.GUILD_DATA_RETENTION_DAYS,
   pluginRegistry: parsed.data.PLUGIN_REGISTRY,
   databaseUrl: parsed.data.DATABASE_URL,

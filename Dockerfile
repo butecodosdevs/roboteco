@@ -10,6 +10,7 @@ RUN pnpm install --frozen-lockfile
 COPY tsconfig.json ./
 COPY scripts/build.ts ./scripts/build.ts
 COPY src ./src
+COPY web ./web
 RUN pnpm build && pnpm prune --prod
 
 FROM node:26.10.0-alpine AS runtime
@@ -17,6 +18,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/web ./web
 COPY --chown=node:node package.json ./
 COPY --chown=node:node drizzle ./drizzle
 COPY --chown=node:node plugins/registry.json ./plugins/registry.json

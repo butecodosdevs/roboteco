@@ -5,7 +5,7 @@ import { t } from '@/i18n';
 import { flushErrors, logger, reportError } from '@/logger';
 import { isDelegatedComponent, kindOf, parseCustomId } from './component';
 import { contextMenuKey } from './context-menu';
-import { startHealthServer } from './health';
+import { startHttpServer } from './http';
 import { JobRunner } from './job';
 import { registerCommandNames, registerModules } from './lifecycle';
 import { privilegedIntents, type ResolvedApp, resolveApp } from './module';
@@ -15,6 +15,7 @@ export interface BootstrapOptions {
   token: string;
   privilegedIntents: boolean;
   healthPort?: number;
+  panelToken?: string;
 }
 
 function selectIntents(app: ResolvedApp, allowPrivileged: boolean): GatewayIntentBits[] {
@@ -117,7 +118,9 @@ export async function bootstrap(root: Type, options: BootstrapOptions): Promise<
     }
   });
 
-  const health = options.healthPort ? startHealthServer(client, options.healthPort) : undefined;
+  const health = options.healthPort
+    ? startHttpServer(client, options.healthPort, { panelToken: options.panelToken })
+    : undefined;
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutting down');

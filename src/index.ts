@@ -6,4 +6,5 @@ await bootstrap(AppModule, {
   token: config.token,
   privilegedIntents: config.privilegedIntents,
   healthPort: config.healthPort,
+  panelToken: config.panelToken,
 });
