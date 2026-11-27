@@ -1,0 +1,40 @@
+import type { Messages } from '@/i18n/types';
+
+export const giveawaysPtBR: Messages['giveaways'] = {
+  command: { name: 'sorteio', description: 'Faz sorteios' },
+  start: { name: 'iniciar', description: 'Inicia um sorteio' },
+  end: { name: 'encerrar', description: 'Encerra um sorteio agora' },
+  reroll: { name: 'resortear', description: 'Sorteia novos vencedores de um sorteio encerrado' },
+  options: {
+    prize: { name: 'premio', description: 'O que está sendo sorteado' },
+    duration: { name: 'duracao', description: 'Quanto tempo dura, ex.: 1h, 2d' },
+    winners: { name: 'vencedores', description: 'Número de vencedores (padrão 1)' },
+    channel: { name: 'canal', description: 'Onde postar (padrão aqui)' },
+    id: { name: 'id', description: 'Número do sorteio' },
+  },
+  embed: {
+    title: '🎉 {prize}',
+    running: 'Aperte o botão para participar. Termina {when}.',
+    ended: 'Terminou {when}.',
+    winners: 'Vencedores',
+    noWinners: 'Nenhuma participação válida.',
+    entries: '{count} participações',
+    host: 'Organizado por {host}',
+    footer: 'Sorteio #{id} · {winners} vencedor(es)',
+    enter: 'Participar',
+  },
+  announce: 'Parabéns {winners}! Vocês ganharam **{prize}**.',
+  announceNone: 'O sorteio de **{prize}** terminou sem participantes.',
+  replies: {
+    started: 'Sorteio #{id} iniciado em {channel}.',
+    entered: 'Você está participando. Boa sorte!',
+    left: 'Você saiu do sorteio.',
+    ended: 'Sorteio #{id} encerrado.',
+    rerolled: 'Sorteio #{id} resorteado.',
+    notFound: 'O sorteio #{id} não existe.',
+    notEnded: 'O sorteio #{id} ainda não terminou.',
+    alreadyEnded: 'O sorteio #{id} já terminou.',
+    invalidDuration: 'Use uma duração como 30m, 2h ou 3d (de 1 minuto a 60 dias).',
+    postFailed: 'Não consegui postar em {channel}. Verifique minhas permissões lá.',
+  },
+};

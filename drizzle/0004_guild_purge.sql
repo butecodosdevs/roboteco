@@ -1,0 +1,1 @@
+ALTER TABLE "guilds" ADD COLUMN "purge_job_id" integer;

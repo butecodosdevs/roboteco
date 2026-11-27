@@ -1,0 +1,54 @@
+{
+  "name": "roboteco",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Discord bot for the community",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "build": "tsx scripts/build.ts",
+    "start": "node --enable-source-maps --env-file-if-exists=.env dist/index.js",
+    "deploy-commands": "tsx --env-file-if-exists=.env src/deploy-commands.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check . && pnpm lint:structure",
+    "lint:structure": "tsx scripts/lint-structure.ts",
+    "format": "biome check --write .",
+    "services:up": "docker compose up -d --wait",
+    "services:down": "docker compose down",
+    "storage:init": "sh scripts/storage-init.sh",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate:runtime": "tsx --env-file-if-exists=.env src/db/migrate.ts",
+    "prod:up": "docker compose -f compose.prod.yaml up -d --build",
+    "prod:logs": "docker compose -f compose.prod.yaml logs -f bot",
+    "plugins:build": "sh scripts/build-plugins.sh"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1178.0",
+    "@extism/extism": "2.0.0-rc13",
+    "@sentry/node": "^11.18.0",
+    "discord.js": "^14.28.1",
+    "drizzle-orm": "^0.45.4",
+    "fast-xml-parser": "^5.12.1",
+    "iovalkey": "^0.4.0",
+    "pino": "^10.4.0",
+    "postgres": "^4.1.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.9",
+    "@types/node": "^26.6.11",
+    "drizzle-kit": "^0.31.11",
+    "esbuild": "0.28.2",
+    "pino-pretty": "^13.2.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "packageManager": "pnpm@12.5.1"
+}

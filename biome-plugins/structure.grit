@@ -1,0 +1,120 @@
+language js
+
+or {
+  `@Command($...)` as $d where {
+    $filename <: not r".*\.command\.ts$",
+    register_diagnostic(span=$d, message="@Command() belongs in a *.command.ts file.")
+  },
+  `@Subcommand($...)` as $d where {
+    $filename <: not r".*\.subcommand\.ts$",
+    register_diagnostic(span=$d, message="@Subcommand() belongs in a *.subcommand.ts file.")
+  },
+  `@UserContextMenu($...)` as $d where {
+    $filename <: not r".*\.context\-menu\.ts$",
+    register_diagnostic(span=$d, message="@UserContextMenu() belongs in a *.context-menu.ts file.")
+  },
+  `@MessageContextMenu($...)` as $d where {
+    $filename <: not r".*\.context\-menu\.ts$",
+    register_diagnostic(span=$d, message="@MessageContextMenu() belongs in a *.context-menu.ts file.")
+  },
+  `@Button($...)` as $d where {
+    $filename <: not r".*\.button\.ts$",
+    register_diagnostic(span=$d, message="@Button() belongs in a *.button.ts file.")
+  },
+  `@SelectMenu($...)` as $d where {
+    $filename <: not r".*\.select\.ts$",
+    register_diagnostic(span=$d, message="@SelectMenu() belongs in a *.select.ts file.")
+  },
+  `@Modal($...)` as $d where {
+    $filename <: not r".*\.modal\.ts$",
+    register_diagnostic(span=$d, message="@Modal() belongs in a *.modal.ts file.")
+  },
+  `@On($...)` as $d where {
+    $filename <: not r".*\.event\.ts$",
+    register_diagnostic(span=$d, message="@On() belongs in a *.event.ts file.")
+  },
+  `@Once($...)` as $d where {
+    $filename <: not r".*\.event\.ts$",
+    register_diagnostic(span=$d, message="@Once() belongs in a *.event.ts file.")
+  },
+  `@Job($...)` as $d where {
+    $filename <: not r".*\.job\.ts$",
+    register_diagnostic(span=$d, message="@Job() belongs in a *.job.ts file.")
+  },
+  `@Module($...)` as $d where {
+    $filename <: not r".*\.module\.ts$",
+    register_diagnostic(span=$d, message="@Module() belongs in a *.module.ts file.")
+  },
+  `@Injectable($...)` as $d where {
+    $filename <: not r".*\.service\.ts$",
+    register_diagnostic(span=$d, message="@Injectable() belongs in a *.service.ts file.")
+  },
+  JsExport(decorators=$decs, export_clause=JsClassDeclaration(id=$name)) where {
+    or {
+      and {
+        $decs <: contains `@Command($...)`,
+        $name <: not r".*Command$",
+        register_diagnostic(span=$name, message="Classes decorated with @Command() must be named *Command.")
+      },
+      and {
+        $decs <: contains `@Subcommand($...)`,
+        $name <: not r".*Subcommand$",
+        register_diagnostic(span=$name, message="Classes decorated with @Subcommand() must be named *Subcommand.")
+      },
+      and {
+        $decs <: contains `@UserContextMenu($...)`,
+        $name <: not r".*ContextMenu$",
+        register_diagnostic(span=$name, message="Classes decorated with @UserContextMenu() must be named *ContextMenu.")
+      },
+      and {
+        $decs <: contains `@MessageContextMenu($...)`,
+        $name <: not r".*ContextMenu$",
+        register_diagnostic(span=$name, message="Classes decorated with @MessageContextMenu() must be named *ContextMenu.")
+      },
+      and {
+        $decs <: contains `@Button($...)`,
+        $name <: not r".*Button$",
+        register_diagnostic(span=$name, message="Classes decorated with @Button() must be named *Button.")
+      },
+      and {
+        $decs <: contains `@SelectMenu($...)`,
+        $name <: not r".*Select$",
+        register_diagnostic(span=$name, message="Classes decorated with @SelectMenu() must be named *Select.")
+      },
+      and {
+        $decs <: contains `@Modal($...)`,
+        $name <: not r".*Modal$",
+        register_diagnostic(span=$name, message="Classes decorated with @Modal() must be named *Modal.")
+      },
+      and {
+        $decs <: contains `@On($...)`,
+        $name <: not r".*Event$",
+        register_diagnostic(span=$name, message="Classes decorated with @On() must be named *Event.")
+      },
+      and {
+        $decs <: contains `@Once($...)`,
+        $name <: not r".*Event$",
+        register_diagnostic(span=$name, message="Classes decorated with @Once() must be named *Event.")
+      },
+      and {
+        $decs <: contains `@Job($...)`,
+        $name <: not r".*Job$",
+        register_diagnostic(span=$name, message="Classes decorated with @Job() must be named *Job.")
+      },
+      and {
+        $decs <: contains `@Module($...)`,
+        $name <: not r".*Module$",
+        register_diagnostic(span=$name, message="Classes decorated with @Module() must be named *Module.")
+      },
+      and {
+        $decs <: contains `@Injectable($...)`,
+        $name <: not r".*Service$",
+        register_diagnostic(span=$name, message="Classes decorated with @Injectable() must be named *Service.")
+      }
+    }
+  },
+  JsClassDeclaration(decorators=$decs, id=$name) where {
+    $decs <: contains JsDecorator(),
+    register_diagnostic(span=$name, message="Decorated classes must be exported so a module can register them.")
+  }
+}

@@ -1,0 +1,137 @@
+import type { GuildMember, Message, SendableChannels } from 'discord.js';
+import { and, asc, count, desc, eq, gt, lte, sql } from 'drizzle-orm';
+import { cache } from '@/cache';
+import { Injectable } from '@/core';
+import { db, getGuildSettings, schema, userScope } from '@/db';
+import { t } from '@/i18n';
+
+export type MemberLevel = typeof schema.memberLevels.$inferSelect;
+
+const levels = schema.memberLevels;
+const rewards = schema.levelRewards;
+const cooldownMs = 60_000;
+const minXp = 15;
+const maxXp = 25;
+
+export const xpToNext = (level: number) => 5 * level ** 2 + 50 * level + 100;
+
+export function levelFor(xp: number): { level: number; current: number; needed: number } {
+  let level = 0;
+  let remaining = xp;
+  while (remaining >= xpToNext(level)) {
+    remaining -= xpToNext(level);
+    level += 1;
+  }
+  return { level, current: remaining, needed: xpToNext(level) };
+}
+
+@Injectable()
+export class LevelsService {
+  async award(message: Message<true>): Promise<void> {
+    const key = `levels:cooldown:${message.guildId}:${message.author.id}`;
+    const fresh = await cache.set(key, '1', 'PX', cooldownMs, 'NX');
+    if (!fresh) return;
+    const gained = minXp + Math.floor(Math.random() * (maxXp - minXp + 1));
+    await this.grant(message.member, message.guildId, message.author.id, gained, {
+      channel: message.channel,
+      locale: message.guild.preferredLocale,
+    });
+  }
+
+  async grant(
+    member: GuildMember | null,
+    guildId: string,
+    userId: string,
+    gained: number,
+    announce?: { channel: SendableChannels; locale: string },
+  ): Promise<void> {
+    const [row] = await db
+      .insert(levels)
+      .values({ guildId, userId, xp: gained })
+      .onConflictDoUpdate({
+        target: [levels.guildId, levels.userId],
+        set: { xp: sql`${levels.xp} + ${gained}`, updatedAt: new Date() },
+      })
+      .returning();
+    if (!row) return;
+
+    const { level } = levelFor(row.xp);
+    if (level <= row.level) return;
+    await db
+      .update(levels)
+      .set({ level })
+      .where(and(eq(levels.guildId, row.guildId), eq(levels.userId, row.userId)));
+
+    if (member) await this.applyRewards(member, level);
+    const settings = await getGuildSettings(guildId);
+    if (announce && (settings?.levelUpAnnounce ?? true)) {
+      await announce.channel
+        .send({
+          content: t(announce.locale, 'levels.levelUp', { user: `<@${userId}>`, level }),
+          allowedMentions: { users: [userId] },
+        })
+        .catch(() => undefined);
+    }
+  }
+
+  async applyRewards(member: GuildMember, level: number): Promise<void> {
+    const earned = await db
+      .select({ roleId: rewards.roleId })
+      .from(rewards)
+      .where(and(eq(rewards.guildId, member.guild.id), lte(rewards.level, level)));
+    const missing = earned
+      .map((r) => r.roleId)
+      .filter((id) => member.guild.roles.cache.has(id) && !member.roles.cache.has(id));
+    if (missing.length > 0)
+      await member.roles.add(missing, `Level ${level} reward`).catch(() => undefined);
+  }
+
+  async get(guildId: string, userId: string): Promise<MemberLevel | undefined> {
+    const [row] = await db
+      .select()
+      .from(levels)
+      .where(and(eq(levels.guildId, guildId), eq(levels.userId, userId)));
+    return row;
+  }
+
+  async position(guildId: string, xp: number): Promise<number> {
+    const [ahead] = await db
+      .select({ total: count() })
+      .from(levels)
+      .where(and(eq(levels.guildId, guildId), gt(levels.xp, xp)));
+    return (ahead?.total ?? 0) + 1;
+  }
+
+  async top(guildId: string, limit = 10): Promise<MemberLevel[]> {
+    return db
+      .select()
+      .from(levels)
+      .where(eq(levels.guildId, guildId))
+      .orderBy(desc(levels.xp), asc(levels.userId))
+      .limit(limit);
+  }
+
+  async setReward(guildId: string, level: number, roleId: string): Promise<void> {
+    await db
+      .insert(rewards)
+      .values({ guildId, level, roleId })
+      .onConflictDoUpdate({ target: [rewards.guildId, rewards.level], set: { roleId } });
+  }
+
+  async removeReward(guildId: string, level: number): Promise<boolean> {
+    const removed = await db
+      .delete(rewards)
+      .where(and(eq(rewards.guildId, guildId), eq(rewards.level, level)))
+      .returning({ level: rewards.level });
+    return removed.length > 0;
+  }
+
+  async purgeGuild(guildId: string): Promise<void> {
+    await db.delete(levels).where(eq(levels.guildId, guildId));
+    await db.delete(rewards).where(eq(rewards.guildId, guildId));
+  }
+
+  async eraseUser(userId: string, guildId?: string): Promise<void> {
+    await db.delete(levels).where(userScope(levels.userId, userId, levels.guildId, guildId));
+  }
+}

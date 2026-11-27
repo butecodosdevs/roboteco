@@ -1,0 +1,40 @@
+# Example: community feature modules
+
+Twenty-two feature modules in `src/modules/`, each built from the concepts in these docs. Setup commands need **Manage Server**, unless noted otherwise.
+
+| Module | Members use | Staff set up | Built with |
+| --- | --- | --- | --- |
+| `tags` | `/tag show`, `/tag list`; `/tag add`; `/tag delete` (author or Manage Messages) | — | subcommands, autocomplete, `tags` table |
+| `suggestions` | `/suggest`, 👍/👎 buttons (press again to remove a vote) | `/suggestions channel`, `/suggestions approve` / `deny id [reason]` | button, `renderSuggestion` shared by the command and the button |
+| `roles` | The role picker menu: select the roles you want, unselect to drop one | `/roles add` / `remove` / `panel` (Manage Roles). Adding or removing a role updates the posted picker | select menu, bot role-position check |
+| `reports` | Right-click a message or user → *Report*, which opens a form | `/reports channel`. *Resolve* / *Dismiss* buttons need Manage Messages | context menus, modal, buttons |
+| `tickets` | The *Open a ticket* button creates a private thread with you and the staff role. One open ticket at a time | `/tickets panel`, `/tickets staff`. *Close ticket* (owner or Manage Threads) locks and archives the thread | buttons, private threads |
+| `levels` | 15–25 XP per message, at most once a minute. `/rank`, `/leaderboard` | `/levels reward` / `unreward` (a role at a level), `/levels announce` | `MessageCreate` event with an in-memory cooldown, `member_levels` table |
+| `starboard` | React ⭐ on a message | `/starboard channel [threshold]`, `/starboard disable` | reaction events and partials. Updates to one message are queued so they never double-post |
+| `welcome` | — | `/welcome channel` / `message` (`{user}`, `{server}`, `{count}`) / `role` / `test` | `GuildMemberAdd` (privileged intent) |
+| `logs` | — | `/logs channel` | message edit/delete/bulk-delete and member join/leave/update events (privileged intents) |
+| `verification` | The *Verify* button, which gives the member role. Accounts younger than the minimum age are refused | `/verification setup channel role [min_account_age]` | button, role-position check |
+| `antiraid` | — | `/antiraid config joins seconds`, `/antiraid lockdown` / `unlock`. A lockdown pauses invites and raises verification to High, then restores both. Alerts go to the moderation log | `GuildMemberAdd` (privileged), uses `ModLogService` from moderation |
+| `giveaways` | 🎉 *Enter* button (press again to leave) | `/giveaway start prize duration [winners] [channel]`, `end`, `reroll` (Manage Events) | button, job, `crypto.randomInt` draw |
+| `scheduled-posts` | — | `/schedule post channel in message [repeat]`, `list`, `cancel`. Daily and weekly repeats reschedule themselves | job |
+| `birthdays` | `/birthday set month day`, `remove`, `upcoming` | `/birthday setup [channel] [role]` (Manage Server, checked in code). The announcement goes out at 00:00 UTC, and the role is given for that day. Feb 29 is celebrated on Feb 28 in other years | recurring job (`ensureScheduled` in `onReady`) |
+| `feeds` | — | `/feeds add url channel`, `remove`, `list`. RSS, Atom and YouTube channel feeds (`https://www.youtube.com/feeds/videos.xml?channel_id=…`), checked every 10 minutes | recurring job, `fast-xml-parser`, `src/lib/safe-fetch.ts` |
+| `custom-commands` | Each custom `/name` replies with its text | `/customcommand add name response [description]`, `remove`, `list` | server-specific slash commands. `deploy-commands` keeps them when deploying to one server |
+| `counting` | Count up in the channel: ✅ for a correct number, ❌ and a reset for a wrong one or the same person twice | `/counting channel [channel]` | `MessageCreate` (Message Content intent), updates queued per server |
+| `invites` | `/invites count [user]`, `/invites top` | — | invite-usage snapshots, `GuildInvites` + `GuildMembers` |
+| `automod` | — | `/automod invites` / `links` / `keywords words [timeout]` / `mentions [limit] [timeout]` / `spam`, `list`, `remove` | Discord's built-in AutoMod API. Rules block the message and alert the moderation log channel |
+| `drops` | Every N messages an airdrop appears. React 🎁 before the draw to enter, and the bot picks random winners who get XP. Flooding doesn't count: one message per member per 5 seconds. `/drops top` | `/drops setup channel every xp [lifetime] [winners]`, `disable`, `list` | [Valkey](../concepts/cache.md) counter + entrant set + `SRANDMEMBER`, draw job, `LevelsService.grant` |
+| `temp-voice` | Join a hub voice channel and the bot creates your own channel in the hub's category (or the `category` you chose) and moves you into it. You are its admin through Discord's own permissions: edit the channel (name, limit, permissions), right-click to disconnect, move, mute or deafen people, and manage its chat. It is deleted when nobody rejoins within `empty_after` minutes of the last person leaving (default 1), or when everyone in it has been muted or deafened for `idle_after` minutes (default 10; 0 = never). Bots don't keep a channel alive. Shortcuts: `/voice name`, `limit`, `kick` (disconnects and blocks), `invite` (lets them in even when locked, and DMs the link), `lock`, `unlock` and `transfer`. Anyone can `/voice claim` once the owner has left. Members with Manage Channels can manage any temp channel | `/tempvoice setup channel [category] [limit] [empty_after] [idle_after]`, `remove`, `list` | `VoiceStateUpdate` (`GuildVoiceStates` intent, not privileged), permission overwrites, a Valkey cooldown on creating channels, close timers as [jobs](../concepts/jobs.md) that are cancelled when someone joins or unmutes and re-check the channel before deleting, and a startup sweep that starts timers for channels emptied while the bot was offline |
+| `reminders` | `/remind in:2h30m text`, `/reminders list` / `cancel`. Works in DMs too | — | [scheduled job](../concepts/jobs.md) |
+
+Data lives in `drizzle/0003_community_features.sql` and `drizzle/0005_engagement_and_safety.sql`:
+- new tables: `tags`, `suggestions` + `suggestion_votes`, `self_roles`, `reports`, `tickets`, `member_levels` + `level_rewards`, `starboard_entries`, `reminders`, `scheduled_jobs`;
+- each module's channel and setting columns on `guilds`;
+- `temp_bans`, `giveaways` + `giveaway_entries`, `scheduled_posts`, `birthdays`, `feeds`, `custom_commands`, `counting_channels`, `invite_joins`.
+
+**Fetching URLs from members.** Feeds are fetched with `safeFetchText`, which only allows http(s), refuses private, loopback, link-local and Tailscale (`100.64.0.0/10`) addresses (redirects are checked too), and stops after 10 seconds or 2 MB. This prevents SSRF: a member can't point the bot at internal services. DNS rebinding between the check and the request is still possible in theory.
+
+Things that are easy to miss:
+- **Who's allowed.** Buttons don't check permissions on their own. Staff actions check `interaction.memberPermissions`.
+- **Bot role position.** Assigning roles (roles, levels, welcome) only works for roles below the bot's highest role. The commands refuse such roles up front.
+- **Pings.** Every message the bot posts on behalf of a member disables mentions (`allowedMentions: { parse: [] }`), unless it pings exactly the intended user or role.

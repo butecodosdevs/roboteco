@@ -1,0 +1,1 @@
+ALTER TABLE "drop_channels" ADD COLUMN "winners" integer DEFAULT 1 NOT NULL;

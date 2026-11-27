@@ -1,0 +1,1 @@
+ALTER TABLE "temp_voice_hubs" ADD COLUMN "category_id" text;

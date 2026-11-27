@@ -1,0 +1,18 @@
+{
+  "plugins": [
+    {
+      "id": "hello",
+      "wasm": "plugins/dist/hello.wasm",
+      "permissions": [
+        "kv"
+      ]
+    },
+    {
+      "id": "coin",
+      "wasm": "plugins/dist/coin.wasm",
+      "permissions": [
+        "kv"
+      ]
+    }
+  ]
+}

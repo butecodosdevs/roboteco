@@ -1,0 +1,76 @@
+# Getting started
+
+## Requirements
+
+| Tool | Version | Notes |
+| --- | --- | --- |
+| [mise](https://mise.jdx.dev) | latest | `mise install` installs the Node and pnpm pinned in `mise.toml` |
+| [Node.js](https://nodejs.org) | 26.10.0 (min. 22.12) | Runtime |
+| [pnpm](https://pnpm.io) | 12.5.1 | Package manager |
+| [Docker](https://docs.docker.com/get-docker/) + Compose | Compose v2+ | Runs PostgreSQL, Garage and Valkey locally |
+| [Rust](https://rustup.rs) with `wasm32-unknown-unknown`, [Go](https://go.dev) 1.24+ | optional | Only to build the example [plugins](concepts/plugins.md) (`pnpm plugins:build`) |
+
+## Discord application
+
+1. Create an application in the [Developer Portal](https://discord.com/developers/applications) and add a bot. Copy the bot token and the application ID.
+2. Invite the bot: OAuth2 → URL Generator → scopes `bot` + `applications.commands`, permissions **View Channels**, **Send Messages**, **Send Messages in Threads**, **Embed Links**, **Read Message History**, **Manage Messages**, **Add Reactions**, **Manage Roles**, **Manage Channels**, **Move Members**, **Mute Members**, **Deafen Members**, **Manage Server** (lockdowns, invite tracking, AutoMod), **Create Private Threads**, **Manage Threads**, **Kick Members**, **Ban Members** and **Moderate Members** (the permission that allows timeouts).
+3. Put the bot's role above every role it should assign, and above the members it should moderate.
+4. For `welcome`, `logs`, `antiraid`, `invites` and `counting`, enable **Server Members Intent** and **Message Content Intent** under Bot → Privileged Gateway Intents, and set `DISCORD_PRIVILEGED_INTENTS=true`. Without that variable the bot starts without them and logs which modules are affected.
+
+## Environment
+
+Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
+
+| Variable | Required | Local value |
+| --- | --- | --- |
+| `DISCORD_TOKEN` | yes | bot token |
+| `DISCORD_CLIENT_ID` | yes | application ID |
+| `DISCORD_PRIVILEGED_INTENTS` | no | `true` once the privileged intents are enabled in the portal (default `false`) |
+| `NODE_ENV` | no | `development` (default; readable logs), `production` (JSON logs) or `test` |
+| `LOG_LEVEL` | no | `info` (default); `debug` for more |
+| `SENTRY_DSN` | no | error reporting, off when empty |
+| `HEALTH_PORT` | no | serves `GET /health` when set |
+| `GUILD_DATA_RETENTION_DAYS` | no | days to keep a server's data after the bot leaves (default 30) |
+| `DISCORD_GUILD_ID` | no | your test server ID. When set, `deploy-commands` registers commands on that server instantly instead of globally |
+| `DATABASE_URL` | yes | `postgres://roboteco:roboteco@localhost:5432/roboteco` |
+| `VALKEY_URL` | no | `redis://localhost:6379` (default) |
+| `S3_ENDPOINT` | yes | `http://localhost:3900` |
+| `S3_REGION` | no | `garage` (default) |
+| `S3_ACCESS_KEY_ID` | yes | `GKe0eaf809415eba6c4491e65b` |
+| `S3_SECRET_ACCESS_KEY` | yes | `f35c5ac8cf98fe2bcf4605b8b776d1635f2e5b7e9adf815424e291efcde6b3be` |
+| `S3_BUCKET` | yes | `roboteco` |
+
+`compose.yaml` also reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT`, `GARAGE_S3_PORT`, `VALKEY_PORT` and `GARAGE_RPC_SECRET`. The S3 keys and RPC secret above are development defaults; use your own values anywhere else.
+
+## First run
+
+```sh
+mise install
+pnpm install
+pnpm services:up       # PostgreSQL + Garage + Valkey
+pnpm storage:init      # Garage layout, key and bucket (safe to rerun)
+pnpm db:migrate
+pnpm deploy-commands
+pnpm dev
+```
+
+For production, see [running in production](operations/production.md).
+
+## Scripts
+
+| Script | Purpose |
+| --- | --- |
+| `pnpm dev` | Run with reload on change |
+| `pnpm build` / `pnpm start` | Bundle to `dist/` with esbuild and run it (with source maps) |
+| `pnpm deploy-commands` | Register slash commands with Discord. Run after changing command names, descriptions or options |
+| `pnpm typecheck` | TypeScript, including `scripts/` |
+| `pnpm lint` | Biome plus [structure rules](concepts/structure-rules.md) |
+| `pnpm lint:structure` | Structure rules only |
+| `pnpm format` | Format and apply safe Biome fixes |
+| `pnpm services:up` / `services:down` | Start / stop the Docker services |
+| `pnpm storage:init` | Prepare Garage for S3 requests |
+| `pnpm db:generate` / `db:migrate` | Create / apply migrations |
+| `pnpm db:migrate:runtime` | Apply migrations the way production does (no drizzle-kit) |
+| `pnpm prod:up` / `prod:logs` | Build and start `compose.prod.yaml` / follow the bot's logs |
+| `pnpm plugins:build` | Build the example WASM plugins into `plugins/dist/` |
+| `pnpm db:push` / `db:studio` | Sync the schema without a migration (local only) / browse data |

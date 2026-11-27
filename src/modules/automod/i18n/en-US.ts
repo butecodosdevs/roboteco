@@ -1,0 +1,38 @@
+export const automodEnUS = {
+  command: { name: 'automod', description: "Manage Discord's built-in AutoMod rules" },
+  invites: { name: 'invites', description: 'Block Discord invite links' },
+  links: { name: 'links', description: 'Block all links' },
+  keywords: { name: 'keywords', description: 'Block messages containing words' },
+  mentions: { name: 'mentions', description: 'Block messages with too many mentions' },
+  spam: { name: 'spam', description: "Turn on Discord's spam filter" },
+  list: { name: 'list', description: 'List AutoMod rules' },
+  remove: { name: 'remove', description: 'Delete an AutoMod rule' },
+  options: {
+    words: { name: 'words', description: 'Comma-separated words; * is a wildcard, e.g. bad*' },
+    limit: { name: 'limit', description: 'Maximum mentions per message (default 5)' },
+    timeout: {
+      name: 'timeout',
+      description: 'Also time out the author, in minutes (keywords and mentions only)',
+    },
+    rule: { name: 'rule', description: 'The rule' },
+  },
+  ruleNames: {
+    invites: 'roboteco: invite links',
+    links: 'roboteco: links',
+    keywords: 'roboteco: keywords',
+    mentions: 'roboteco: mention spam',
+    spam: 'roboteco: spam',
+  },
+  blockMessage: 'This message was blocked by the server rules.',
+  replies: {
+    created: 'Rule **{name}** is active. Alerts go to the moderation log channel when one is set.',
+    exists: 'That rule already exists. Remove it first to change it.',
+    limitReached: "Discord's limit for this kind of rule is reached on this server.",
+    botPermission: 'I need the Manage Server permission to manage AutoMod.',
+    none: 'No AutoMod rules on this server.',
+    listTitle: 'AutoMod rules',
+    removed: 'Rule **{name}** deleted.',
+    notFound: 'That rule does not exist.',
+    noWords: 'Give at least one word.',
+  },
+} as const;
