@@ -84,7 +84,10 @@ export class PluginPanelService {
       allowedHosts: definition.allowedHosts ?? [],
       required,
       autocompletes: loaded?.autocompletes ?? false,
-      failure: this.registry.failure(definition.id) ?? null,
+      // A missing file is not a load bug: say which path is expected instead of an ENOENT.
+      failure: present
+        ? (this.registry.failure(definition.id) ?? null)
+        : `falta ${definition.wasm} — envie o .wasm ou compile com pnpm plugins:build`,
       source: await this.builder.source(definition.id),
       commands,
     };
@@ -132,14 +135,6 @@ export class PluginPanelService {
   async remove(id: string): Promise<PanelPlugin[]> {
     const definitions = await this.registry.definitions();
     return this.write(definitions.filter((definition) => definition.id !== id));
-  }
-
-  async add(definition: PluginDefinitionEntry): Promise<PanelPlugin[]> {
-    const definitions = await this.registry.definitions();
-    if (definitions.some((entry) => entry.id === definition.id)) {
-      throw new Error(`plugin ${definition.id} já está instalado`);
-    }
-    return this.write([...definitions, definition]);
   }
 
   /** Rebuilds the WASM from its source, then reloads so the panel shows the fresh version. */
@@ -230,13 +225,6 @@ const updateSchema = z.object({
   allowedHosts: z.array(z.string().min(1).max(253)).optional(),
 });
 
-const addSchema = z.object({
-  id: z.string().regex(/^[a-z0-9-]{1,32}$/),
-  wasm: z.string().min(1),
-  permissions: z.array(z.enum(permissions)).default([]),
-  allowedHosts: z.array(z.string().min(1).max(253)).optional(),
-});
-
 const actions = new Set(['refresh', 'deploy', 'build', 'upload']);
 
 // One route for the whole segment: core stays unaware of plugin shapes.
@@ -250,9 +238,10 @@ export function registerPluginPanel(): void {
     const id = second ? first : actions.has(first ?? '') ? undefined : first;
     let next: Awaited<ReturnType<PluginPanelService['list']>>;
     if (!id && !action) {
-      if (method === 'GET') return { body: { plugins: await panel.list(), registry: definitions } };
-      if (method === 'POST') next = await panel.add(addSchema.parse(body));
-      else return { status: 405, body: { error: 'use POST /api/panel/plugins' } };
+      if (method !== 'GET') {
+        return { status: 405, body: { error: 'plugins are installed from an upload' } };
+      }
+      return { body: { plugins: await panel.list(), registry: definitions } };
     } else if (action === 'refresh' && method === 'POST') {
       next = await panel.refresh();
     } else if (action === 'upload' && method === 'POST') {

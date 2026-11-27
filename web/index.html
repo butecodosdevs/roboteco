@@ -263,13 +263,13 @@ const PERMISSIONS = [
 const permTag = (p) => `<span class="tag code" title="${PERMISSIONS.find(([n]) => n === p)?.[1] ?? ""}">${esc(p)}</span>`;
 
 function pluginCard(p) {
-  const status = p.failure
-    ? `<span class="stat err"><i class="dot"></i>falhou ao carregar</span>`
-    : p.loaded
-      ? `<span class="stat ok"><i class="dot"></i>carregado</span>`
-      : p.present
-        ? `<span class="stat warn"><i class="dot"></i>não carregado</span>`
-        : `<span class="stat warn"><i class="dot"></i>sem WASM</span>`;
+  const status = !p.present
+    ? `<span class="stat warn"><i class="dot"></i>sem WASM</span>`
+    : p.failure
+      ? `<span class="stat err"><i class="dot"></i>falhou ao carregar</span>`
+      : p.loaded
+        ? `<span class="stat ok"><i class="dot"></i>carregado</span>`
+        : `<span class="stat warn"><i class="dot"></i>não carregado</span>`;
   const missing = p.required.filter((r) => !p.permissions.includes(r));
   return `<section class="card" data-plugin="${esc(p.id)}">
     <div class="card-h" style="align-items:flex-start">
@@ -332,11 +332,7 @@ function viewPlugins() {
       <button class="btn pri" data-act="plugin-upload" style="align-self:flex-end">Enviar</button>
     </div>
     <div class="sep"></div>
-    <div class="set-row" style="padding:12px 0 0;border-top:0;gap:10px;flex-wrap:wrap">
-      <label style="flex:2;min-width:220px"><div class="sec" style="margin-bottom:4px">ou um caminho no disco do bot</div><input id="new-wasm" placeholder="plugins/dist/meu-plugin.wasm"></label>
-      <button class="btn sm" data-act="plugin-add" style="align-self:flex-end">Registrar caminho</button>
-    </div>
-    <div class="hint">O zip pode trazer documentação junto: só o <span class="mono">.wasm</span> é lido e gravado em <span class="mono">plugins/dist/&lt;id&gt;.wasm</span>. Nada mais do arquivo toca o disco.</div>
+    <div class="hint">Monte o zip como está descrito em <span class="mono">docs/concepts/plugin-package.md</span>: o <span class="mono">&lt;id&gt;.wasm</span> na raiz. O painel lê o arquivo em memória e grava só <span class="mono">plugins/dist/&lt;id&gt;.wasm</span> — nada mais do zip toca o disco.</div>
   </section>`;
   return shell(head, body);
 }
@@ -521,12 +517,6 @@ async function pluginAction(act) {
       const fresh = payload.plugins.find((p) => p.id === name);
       toast(`${name}: ${Math.round(payload.bytes / 1024)} KB${payload.entry ? ` de ${payload.entry}` : ""}${fresh?.loaded ? "" : " — não carregou, veja o erro"}`);
       render();
-    } else if (act.dataset.act === "plugin-add") {
-      const name = $("#new-id").value.trim();
-      const wasm = $("#new-wasm").value.trim();
-      if (!name || !wasm) return toast("Preencha id e arquivo");
-      applyPlugins(await api("/api/panel/plugins", { method: "POST", body: { id: name, wasm } }));
-      toast(`${name} instalado${plugins.find((p) => p.id === name)?.loaded ? "" : " (ainda não carregou)"}`);
     }
   } catch (err) {
     toast(`Falhou: ${err.message}`);

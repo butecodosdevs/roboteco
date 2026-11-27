@@ -71,7 +71,10 @@ export class PluginRegistryService {
         this.add(await this.engine.load({ ...definition, wasm }), reserved);
       } catch (error) {
         this.failed.set(definition.id, error instanceof Error ? error.message : String(error));
-        reportError(error, { plugin: definition.id }, 'Plugin failed to load');
+        // A WASM that was never built is a missing file, not a crash: the panel says so on the card.
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          reportError(error, { plugin: definition.id }, 'Plugin failed to load');
+        }
       }
     }
   }
