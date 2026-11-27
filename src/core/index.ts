@@ -40,10 +40,12 @@ export { Injectable, inject, provide } from './injector';
 export { cancelJob, ensureScheduled, Job, schedule } from './job';
 export {
   commandCatalog,
+  commandOwners,
   eraseUserData,
   isBuiltInCommand,
   purgeGuildData,
   registerCommandCatalog,
+  registerCommandOwners,
 } from './lifecycle';
 export {
   Module,

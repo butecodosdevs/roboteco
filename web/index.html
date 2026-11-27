@@ -70,6 +70,7 @@ let meta = null;
 let data = null;
 let plugins = null;
 let pluginError = null;
+let builtins = null;
 let settings = null;
 
 function toast(msg, bad) {
@@ -322,8 +323,68 @@ function pluginCard(p) {
 </section>`;
 }
 
-function viewPlugins() {
-  const list = plugins ?? [];
+const MODULE_LABEL = {
+  ModerationModule: ["Moderação", "advertências, banimentos, castigos e histórico"],
+  LevelsModule: ["Níveis", "XP, ranking e quadro de líderes"],
+  RemindersModule: ["Lembretes", "avisos agendados"],
+  SuggestionsModule: ["Sugestões", "caixa de sugestões do servidor"],
+  TempVoiceModule: ["Voz temporária", "canais que nascem e morrem sozinhos"],
+  AntiraidModule: ["Antiraid", "freia entrada em massa"],
+  AutomodModule: ["Automod", "filtra spam e palavras proibidas"],
+  BirthdaysModule: ["Aniversários", "aniversário de cada membro"],
+  CountingModule: ["Contagem", "canal de contar em ordem"],
+  CustomCommandsModule: ["Comandos próprios", "comandos que você cria"],
+  DropsModule: ["Drops", "sorteios rápidos de itens"],
+  FeedsModule: ["Feeds", "avisos de RSS no canal"],
+  GiveawaysModule: ["Sorteios", "sorteios com entrada por botão"],
+  HoneypotModule: ["Honeypot", "canal armadilha para punir bot"],
+  InvitesModule: ["Convites", "rastreia quem convidou quem"],
+  PingModule: ["Ping", "latência do bot"],
+  PluginsModule: ["Plugins", "comandos para instalar e listar plugins"],
+  PrivacyModule: ["Privacidade", "apagar e exportar seus dados"],
+  ReportsModule: ["Denúncias", "membros denunciam para a equipe"],
+  RolesModule: ["Cargos", "cargos por reação e por menu"],
+  ScheduledPostsModule: ["Posts agendados", "mensagens com hora marcada"],
+  StarboardModule: ["Starboard", "destaques por estrelas"],
+  TagsModule: ["Tags", "textos salvos por atalho"],
+  TicketsModule: ["Tickets", "atendimento por ticket"],
+  VerificationModule: ["Verificação", "portão de entrada do servidor"],
+  WelcomeModule: ["Boas-vindas", "mensagem de entrada e saída"],
+};
+
+const moduleLabel = (name) => MODULE_LABEL[name] ?? [name.replace(/Module$/, ""), "comandos embutidos no bot"];
+
+function builtinCard(group) {
+  const [label, hint] = moduleLabel(group.module);
+  return `<section class="card plug">
+  <div class="plug-head">
+    <div class="tile">${esc(initials(label))}</div>
+    <div class="plug-title">
+      <div class="nm">${esc(label)}</div>
+      <div class="path">${esc(hint)}</div>
+    </div>
+    <span class="stat"><i class="dot"></i>embutido</span>
+    <div class="plug-actions"><span class="tag code">${plural(group.commands.length, "comando", "comandos")}</span></div>
+  </div>
+  <div class="plug-sec">
+    <div class="sec">Comandos</div>
+    <ul class="cmds">${group.commands.map((cmd) => `<li>
+      <span class="mono name">/${esc(cmd.name)}</span>
+      <span class="desc" title="${esc(cmd.description)}">${esc(cmd.description)}</span>
+    </li>`).join("")}</ul>
+  </div>
+</section>`;
+}
+
+function builtinsSection() {
+  if (builtins === null) return `<section class="card pad" style="margin-top:12px">${skCardH("90px")}</section>`;
+  if (!builtins.length) return "";
+  const total = builtins.reduce((n, g) => n + g.commands.length, 0);
+  return `<div class="sec-title" style="margin:20px 0 12px">Comandos embutidos <span class="hint" style="font-weight:400">${plural(total, "comando", "comandos")} em ${plural(builtins.length, "módulo", "módulos")} — sempre publicados, não dá para desligar por aqui</span></div>
+  <div class="plug-list">${builtins.map(builtinCard).join("")}</div>`;
+}
+
+function viewPlugins() {  const list = plugins ?? [];
   const head = pageHead(
     "Plugins",
     "Cada plugin é um WASM isolado. Aqui você escolhe as permissões, compila, publica os comandos no Discord e inativa sem apagar nada.",
@@ -339,7 +400,7 @@ function viewPlugins() {
       <button class="btn pri" data-act="plugin-upload">Enviar</button>
     </div>
     <div class="hint">O zip precisa ter <span class="mono">&lt;id&gt;.wasm</span> na raiz — o resto do formato está em <span class="mono">docs/concepts/plugin-package.md</span>. O painel lê tudo em memória e grava só <span class="mono">plugins/dist/&lt;id&gt;.wasm</span>; nada mais do zip toca o disco. Enviar o mesmo id de novo substitui o arquivo e mantém as permissões.</div>
-  </section>`;
+  </section>${builtinsSection()}`;
   return shell(head, body);
 }
 
@@ -351,6 +412,16 @@ async function loadPlugins() {
   } catch (err) {
     pluginError = `não consegui falar com o roteador de plugins: ${err.message}`;
   }
+}
+
+async function loadBuiltins() {
+  try {
+    const payload = await api("/api/panel/commands");
+    builtins = payload.modules ?? [];
+  } catch {
+    builtins = [];
+  }
+  render();
 }
 
 function applyPlugins(payload) {
@@ -456,7 +527,7 @@ function paintHead() {
 
 function render() {
   const v = state.view;
-  if (v === "plugins" && plugins === null) { loadPlugins().then(render); return; }
+  if (v === "plugins" && (plugins === null || builtins === null)) { loadPlugins().then(render); if (builtins === null) loadBuiltins(); return; }
   if (v === "settings" && settings === null) { loadSettings().then(render); return; }
   let html;
   if (v === "mod") html = viewMod();
@@ -480,7 +551,7 @@ function navigate(next) {
 }
 
 function showLogin(message) {
-  meta = null; data = null; plugins = null; settings = null;
+  meta = null; data = null; plugins = null; builtins = null; settings = null;
   const first = !state.login;
   $("#view").innerHTML = `<div class="auth"><form id="auth-form" class="auth-card">
     <div class="auth-mark">${icon("brand", 16)}</div>

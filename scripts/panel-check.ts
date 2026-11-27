@@ -13,9 +13,17 @@ process.env.DISCORD_CLIENT_ID ??= 'x';
 process.env.PANEL_TOKEN ??= 'panel-check-token-123456';
 
 const { startHttpServer } = await import('@/core/http');
-const { inject } = await import('@/core');
+const { inject, registerCommandCatalog, registerCommandOwners } = await import('@/core');
 const { PanelAuthService } = await import('@/modules/panel/panel-auth.service');
 const { registerPanelSettings } = await import('@/modules/panel/panel-settings.service');
+
+// Only what the grouping endpoint reads: the catalog plus who owns each built-in.
+registerCommandCatalog([
+  { name: 'ban', description: 'Bane um usuário' },
+  { name: 'kick', description: 'Expulsa um membro' },
+  { name: 'rank', description: 'Mostra o rank' },
+]);
+registerCommandOwners({ ban: 'ModerationModule', kick: 'ModerationModule', rank: 'LevelsModule' });
 
 // Same wiring PanelModule does on ready, so the gate is the real one.
 const token = process.env.PANEL_TOKEN;
@@ -55,6 +63,19 @@ assert.equal(
   'query string token is ignored on purpose',
 );
 assert.equal((await fetch(`${base}/api/panel`, { headers: auth })).status, 400, 'no guild → 400');
+assert.equal(
+  (await fetch(`${base}/api/panel/commands`)).status,
+  401,
+  'built-in commands need a session',
+);
+const commands = (await (await fetch(`${base}/api/panel/commands`, { headers: auth })).json()) as {
+  modules: { module: string; commands: { name: string; description: string }[] }[];
+};
+assert.ok(commands.modules.length > 0, 'built-in commands are grouped by module');
+assert.ok(
+  commands.modules.every((m) => m.commands.length > 0 && m.commands.every((c) => c.name)),
+  'every group has named commands',
+);
 assert.equal((await fetch(`${base}/api/panel/settings`)).status, 401, 'settings needs a session');
 assert.equal((await fetch(`${base}/api/panel/settings`, { headers: auth })).status, 200);
 assert.equal(

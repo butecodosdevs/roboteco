@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import type { Client } from 'discord.js';
 import { and, count, desc, eq, gt, isNull } from 'drizzle-orm';
 import { db, schema } from '@/db';
+import { commandCatalog, commandOwners } from './lifecycle';
 import { isPublicPanelSegment, panelSessionValid } from './panel-auth';
 import { panelRoute } from './panel-routes';
 
@@ -54,6 +55,33 @@ async function pluginFiles() {
       ),
     })),
   );
+}
+
+/** Built-in commands grouped by the module that declared them. Read-only in the panel. */
+function builtInModules() {
+  const owners = commandOwners();
+  const groups = new Map<string, { name: string; description: string }[]>();
+  for (const command of commandCatalog()) {
+    const owner = owners[command.name];
+    if (!owner) continue;
+    const localized = (command as { name_localizations?: Record<string, string> })
+      .name_localizations;
+    const descriptions = (command as { description_localizations?: Record<string, string> })
+      .description_localizations;
+    const group = groups.get(owner) ?? [];
+    group.push({
+      name: localized?.['pt-BR'] ?? command.name,
+      description:
+        descriptions?.['pt-BR'] ?? ('description' in command ? (command.description ?? '') : ''),
+    });
+    groups.set(owner, group);
+  }
+  return [...groups]
+    .map(([module, commands]) => ({
+      module,
+      commands: commands.sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => b.commands.length - a.commands.length || a.module.localeCompare(b.module));
 }
 
 async function summary(guildId: string) {
@@ -228,7 +256,7 @@ export async function handlePanel(
     return;
   }
 
-  if (head && head !== 'guilds') {
+  if (head && head !== 'guilds' && head !== 'commands') {
     const route = panelRoute(head);
     if (!route) {
       json(response, 404, { error: 'unknown route' });
@@ -267,6 +295,11 @@ export async function handlePanel(
       guilds,
       plugins: await pluginFiles(),
     });
+    return;
+  }
+
+  if (url.pathname === '/api/panel/commands') {
+    json(response, 200, { modules: builtInModules() });
     return;
   }
 

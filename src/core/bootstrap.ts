@@ -7,7 +7,12 @@ import { isDelegatedComponent, kindOf, parseCustomId } from './component';
 import { contextMenuKey } from './context-menu';
 import { startHttpServer } from './http';
 import { JobRunner } from './job';
-import { registerCommandCatalog, registerCommandNames, registerModules } from './lifecycle';
+import {
+  registerCommandCatalog,
+  registerCommandNames,
+  registerCommandOwners,
+  registerModules,
+} from './lifecycle';
 import { privilegedIntents, type ResolvedApp, resolveApp } from './module';
 import type { Type } from './types';
 
@@ -64,6 +69,11 @@ export async function bootstrap(root: Type, options: BootstrapOptions): Promise<
     ...[...app.commands.values()].map((command) => command.toJSON()),
     ...[...app.contextMenus.values()].map((menu) => menu.toJSON()),
   ]);
+  registerCommandOwners(
+    Object.fromEntries(
+      app.modules.flatMap((module) => module.commands.map((name) => [name, module.name])),
+    ),
+  );
   const client = new Client({
     intents: selectIntents(app, options.privilegedIntents),
     partials: app.partials,

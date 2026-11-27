@@ -12,6 +12,7 @@ import type { ResolvedModule } from './module';
 let registered: ResolvedModule[] = [];
 let commandNames = new Set<string>();
 let catalog: RegisteredCommand[] = [];
+let owners: Record<string, string> = {};
 
 export function registerModules(modules: ResolvedModule[]): void {
   registered = modules;
@@ -36,6 +37,15 @@ export function registerCommandCatalog(entries: RegisteredCommand[]) {
 
 export function commandCatalog(): RegisteredCommand[] {
   return catalog;
+}
+
+/** Which module decorated each built-in command, so the panel can group them. */
+export function registerCommandOwners(next: Record<string, string>) {
+  owners = next;
+}
+
+export function commandOwners(): Record<string, string> {
+  return owners;
 }
 
 export function isBuiltInCommand(name: string): boolean {
