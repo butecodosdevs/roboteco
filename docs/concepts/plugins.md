@@ -127,6 +127,8 @@ The CLI uses a fake member and server (`100000000000000001`) and grants every pe
 
 **Install it.** The bot loads the plugins listed in `plugins/registry.json`. That list is empty in releases, so the plugins in this repo are examples only. Each entry is `{ "id", "wasm", "permissions" }`, using the permissions `pnpm plugin check` printed. Restart the bot, then run `pnpm deploy-commands`.
 
+The panel's Plugins tab does the same from a browser: it takes a `.wasm` or a zip carrying one, reads it in memory and writes only `plugins/dist/<id>.wasm` — other files in the zip, including paths, are never touched. Re-sending an id ships a new version and keeps the permissions already granted; if the WASM cannot be parsed or its commands collide with another plugin, the previous file and registry come back untouched. Turning a plugin on or off writes `enabled` in the registry, and the next request sees it.
+
 **Try the examples** in a test server: set `PLUGIN_REGISTRY=plugins/registry.example.json` in `.env`, then run `pnpm plugins:build`, restart the bot and run `pnpm deploy-commands`. Removing the variable and deploying again takes their commands away. The production image doesn't build plugins (see [production](../operations/production.md)).
 
 ## How it works

@@ -15,19 +15,28 @@ const types: Record<string, string> = {
 };
 
 const webDir = resolve('web');
-const maxBodyBytes = 64 * 1024;
+const maxJsonBytes = 64 * 1024;
+const maxUploadBytes = 32 * 1024 * 1024;
 
-async function readJson(request: IncomingMessage): Promise<unknown> {
+class BodyTooLarge extends Error {}
+
+/**
+ * Reads the request into memory. JSON bodies are parsed; anything else (`application/zip`,
+ * `application/wasm`) arrives as a Buffer, which is what the plugin upload route expects.
+ */
+async function readBody(request: IncomingMessage, limit: number): Promise<unknown> {
   if (request.method === 'GET' || request.method === 'HEAD') return undefined;
   const chunks: Buffer[] = [];
   let length = 0;
   for await (const chunk of request) {
     length += chunk.length;
-    if (length > maxBodyBytes) throw new Error('body too large');
+    if (length > limit) throw new BodyTooLarge('body too large');
     chunks.push(chunk);
   }
   if (length === 0) return undefined;
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  const raw = Buffer.concat(chunks);
+  if (!request.headers['content-type']?.includes('json')) return raw;
+  return JSON.parse(raw.toString('utf8'));
 }
 
 async function serveStatic(path: string, response: ServerResponse): Promise<boolean> {
@@ -61,17 +70,24 @@ export function startHttpServer(
         return;
       }
       if (isPanelPath(url.pathname)) {
+        const upload = url.pathname.endsWith('/upload');
         await handlePanel(request, response, url, {
           client,
           token: options.panelToken,
           method: request.method ?? 'GET',
-          body: await readJson(request),
+          body: await readBody(request, upload ? maxUploadBytes : maxJsonBytes),
         });
         return;
       }
       if (request.method === 'GET' && (await serveStatic(url.pathname, response))) return;
       response.writeHead(404).end();
     } catch (error) {
+      if (error instanceof BodyTooLarge) {
+        response
+          .writeHead(413, { 'content-type': 'application/json' })
+          .end(JSON.stringify({ error: 'arquivo maior que o limite' }));
+        return;
+      }
       reportError(error, { path: url.pathname }, 'HTTP request failed');
       if (!response.headersSent) response.writeHead(500, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ error: 'internal' }));

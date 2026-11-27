@@ -325,13 +325,18 @@ function viewPlugins() {
   if (pluginError) return shell(head, `<section class="card pad"><div class="stat err"><i class="dot"></i>${esc(pluginError)}</div></section>`);
   const body = `${list.length ? list.map(pluginCard).join('<div style="height:12px"></div>') : `<section class="card">${emptyRow("Nenhum plugin no registry. Instale um abaixo.")}</section>`}
   <section class="card pad" style="margin-top:12px">
-    <div style="font-size:12.5px;font-weight:600;margin-bottom:10px">Instalar do disco</div>
+    <div style="font-size:12.5px;font-weight:600;margin-bottom:10px">Instalar</div>
     <div class="set-row" style="padding:0 0 10px;border-top:0;gap:10px;flex-wrap:wrap">
       <label style="flex:1;min-width:120px"><div class="sec" style="margin-bottom:4px">id</div><input id="new-id" placeholder="meu-plugin"></label>
-      <label style="flex:2;min-width:200px"><div class="sec" style="margin-bottom:4px">arquivo .wasm</div><input id="new-wasm" placeholder="plugins/dist/meu-plugin.wasm"></label>
-      <button class="btn pri" data-act="plugin-add" style="align-self:flex-end">Instalar</button>
+      <label style="flex:2;min-width:220px"><div class="sec" style="margin-bottom:4px">.wasm ou .zip</div><input id="new-file" type="file" accept=".wasm,.zip,application/zip,application/wasm"></label>
+      <button class="btn pri" data-act="plugin-upload" style="align-self:flex-end">Enviar</button>
     </div>
-    <div class="hint">O caminho é relativo à raiz do bot. O plugin só carrega se pedir permissões que você marcou; comece sem nenhuma.</div>
+    <div class="sep"></div>
+    <div class="set-row" style="padding:12px 0 0;border-top:0;gap:10px;flex-wrap:wrap">
+      <label style="flex:2;min-width:220px"><div class="sec" style="margin-bottom:4px">ou um caminho no disco do bot</div><input id="new-wasm" placeholder="plugins/dist/meu-plugin.wasm"></label>
+      <button class="btn sm" data-act="plugin-add" style="align-self:flex-end">Registrar caminho</button>
+    </div>
+    <div class="hint">O zip pode trazer documentação junto: só o <span class="mono">.wasm</span> é lido e gravado em <span class="mono">plugins/dist/&lt;id&gt;.wasm</span>. Nada mais do arquivo toca o disco.</div>
   </section>`;
   return shell(head, body);
 }
@@ -498,6 +503,24 @@ async function pluginAction(act) {
       const next = on ? [...new Set([...plugin.permissions, act.dataset.perm])] : plugin.permissions.filter((p) => p !== act.dataset.perm);
       applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { permissions: next } }));
       toast(`${id}: ${on ? "ganhou" : "perdeu"} ${act.dataset.perm}`);
+    } else if (act.dataset.act === "plugin-upload") {
+      const name = $("#new-id").value.trim();
+      const file = $("#new-file").files?.[0];
+      if (!name) return toast("Preencha o id");
+      if (!file) return toast("Escolha o .wasm ou o .zip");
+      button.disabled = true;
+      button.textContent = "Enviando…";
+      const res = await fetch(`/api/panel/plugins/${encodeURIComponent(name)}/upload`, {
+        method: "POST",
+        headers: { "x-panel-token": token, "content-type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? `HTTP ${res.status}`);
+      plugins = payload.plugins;
+      const fresh = payload.plugins.find((p) => p.id === name);
+      toast(`${name}: ${Math.round(payload.bytes / 1024)} KB${payload.entry ? ` de ${payload.entry}` : ""}${fresh?.loaded ? "" : " — não carregou, veja o erro"}`);
+      render();
     } else if (act.dataset.act === "plugin-add") {
       const name = $("#new-id").value.trim();
       const wasm = $("#new-wasm").value.trim();

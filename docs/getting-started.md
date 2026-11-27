@@ -79,6 +79,7 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm deploy-plugins [ids...]` | Publish only the plugins' commands, all of them or just the ones listed. The others stop being registered, so name every plugin you want to keep |
 | `pnpm typecheck` | TypeScript, including `scripts/` and `tests/` |
 | `pnpm test` | Behaviour tests in `tests/`, against the Postgres and Valkey in `.env` (run `pnpm db:migrate` first) |
+| `pnpm zip:check` | Asserts the in-memory zip reader used by the panel upload |
 | `pnpm lint` | Biome plus [structure rules](concepts/structure-rules.md) |
 | `pnpm lint:structure` | Structure rules only |
 | `pnpm format` | Format and apply safe Biome fixes |

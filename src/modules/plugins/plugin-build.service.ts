@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { copyFile, mkdir, readdir, readFile, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { promisify } from 'node:util';
 import { Injectable } from '@/core';
@@ -55,6 +55,20 @@ export class PluginBuildService {
       };
     }
     return null;
+  }
+
+  /** Writes a WASM that arrived over HTTP, so uploads and builds land in the same place. */
+  async write(path: string, wasm: Uint8Array): Promise<void> {
+    const target = join(process.cwd(), path);
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, wasm);
+  }
+
+  /** Puts a previous file back, or removes the path when there was none. */
+  async restore(path: string, previous: Buffer | null): Promise<void> {
+    const target = join(process.cwd(), path);
+    if (previous) await writeFile(target, previous);
+    else await rm(target, { force: true });
   }
 
   /** Runs the toolchain with fixed argv (no shell), writing `plugins/dist/<id>.wasm`. */

@@ -1,16 +1,12 @@
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { Injectable, inject, isBuiltInCommand, registerPanelRoute } from '@/core';
 import { commandCatalog } from '@/core/lifecycle';
+import { readWasmUpload, type ZipUpload } from '@/core/zip';
 import { PluginBuildService, type PluginSource } from './plugin-build.service';
 import { PluginDeployService } from './plugin-deploy.service';
-import {
-  type LoadedPlugin,
-  PluginEngineService,
-  PluginLoadError,
-  permissions,
-} from './plugin-engine.service';
+import { type LoadedPlugin, PluginEngineService, permissions } from './plugin-engine.service';
 import { PluginManifestService } from './plugin-manifest.service';
 import {
   type PluginDefinitionEntry,
@@ -61,8 +57,8 @@ export class PluginPanelService {
       present = true;
       try {
         required = this.engine.requiredPermissions(wasm);
-      } catch (error) {
-        if (!(error instanceof PluginLoadError)) throw error;
+      } catch {
+        // A corrupt WASM throws here too; the card shows it as "não carregou" instead of a 500.
         required = [];
       }
     }
@@ -152,6 +148,69 @@ export class PluginPanelService {
     return { log, plugins: await this.refresh() };
   }
 
+  /**
+   * Takes a `.wasm` or a zip with one inside: reads it in memory, writes
+   * `plugins/dist/<id>.wasm` — never any other path from the archive — and registers it.
+   */
+  async upload(
+    id: string,
+    body: unknown,
+    query: URLSearchParams,
+  ): Promise<{ plugin: PanelPlugin; bytes: number; entry: string | null; plugins: PanelPlugin[] }> {
+    if (!(body instanceof Uint8Array)) {
+      throw new Error('envie o .wasm ou o .zip no corpo da requisição');
+    }
+    const picked: ZipUpload = await readWasmUpload(id, body);
+    const split = (value: string | null) =>
+      (value ?? '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    const definitions = await this.registry.definitions();
+    const current = definitions.find((item) => item.id === id);
+    const wasm = `plugins/dist/${id}.wasm`;
+    const definition: PluginDefinitionEntry = {
+      id,
+      wasm,
+      // A re-upload without the query flags keeps what is already granted.
+      permissions: (query.get('permissions')
+        ? split(query.get('permissions'))
+        : (current?.permissions ?? [])) as never,
+      ...(query.get('hosts')
+        ? { allowedHosts: split(query.get('hosts')) }
+        : current?.allowedHosts && { allowedHosts: current.allowedHosts }),
+    };
+    const previous = await readFile(join(process.cwd(), wasm)).catch(() => null);
+    await this.builder.write(wasm, picked.wasm);
+    // Uploading again replaces the file, which is how you ship a new version.
+    let plugins: PanelPlugin[];
+    try {
+      plugins = await this.write(
+        current
+          ? definitions.map((item) => (item.id === id ? definition : item))
+          : [...definitions, definition],
+      );
+    } catch (error) {
+      // Registry refused it (duplicate command, unreadable WASM): undo the file write.
+      await this.builder.restore(wasm, previous);
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)} (o arquivo anterior foi restaurado)`,
+      );
+    }
+    const plugin = plugins.find((entry) => entry.id === id);
+    if (!plugin) throw new Error(`plugin ${id} não apareceu na lista`);
+    // Missing permissions is normal for a fresh upload: the card shows what to tick. Any other
+    // failure (unreadable WASM, duplicate command) must not replace the working file.
+    const onlyPermissions = plugin.failure?.startsWith('needs permissions') ?? false;
+    if (plugin.failure && !onlyPermissions) {
+      await this.builder.restore(wasm, previous);
+      await this.registry.save(definitions);
+      await this.registry.reload();
+      throw new Error(`${plugin.failure} (o arquivo anterior foi restaurado)`);
+    }
+    return { plugin, bytes: picked.wasm.length, entry: picked.entry, plugins };
+  }
+
   async refresh(): Promise<PanelPlugin[]> {
     await this.registry.reload();
     return this.list();
@@ -178,14 +237,14 @@ const addSchema = z.object({
   allowedHosts: z.array(z.string().min(1).max(253)).optional(),
 });
 
-const actions = new Set(['refresh', 'deploy']);
+const actions = new Set(['refresh', 'deploy', 'build', 'upload']);
 
 // One route for the whole segment: core stays unaware of plugin shapes.
 export function registerPluginPanel(): void {
   const panel = inject(PluginPanelService);
   const registry = inject(PluginRegistryService);
 
-  registerPanelRoute('plugins', async ({ segments: [first, second], method, body }) => {
+  registerPanelRoute('plugins', async ({ segments: [first, second], method, body, query }) => {
     const definitions = await registry.definitions();
     const action = second ?? (actions.has(first ?? '') ? first : undefined);
     const id = second ? first : actions.has(first ?? '') ? undefined : first;
@@ -196,6 +255,13 @@ export function registerPluginPanel(): void {
       else return { status: 405, body: { error: 'use POST /api/panel/plugins' } };
     } else if (action === 'refresh' && method === 'POST') {
       next = await panel.refresh();
+    } else if (action === 'upload' && method === 'POST') {
+      if (!id) return { status: 400, body: { error: 'informe o plugin em /plugins/<id>/upload' } };
+      const result = await panel.upload(id, body, query);
+      return {
+        status: 201,
+        body: { ...result, registry: await registry.definitions() },
+      };
     } else if (action === 'build' && method === 'POST') {
       if (!id) return { status: 400, body: { error: 'informe o plugin em /plugins/<id>/build' } };
       const { log, plugins } = await panel.build(id);
