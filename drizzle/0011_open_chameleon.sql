@@ -1,0 +1,2 @@
+ALTER TABLE "guilds" ADD COLUMN "server_log_disabled_events" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "guilds" ADD COLUMN "server_log_ignored_channels" jsonb DEFAULT '[]'::jsonb NOT NULL;

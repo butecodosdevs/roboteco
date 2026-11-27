@@ -78,6 +78,13 @@
       "when": 1795758927443,
       "tag": "0010_voice_category",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795811798699,
+      "tag": "0011_open_chameleon",
+      "breakpoints": true
     }
   ]
 }
