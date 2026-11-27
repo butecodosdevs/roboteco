@@ -1,115 +1,72 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand/v2"
-	"strconv"
 
-	"github.com/extism/go-pdk"
+	"roboteco.dev/sdk"
 )
-
-type commandInput struct {
-	Command    string         `json:"command"`
-	Subcommand string         `json:"subcommand"`
-	Options    map[string]any `json:"options"`
-	UserID     string         `json:"userId"`
-	Locale     string         `json:"locale"`
-}
-
-type action struct {
-	Type      string `json:"type"`
-	Content   string `json:"content"`
-	Ephemeral bool   `json:"ephemeral,omitempty"`
-}
-
-//go:wasmimport extism:host/user kv_get
-func kvGet(uint64) uint64
-
-//go:wasmimport extism:host/user kv_set
-func kvSet(uint64) uint64
-
-func get(key string) string {
-	mem := pdk.AllocateString(key)
-	defer mem.Free()
-	out := pdk.FindMemory(kvGet(mem.Offset()))
-	return string(out.ReadBytes())
-}
-
-func set(key, value string) {
-	payload, _ := json.Marshal(map[string]string{"key": key, "value": value})
-	mem := pdk.AllocateBytes(payload)
-	defer mem.Free()
-	kvSet(mem.Offset())
-}
 
 //go:wasmexport manifest
 func manifest() int32 {
-	pdk.OutputJSON(map[string]any{
-		"name":    "coin",
-		"version": "0.2.0",
-		"commands": []any{map[string]any{
-			"name":                     "coin",
-			"description":              "Flip coins",
-			"nameLocalizations":        map[string]string{"pt-BR": "moeda"},
-			"descriptionLocalizations": map[string]string{"pt-BR": "Joga moedas"},
-			"subcommands": []any{
-				map[string]any{
-					"name": "flip", "description": "Flip a coin",
-					"nameLocalizations":        map[string]string{"pt-BR": "jogar"},
-					"descriptionLocalizations": map[string]string{"pt-BR": "Joga uma moeda"},
-					"options": []any{map[string]any{
-						"type": "string", "name": "call", "description": "Heads or tails?", "required": true,
-						"nameLocalizations": map[string]string{"pt-BR": "aposta"},
-						"choices": []any{
-							map[string]string{"name": "heads", "value": "heads"},
-							map[string]string{"name": "tails", "value": "tails"},
-						},
+	return roboteco.Manifest(roboteco.Plugin{
+		Name:    "coin",
+		Version: "0.3.0",
+		Uses:    []string{"kv.increment", "kv.get"},
+		Commands: []roboteco.CommandSpec{{
+			Name:                     "coin",
+			Description:              "Flip coins",
+			NameLocalizations:        roboteco.Localized{"pt-BR": "moeda"},
+			DescriptionLocalizations: roboteco.Localized{"pt-BR": "Joga moedas"},
+			Subcommands: []roboteco.SubcommandSpec{
+				{
+					Name: "flip", Description: "Flip a coin",
+					NameLocalizations:        roboteco.Localized{"pt-BR": "jogar"},
+					DescriptionLocalizations: roboteco.Localized{"pt-BR": "Joga uma moeda"},
+					Options: []roboteco.OptionSpec{{
+						Type: "string", Name: "call", Description: "Heads or tails?", Required: true,
+						NameLocalizations: roboteco.Localized{"pt-BR": "aposta"},
+						Choices:           roboteco.Choices("heads", "tails"),
 					}},
 				},
-				map[string]any{
-					"name": "stats", "description": "Your flip results",
-					"nameLocalizations":        map[string]string{"pt-BR": "placar"},
-					"descriptionLocalizations": map[string]string{"pt-BR": "Seus resultados"},
+				{
+					Name: "stats", Description: "Your flip results",
+					NameLocalizations:        roboteco.Localized{"pt-BR": "placar"},
+					DescriptionLocalizations: roboteco.Localized{"pt-BR": "Seus resultados"},
 				},
 			},
 		}},
 	})
-	return 0
 }
 
 //go:wasmexport handle_command
-func handleCommand() int32 {
-	var input commandInput
-	if err := pdk.InputJSON(&input); err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	var content string
-	switch input.Subcommand {
+func handleCommand() int32 { return roboteco.HandleCommand(run) }
+
+func run(cmd roboteco.Command) (roboteco.Response, error) {
+	switch cmd.Subcommand {
 	case "flip":
-		side := "heads"
-		if rand.IntN(2) == 1 {
-			side = "tails"
-		}
-		call, _ := input.Options["call"].(string)
+		side := []string{"heads", "tails"}[rand.IntN(2)]
 		result := "lost"
-		if call == side {
+		if cmd.String("call") == side {
 			result = "won"
 		}
-		key := "flips:" + input.UserID + ":" + result
-		n, _ := strconv.Atoi(get(key))
-		set(key, strconv.Itoa(n+1))
-		content = fmt.Sprintf("🪙 **%s**, you called %s: you %s! (from Go)", side, call, result)
+		if _, err := roboteco.KV.Increment("flips:"+cmd.UserID+":"+result, 1); err != nil {
+			return roboteco.Response{}, err
+		}
+		return roboteco.Reply(fmt.Sprintf("🪙 **%s**, you called %s: you %s! (from Go)", side, cmd.String("call"), result)), nil
 	case "stats":
-		won, _ := strconv.Atoi(get("flips:" + input.UserID + ":won"))
-		lost, _ := strconv.Atoi(get("flips:" + input.UserID + ":lost"))
-		content = fmt.Sprintf("<@%s>: %d won, %d lost.", input.UserID, won, lost)
-	default:
-		content = "Unknown subcommand " + input.Subcommand + "."
+		won, _, _ := roboteco.KV.Get("flips:" + cmd.UserID + ":won")
+		lost, _, _ := roboteco.KV.Get("flips:" + cmd.UserID + ":lost")
+		return roboteco.Reply(fmt.Sprintf("<@%s>: %s won, %s lost.", cmd.UserID, orZero(won), orZero(lost))), nil
 	}
-	pdk.OutputJSON(map[string]any{"actions": []action{{Type: "reply", Content: content}}})
-	return 0
+	return roboteco.Private("Unknown subcommand " + cmd.Subcommand + "."), nil
+}
+
+func orZero(s string) string {
+	if s == "" {
+		return "0"
+	}
+	return s
 }
 
 func main() {}

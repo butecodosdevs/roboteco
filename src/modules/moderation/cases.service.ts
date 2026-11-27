@@ -1,5 +1,6 @@
 import { and, count, desc, eq, gt, sql } from 'drizzle-orm';
-import { Injectable } from '@/core';
+import { z } from 'zod';
+import { Expose, Injectable, type PluginScope, snowflake } from '@/core';
 import { db, schema } from '@/db';
 import { t } from '@/i18n';
 
@@ -146,5 +147,31 @@ export class CasesService {
         ),
       );
     return row?.total ?? 0;
+  }
+
+  @Expose('moderation.history', {
+    permission: 'moderation.read',
+    description: "A member's moderation cases in this server, newest first",
+    input: z.object({ userId: snowflake, limit: z.number().int().min(1).max(25).default(10) }),
+    output: z.object({
+      total: z.number(),
+      cases: z.array(
+        z.object({
+          number: z.number(),
+          action: z.string(),
+          reason: z.string().nullable(),
+          moderatorId: z.string(),
+          durationSeconds: z.number().nullable(),
+          createdAt: z.string(),
+        }),
+      ),
+    }),
+  })
+  async historyOf(scope: PluginScope, { userId, limit }: { userId: string; limit: number }) {
+    const { cases, total } = await this.forUser(scope.guildId, userId, limit);
+    return {
+      total,
+      cases: cases.map((entry) => ({ ...entry, createdAt: entry.createdAt.toISOString() })),
+    };
   }
 }

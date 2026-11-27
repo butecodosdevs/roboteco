@@ -1,104 +1,73 @@
-use std::collections::HashMap;
-
 use extism_pdk::*;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct CommandInput {
-    command: String,
-    options: HashMap<String, Value>,
-    user_id: String,
-    locale: String,
-    #[serde(default)]
-    focused: Option<Focused>,
-}
-
-#[derive(Deserialize)]
-struct Focused {
-    value: String,
-}
-
-#[derive(Serialize)]
-struct KvSet {
-    key: String,
-    value: String,
-}
-
-#[host_fn]
-extern "ExtismHost" {
-    fn kv_get(key: String) -> String;
-    fn kv_set(input: Json<KvSet>);
-}
+use roboteco::*;
 
 const STYLES: [&str; 3] = ["friendly", "loud", "pirate"];
 
 #[plugin_fn]
-pub fn manifest() -> FnResult<Json<Value>> {
-    Ok(Json(json!({
-        "name": "hello",
-        "version": "0.2.0",
-        "commands": [
-            {
-                "name": "hello",
-                "description": "Say hello",
-                "nameLocalizations": { "pt-BR": "ola" },
-                "descriptionLocalizations": { "pt-BR": "Diz olá" },
-                "options": [
-                    {
-                        "type": "user", "name": "who", "description": "Who to greet",
-                        "nameLocalizations": { "pt-BR": "quem" },
-                        "descriptionLocalizations": { "pt-BR": "Quem cumprimentar" }
-                    },
-                    {
-                        "type": "string", "name": "style", "description": "How to say it", "autocomplete": true,
-                        "nameLocalizations": { "pt-BR": "estilo" },
-                        "descriptionLocalizations": { "pt-BR": "Como dizer" }
-                    }
-                ]
-            },
-            {
-                "name": "count",
-                "description": "Count how many times you ran this",
-                "nameLocalizations": { "pt-BR": "contar" },
-                "descriptionLocalizations": { "pt-BR": "Conta quantas vezes você usou isto" }
-            }
-        ]
-    })))
+pub fn manifest() -> FnResult<Json<Manifest>> {
+    Ok(Json(
+        Manifest::new("hello", "0.4.0")
+            .uses(&["kv.increment", "levels.get"])
+            .context(&["member", "guild"])
+            .command(
+                CommandSpec::new("hello", "Say hello")
+                    .localized("pt-BR", "ola", "Diz olá")
+                    .option(OptionSpec::user("who", "Who to greet").localized("pt-BR", "quem", "Quem cumprimentar"))
+                    .option(OptionSpec::string("style", "How to say it").autocomplete().localized("pt-BR", "estilo", "Como dizer")),
+            )
+            .command(
+                CommandSpec::new("count", "Count how many times you ran this")
+                    .localized("pt-BR", "contar", "Conta quantas vezes você usou isto"),
+            )
+            .command(
+                CommandSpec::new("profile", "Show someone's profile")
+                    .localized("pt-BR", "perfil", "Mostra o perfil de alguém")
+                    .option(OptionSpec::user("who", "Whose profile (default you)").localized("pt-BR", "quem", "De quem")),
+            ),
+    ))
 }
 
 #[plugin_fn]
-pub fn handle_command(Json(input): Json<CommandInput>) -> FnResult<Json<Value>> {
-    let content = match input.command.as_str() {
+pub fn handle_command(Json(cmd): Json<Command>) -> FnResult<Json<Response>> {
+    let response = match cmd.command.as_str() {
         "hello" => {
-            let who = input.options.get("who").and_then(Value::as_str).unwrap_or(&input.user_id);
-            let greeting = if input.locale.starts_with("pt") { "Olá" } else { "Hello" };
-            let line = format!("{greeting}, <@{who}>!");
-            match input.options.get("style").and_then(Value::as_str) {
+            let who = cmd.id("who").unwrap_or(&cmd.user_id);
+            let line = format!("{}, <@{who}>!", if cmd.is_portuguese() { "Olá" } else { "Hello" });
+            Response::reply(match cmd.string("style") {
                 Some("loud") => format!("{}!!", line.to_uppercase()),
                 Some("pirate") => format!("Ahoy! {line} ☠️"),
                 _ => line,
-            }
+            })
         }
         "count" => {
-            let key = format!("count:{}", input.user_id);
-            let next = unsafe { kv_get(key.clone())? }.parse::<u64>().unwrap_or(0) + 1;
-            unsafe { kv_set(Json(KvSet { key, value: next.to_string() }))? };
-            format!("<@{}> has counted **{next}** time(s).", input.user_id)
+            let total = kv::increment(&format!("count:{}", cmd.user_id), 1)?;
+            Response::reply(format!("<@{}> has counted **{total}** time(s).", cmd.user_id))
         }
-        other => format!("Unknown command {other}."),
+        "profile" => profile(&cmd)?,
+        other => Response::private(format!("Unknown command {other}.")),
     };
-    Ok(Json(json!({ "actions": [{ "type": "reply", "content": content }] })))
+    Ok(Json(response))
 }
 
 #[plugin_fn]
-pub fn autocomplete(Json(input): Json<CommandInput>) -> FnResult<Json<Value>> {
-    let typed = input.focused.map(|f| f.value.to_lowercase()).unwrap_or_default();
-    let choices: Vec<Value> = STYLES
-        .iter()
-        .filter(|style| style.starts_with(&typed))
-        .map(|style| json!({ "name": style, "value": style }))
-        .collect();
-    Ok(Json(json!({ "choices": choices })))
+pub fn autocomplete(Json(cmd): Json<Command>) -> FnResult<Json<Choices>> {
+    let typed = cmd.focused.map(|f| f.value).unwrap_or_default();
+    Ok(Json(Choices::matching(&typed, STYLES)))
+}
+
+fn profile(cmd: &Command) -> Result<Response, Error> {
+    // Your own member data and a picked member both arrive with the call: no lookups needed.
+    let Some(member) = cmd.member("who").or(cmd.context.member.as_ref()) else {
+        return Ok(Response::private("That member is not in this server."));
+    };
+    let level = levels::get(&member.id)?;
+    let rank = level.rank.map_or("unranked".to_string(), |r| format!("#{r}"));
+    let server = cmd.context.guild.as_ref().map_or("this server", |g| g.name.as_str());
+    Ok(Response::reply(format!(
+        "**{}** in {server} · level {} ({} XP, {rank}) · {} role(s)",
+        member.display_name,
+        level.level,
+        level.xp,
+        member.roles.len(),
+    )))
 }

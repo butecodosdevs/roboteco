@@ -1,7 +1,8 @@
 import type { GuildMember, Message, SendableChannels } from 'discord.js';
 import { and, asc, count, desc, eq, gt, lte, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { cache } from '@/cache';
-import { Injectable } from '@/core';
+import { Expose, Injectable, type PluginScope, snowflake } from '@/core';
 import { db, getGuildSettings, schema, userScope } from '@/db';
 import { t } from '@/i18n';
 
@@ -133,5 +134,52 @@ export class LevelsService {
 
   async eraseUser(userId: string, guildId?: string): Promise<void> {
     await db.delete(levels).where(userScope(levels.userId, userId, levels.guildId, guildId));
+  }
+
+  @Expose('levels.get', {
+    permission: 'levels.read',
+    description: "A member's XP, level and leaderboard position in this server",
+    input: z.object({ userId: snowflake }),
+    output: z.object({ xp: z.number(), level: z.number(), rank: z.number().nullable() }),
+  })
+  async levelOf(scope: PluginScope, { userId }: { userId: string }) {
+    const row = await this.get(scope.guildId, userId);
+    if (!row) return { xp: 0, level: 0, rank: null };
+    return {
+      xp: row.xp,
+      level: levelFor(row.xp).level,
+      rank: await this.position(scope.guildId, row.xp),
+    };
+  }
+
+  @Expose('levels.top', {
+    permission: 'levels.read',
+    description: 'The leaderboard of this server',
+    input: z.object({ limit: z.number().int().min(1).max(25).default(10) }),
+    output: z.object({
+      entries: z.array(z.object({ userId: z.string(), xp: z.number(), level: z.number() })),
+    }),
+  })
+  async leaderboard(scope: PluginScope, { limit }: { limit: number }) {
+    const rows = await this.top(scope.guildId, limit);
+    return {
+      entries: rows.map((row) => ({
+        userId: row.userId,
+        xp: row.xp,
+        level: levelFor(row.xp).level,
+      })),
+    };
+  }
+
+  @Expose('xp.grant', {
+    permission: 'xp.grant',
+    description: 'Give XP to the member who ran the command (1 to 100 per call)',
+    input: z.object({ amount: z.number().int().min(1).max(100) }),
+    output: z.object({ xp: z.number(), level: z.number() }),
+  })
+  async grantFromPlugin(scope: PluginScope, { amount }: { amount: number }) {
+    await this.grant(null, scope.guildId, scope.userId, amount);
+    const xp = (await this.get(scope.guildId, scope.userId))?.xp ?? amount;
+    return { xp, level: levelFor(xp).level };
   }
 }

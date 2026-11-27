@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import { cache } from '@/cache';
 import { Injectable, inject, isBuiltInCommand } from '@/core';
 import { reportError } from '@/logger';
-import { type LoadedPlugin, PluginEngineService, permissions } from './plugin-engine.service';
+import { type LoadedPlugin, PluginEngineService } from './plugin-engine.service';
+import { PluginHostService } from './plugin-host.service';
 import type { PluginCommandSpec } from './plugin-manifest.service';
 
 export interface PluginCommandEntry {
@@ -17,7 +17,7 @@ const registrySchema = z.object({
     z.object({
       id: z.string().regex(/^[a-z0-9-]{1,32}$/),
       wasm: z.string(),
-      permissions: z.array(z.enum(permissions)).default([]),
+      permissions: z.array(z.string()).default([]),
       allowedHosts: z.array(z.string()).optional(),
     }),
   ),
@@ -81,7 +81,6 @@ export class PluginRegistryService {
   }
 
   async purgeGuild(guildId: string): Promise<void> {
-    for (const plugin of this.loaded.values())
-      await cache.del(`plugins:kv:${plugin.id}:${guildId}`);
+    await inject(PluginHostService).purge([...this.loaded.keys()], guildId);
   }
 }

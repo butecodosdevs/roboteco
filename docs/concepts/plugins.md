@@ -1,121 +1,158 @@
-# Plugins (WASM, proof of concept)
+# Plugins (WASM)
 
 ## What it is
 
-Code: `src/modules/plugins/` (engine, registry, manifest validation), `src/lib/wasm.ts` (import inspection, memory cap), example plugins in `plugins/`.
+A plugin is a WebAssembly module that adds slash commands to the bot. It can be written in any language that compiles to WASM; there are SDKs for **Rust** (`plugins/sdk/rust`) and **Go** (`plugins/sdk/go`). The bot runs plugins in [Extism](https://extism.org) sandboxes inside worker threads.
 
-A plugin is a WebAssembly module, written in any language that compiles to WASM, that adds commands to the bot. The bot runs it inside [Extism](https://extism.org), a sandbox in a worker thread. The plugin never sees the Discord token, the disk or the network. It gets JSON in, returns JSON *actions* out, and can only call the host functions it was granted.
+A plugin never sees the Discord token, the database, the disk or the network. It receives JSON, returns JSON, and reaches bot data only through **capabilities**: existing service methods the bot exposes, each behind a permission.
 
-Plugins declare their own slash commands, which show up in Discord like the built-in ones (`/hello`, `/coin flip`). `/plugin list` shows what's installed.
+Code:
+- `src/modules/plugins/`: the engine, registry, manifest and contract schemas, host capabilities, and Discord data;
+- `src/core/expose.ts`: `@Expose`;
+- `src/lib/wasm.ts`: import inspection and the memory cap;
+- `plugins/`: SDKs, examples and fixtures.
 
 ## What it's for
 
-Letting the community extend the bot without trusting their code. A broken or hostile plugin can:
-- loop forever: it's stopped after 2 seconds;
-- eat memory: it's capped at 64 MB;
-- call the network: blocked unless granted, and then only to the hosts on its allowlist;
-- store data: only in its own space for each server.
+Letting the community add features without trusting their code. A broken or hostile plugin is stopped after 2 seconds and capped at 64 MB. It can only call capabilities it declared and the server granted, and it only ever sees the server it was called from.
 
-It can't take the bot down with it.
+## Quick start
 
-## How it works
-
-**Contract (v1)**
-
-| Export | Input | Output |
-| --- | --- | --- |
-| `manifest` | — | `{ name, version, commands: [CommandSpec] }`, at most 25 commands |
-| `handle_command` | `{ command, subcommand, options, userId, guildId, channelId, locale }` | `{ actions: [{ type: "reply", content, ephemeral? }] }` (up to 5, each content at most 2000 characters) |
-| `autocomplete` (optional) | the same, plus `focused: { name, value }` | `{ choices: [{ name, value }] }` (up to 25) |
-
-A `CommandSpec` describes a real slash command:
-
-```json
-{
-  "name": "coin", "description": "Flip coins",
-  "nameLocalizations": { "pt-BR": "moeda" }, "descriptionLocalizations": { "pt-BR": "Joga moedas" },
-  "subcommands": [{
-    "name": "flip", "description": "Flip a coin",
-    "options": [{ "type": "string", "name": "call", "description": "Heads or tails?", "required": true,
-                  "choices": [{ "name": "heads", "value": "heads" }, { "name": "tails", "value": "tails" }] }]
-  }],
-  "defaultMemberPermissions": ["ManageGuild"],
-  "guildOnly": true
-}
-```
-
-- **Option types:** `string`, `integer`, `number`, `boolean`, `user`, `channel`, `role`, with `required`, `choices`, `autocomplete`, `minValue`/`maxValue` and `minLength`/`maxLength`. A command has either `options` or `subcommands`, not both.
-- **Values the plugin receives:** `options` holds the values the member typed. Users, channels and roles arrive as IDs.
-- **Server-only:** `guildOnly` defaults to `true`.
-- **Refused before Discord sees it:** the manifest is checked against Discord's rules. Names must be lowercase, required options must come before optional ones, locale codes must be valid Discord locales, and `choices` can't be combined with `autocomplete`. A plugin whose command name clashes with a built-in command or another plugin is refused.
-- **Registration:** `pnpm deploy-commands` loads the plugins in `plugins/registry.json` and registers their commands alongside the built-in ones. This goes through the core `OnCommandDeploy` module hook, so `deploy-commands.ts` doesn't depend on any feature. At runtime, `PluginsModule` routes those commands and their autocomplete to the plugin, with server-only checks and a 2-second cooldown per member and command.
-
-The output is validated with zod. Anything else is rejected, and the user gets "the plugin sent a response I could not use". Replies are always sent with `allowedMentions: { parse: [] }`, so a plugin can't ping anyone.
-
-**Host functions and permissions.** Imports from `extism:host/user`:
-
-| Function | Permission | Notes |
-| --- | --- | --- |
-| `kv_get(key) -> value`, `kv_set({key, value})`, `kv_del(key)` | `kv` | One Valkey hash per plugin and server. Keys up to 128 bytes, values up to 4 KB, 1000 keys |
-| `xp_grant(amount) -> granted` | `xp.grant` | Gives XP to the member who ran the command, at most 100 per call, through `LevelsService` |
-| `log(message)` | — | Goes to the bot's logs |
-| Extism's `http_request` | `http` | Only hosts in the plugin's `allowedHosts` |
-
-**Permissions come from the module, not from the author's claims.** At load time the bot reads the WASM's imports. If the module imports a function whose permission isn't granted in `plugins/registry.json`, or a function the bot doesn't know, the plugin is refused before it ever runs.
-
-**Limits** (`limits` in `plugin-engine.service.ts`): 2 s per call, with a watchdog 1 s later in case the worker itself hangs; 64 MB of memory; no filesystem (`allowedPaths: {}`); WASI only for languages that need it (Go). Calls to one plugin are queued, so plugins don't need to handle concurrency and 10 simultaneous counters lose no updates.
-
-**Installing (POC):** `plugins/registry.json` lists `{ id, wasm, permissions, allowedHosts? }`. The plugins are loaded when the bot starts.
-
-## Example: a Rust and a Go plugin
-
-`plugins/hello-rust` (`/hello [who] [style]` with autocomplete for `style`, and `/count`) and `plugins/coin-go` (`/coin flip call:heads|tails`, `/coin stats`). Both are localized to pt-BR (`/ola`, `/moeda jogar`). Build both with `pnpm plugins:build`, which needs Rust's `wasm32-unknown-unknown` target and Go 1.24+.
+**Rust.** Add `extism-pdk` and `roboteco = { path = "plugins/sdk/rust" }` to your `Cargo.toml` (`crate-type = ["cdylib"]`):
 
 ```rust
-#[host_fn]
-extern "ExtismHost" {
-    fn kv_get(key: String) -> String;
-    fn kv_set(input: Json<KvSet>);
+use extism_pdk::*;
+use roboteco::*;
+
+#[plugin_fn]
+pub fn manifest() -> FnResult<Json<Manifest>> {
+    Ok(Json(
+        Manifest::new("hello", "1.0.0")
+            .uses(&["kv.increment"])
+            .command(CommandSpec::new("count", "Count your uses").localized("pt-BR", "contar", "Conta seus usos")),
+    ))
 }
 
 #[plugin_fn]
-pub fn handle_command(Json(input): Json<CommandInput>) -> FnResult<Json<serde_json::Value>> {
-    let key = format!("count:{}", input.user_id);
-    let next: u64 = unsafe { kv_get(key.clone())? }.parse().unwrap_or(0) + 1;
-    unsafe { kv_set(Json(KvSet { key, value: next.to_string() }))? };
-    Ok(Json(json!({ "actions": [{ "type": "reply", "content": format!("**{next}**") }] })))
+pub fn handle_command(Json(cmd): Json<Command>) -> FnResult<Json<Response>> {
+    let total = kv::increment(&format!("count:{}", cmd.user_id), 1)?;
+    Ok(Json(Response::reply(format!("<@{}> counted **{total}**", cmd.user_id))))
 }
 ```
+
+Build with `cargo build --release --target wasm32-unknown-unknown`.
+
+**Go.** Add `roboteco.dev/sdk`, and build with `GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o plugin.wasm .`:
 
 ```go
-//go:wasmimport extism:host/user kv_get
-func kvGet(uint64) uint64
+//go:wasmexport manifest
+func manifest() int32 {
+	return roboteco.Manifest(roboteco.Plugin{
+		Name: "coin", Version: "1.0.0", Uses: []string{"kv.increment"},
+		Commands: []roboteco.CommandSpec{{Name: "flip", Description: "Flip a coin"}},
+	})
+}
 
 //go:wasmexport handle_command
-func handleCommand() int32 {
-	var input commandInput
-	pdk.InputJSON(&input)
-	pdk.OutputJSON(map[string]any{"actions": []action{{Type: "reply", Content: "🪙 heads"}}})
-	return 0
+func handleCommand() int32 { return roboteco.HandleCommand(run) }
+
+func run(cmd roboteco.Command) (roboteco.Response, error) {
+	n, err := roboteco.KV.Increment("flips:"+cmd.UserID, 1)
+	return roboteco.Reply(fmt.Sprintf("flip #%d", n)), err
 }
 ```
 
-Built sizes: Rust 126 KB, Go 4.5 MB. Both load in about 30 ms.
+**Try it without Discord**, against the local Postgres and Valkey:
 
-`plugins/fixtures` holds hostile test plugins: `evil` (an infinite loop, a memory bomb, a network call) and `greedy` (asks for a million XP). Tested against a real Valkey and Postgres:
-- deploying turns the manifests into slash commands with localizations, typed options, subcommands, choices and autocomplete;
-- invalid manifests (uppercase names, a required option after an optional one, options and subcommands together, unknown locales, choices combined with autocomplete) are refused, and so are names that clash with `/ban` or another plugin;
-- typed options reach the plugin (`/hello who:@friend style:pirate` → "Ahoy! Hello, <@friend>! ☠️"), and the Go plugin's subcommands and choices work;
-- autocomplete asks the plugin, server-only commands are refused in DMs, and a quick second use hits the cooldown;
-- the Rust and Go plugins reply without pinging anyone;
-- storage persists and is separate for each server and each plugin;
-- 10 simultaneous calls produce a count of 10;
-- `greedy` is refused without `xp.grant`, and with it gets the 100 cap, not a million;
-- `evil` is refused without `http`, and with it can't reach `169.254.169.254`;
-- the infinite loop is stopped after about 2 s, and other plugins keep working;
-- the memory bomb fails in 36 ms with the bot's memory growing about 65 MB;
-- the plugin still works after a crash and a timeout;
-- removing a server's data deletes the plugin data.
+```sh
+pnpm plugin check plugin.wasm                         # validates the manifest, lists commands and the permissions to grant
+pnpm plugin run plugin.wasm count                     # runs /count and prints the reply
+pnpm plugin run plugins/dist/coin.wasm coin flip call=heads --locale pt-BR --user 123456789012345678
+```
+
+`run` checks option names, types and required options against the manifest. It uses a fake member and server (`100000000000000001`), and gives the plugin every permission it asks for.
+
+**Install it.** Add `{ "id", "wasm", "permissions" }` to `plugins/registry.json`, using the permissions `pnpm plugin check` printed. Restart the bot and run `pnpm deploy-commands`.
+
+## How it works
+
+**Exports**
+
+| Export | Input | Output |
+| --- | --- | --- |
+| `manifest` | — | `{ name, version, commands, uses, context }` |
+| `handle_command` | `Command` | `{ actions: [{ type: "reply", content, ephemeral? }] }`, up to 5 actions, each at most 2000 characters. Mentions never ping. |
+| `autocomplete` (optional) | `Command` with `focused: { name, value }` | `{ choices: [{ name, value }] }`, up to 25 |
+
+`Command` is `{ command, subcommand, options, userId, guildId, channelId, locale, context?, resolved? }`:
+- **`options`:** the values the member typed. Users, roles and channels arrive as IDs.
+- **`resolved`:** the members, roles and channels picked in those options, sent by Discord with the interaction. A plugin never has to look them up.
+- **`context`:** the calling `member`, `guild` and `channel`, for each kind listed in the manifest's `context`. Built from discord.js's cache, with no API call.
+
+The SDKs wrap all of this, e.g. `cmd.member("who")` and `cmd.context.guild`.
+
+**Commands** are real slash commands with typed options (string, integer, number, boolean, user, channel, role), subcommands, choices, ranges, autocomplete, translations, default permissions, and server-only (the default) or DM use. The manifest is checked against Discord's rules before deploy. A command name that clashes with a built-in command or another plugin is refused. `pnpm deploy-commands` registers plugin commands next to the built-in ones, through the core `OnCommandDeploy` hook.
+
+**Capabilities.** The only host function is `call({ name, input })`, which returns `{ ok: true, value }` or `{ ok: false, error: { code, message } }`. The SDKs wrap it as typed functions (`kv::increment`, `roboteco.Levels.Get`, …). Every capability is a service method marked with `@Expose`. The plugin uses the same code the bot's own commands use, and adding one is a decorator:
+
+```ts
+@Expose('levels.get', {
+  permission: 'levels.read',
+  description: "A member's XP, level and leaderboard position in this server",
+  input: z.object({ userId: snowflake }),
+  output: z.object({ xp: z.number(), level: z.number(), rank: z.number().nullable() }),
+})
+async levelOf(scope: PluginScope, { userId }: { userId: string }) { … }
+```
+
+| Capability | Permission | Notes |
+| --- | --- | --- |
+| `kv.get`, `kv.set`, `kv.delete`, `kv.increment`, `kv.list` | `kv` | Valkey, one space per plugin and server. Keys up to 128 bytes, values up to 4 KB, 1000 keys. `increment` is atomic. |
+| `levels.get`, `levels.top` | `levels.read` | `LevelsService`, the same as `/rank` and `/leaderboard` |
+| `xp.grant` | `xp.grant` | 1 to 100 XP for the member who ran the command |
+| `moderation.history` | `moderation.read` | `CasesService`, public case fields only |
+| `discord.member.get` | `discord.read` | Members not in `resolved` or `context`; cache first |
+| `log` | — | Usable without declaring it |
+
+`pnpm plugin schema` writes `plugins/sdk/schema.json`: JSON Schema for the manifest, both exports' input and output, and every capability. It can be used to generate SDKs in other languages.
+
+**Checks** made by the engine, so services don't repeat them:
+- **Declaration and permissions:**
+  - a capability must be listed in the manifest's `uses`, otherwise the call fails with `not_declared` and the message names the fix;
+  - at load time, the permissions of everything in `uses` must be granted in `plugins/registry.json`;
+  - a load failure lists every missing permission and what needs it, and misspelled permissions are listed next to the valid ones.
+- **Scope:** comes from the interaction. Input that names another server is ignored.
+- **Input** is validated: an `invalid_input` error names the field. **Output** is cut down to the capability's schema.
+- **Rate limit:** 200 calls per 10 seconds per plugin and server (`rate_limited`).
+- **Service errors:** services throw `CapabilityError(code, message)` for errors a plugin can handle (`storage_full`). Anything else returns `failed` and is logged.
+- **Imports:** a plugin that imports anything except `call` (or Extism's HTTP functions, which need `http` and `allowedHosts`) is refused.
+
+**Limits:**
+- 2 seconds per call, plus a watchdog;
+- 64 MB of memory;
+- no filesystem;
+- WASI only for modules that need it (Go);
+- calls to one plugin are queued, so plugin code never runs concurrently.
+
+## Examples
+
+All of these are built with `pnpm plugins:build`.
+
+| Plugin | Shows |
+| --- | --- |
+| `plugins/hello-rust` | `/hello [who] [style]` (autocomplete), `/count` (`kv.increment`), `/profile [who]` (resolved and context members, `levels.get`). 73 lines; it was 153 without the SDK |
+| `plugins/coin-go` | `/coin flip call:heads\|tails`, `/coin stats`: subcommands, choices, KV. 72 lines; it was 115 |
+| `plugins/fixtures/evil-rust`, `greedy-rust` | Hostile tests: loops, memory, network, calling capabilities it shouldn't, too much XP |
+
+Tested against the real Postgres and Valkey:
+- `/profile who:@Ana` uses the member Discord sent and makes no lookup;
+- 20 concurrent `/count` calls end at exactly 20;
+- the Go plugin works through its SDK;
+- undeclared, unknown and malformed calls return `not_declared` (with the fix), `unknown` and `invalid_input` (naming the field);
+- `log` works without declaring it;
+- `xp.grant` rejects 1,000,000 and grants 100;
+- loading without permissions lists all of them with their reasons, and a misspelled permission shows the valid ones;
+- the earlier sandbox tests (loops, memory, network, scope spoofing, rate limits) still pass.
 
 ## What the POC found
 
@@ -125,8 +162,9 @@ Built sizes: Rust 126 KB, Go 4.5 MB. Both load in about 30 ms.
 
 ## Next steps
 
-- A typed contract (WIT or JSON Schema) with generated SDKs; the manifest is already validated with zod and could be exported as JSON Schema.
+- Domain events plugins can subscribe to (`levels.levelUp`, `moderation.caseCreated`).
 - More actions: embeds, buttons, roles, moderation through `ModerationService`.
-- Install per server with `/plugins install`, an approval prompt for permissions, and modules pinned and signed by hash.
-- Signed webhooks for plugins in languages WASM handles badly.
+- Install per server with `/plugins install`, an approval prompt for permissions, and modules pinned by hash.
+- Signed webhooks for plugins in languages WASM handles badly, using the same contract.
+- A TypeScript SDK (via the JS PDK), generated from `plugins/sdk/schema.json`.
 - Running plugins in production: the Docker image doesn't copy `plugins/` yet.

@@ -1,20 +1,25 @@
+import type { Client } from 'discord.js';
 import { inject, Module, type OnCommandDeploy, type OnGuildRemove, type OnReady } from '@/core';
 import { LevelsModule } from '@/modules/levels/levels.module';
+import { ModerationModule } from '@/modules/moderation/moderation.module';
 import { PluginCommand } from './commands/plugin/plugin.command';
+import { DiscordDataService } from './discord-data.service';
 import { InteractionCreateEvent } from './events/interaction-create.event';
 import { PluginManifestService } from './plugin-manifest.service';
 import { PluginRegistryService } from './plugin-registry.service';
 
 @Module({
-  imports: [LevelsModule],
+  imports: [LevelsModule, ModerationModule],
   commands: [PluginCommand],
   events: [InteractionCreateEvent],
 })
 export class PluginsModule implements OnReady, OnGuildRemove, OnCommandDeploy {
   private readonly registry = inject(PluginRegistryService);
   private readonly manifests = inject(PluginManifestService);
+  private readonly discord = inject(DiscordDataService);
 
-  onReady() {
+  onReady(client: Client<true>) {
+    this.discord.attach(client);
     return this.registry.loadAll();
   }
 

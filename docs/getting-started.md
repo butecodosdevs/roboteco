@@ -84,4 +84,5 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm db:migrate:runtime` | Apply migrations the way production does (no drizzle-kit) |
 | `pnpm prod:up` / `prod:logs` | Build and start `compose.prod.yaml` / follow the bot's logs |
 | `pnpm plugins:build` | Build the example WASM plugins into `plugins/dist/` |
+| `pnpm plugin check\|run\|schema` | Validate a plugin, run its commands without Discord, export the contract's JSON Schema ([plugins](concepts/plugins.md#quick-start)) |
 | `pnpm db:push` / `db:studio` | Sync the schema without a migration (local only) / browse data |

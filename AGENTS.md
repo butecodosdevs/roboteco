@@ -18,6 +18,7 @@ Read [docs/README.md](docs/README.md) first. Each concept doc explains what the 
 - Use `inject(Service)` for shared state. Never use module-level mutable state.
 - Components and staff-only buttons must check permissions themselves. Messages the bot posts on behalf of a member use `allowedMentions: { parse: [] }`.
 - Time-based work goes through `schedule()` and a `@Job`, never `setTimeout`.
+- Plugins reach bot data only through `@Expose`d service methods with zod input and output schemas. Never give them raw database or Discord access, and never add host functions other than `call` ([plugins](docs/concepts/plugins.md#how-it-works)).
 - Use Valkey (`@/cache`) for counters, cooldowns and expiring state, with atomic commands and a TTL. Use Postgres for anything that must last ([cache](docs/concepts/cache.md)).
 - Log with `logger` and report failures with `reportError` (`src/logger.ts`). Never use `console`.
 - A new table with server or user data needs `onGuildRemove` / `onUserErase` on its module ([privacy](docs/examples/privacy.md#module-hooks)).

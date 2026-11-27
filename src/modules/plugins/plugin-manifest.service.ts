@@ -9,6 +9,7 @@ import {
 } from 'discord.js';
 import { z } from 'zod';
 import { Injectable } from '@/core';
+import { channelSchema, contextKinds, guildSchema, memberSchema } from './discord-data.service';
 
 const name = z
   .string()
@@ -95,8 +96,74 @@ export const manifestSchema = z.object({
   name: z.string().min(1).max(32),
   version: z.string().max(32),
   commands: z.array(commandSchema).max(25),
+  uses: z.array(z.string().max(64)).max(50).default([]),
+  context: z.array(z.enum(contextKinds)).default([]),
 });
 
+const optionValue = z.union([z.string(), z.number(), z.boolean()]);
+const roleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.number(),
+  position: z.number(),
+});
+
+/** What `handle_command` and `autocomplete` receive. */
+export const commandInputSchema = z.object({
+  command: z.string(),
+  subcommand: z.string().nullable(),
+  options: z.record(z.string(), optionValue),
+  userId: z.string(),
+  guildId: z.string(),
+  channelId: z.string(),
+  locale: z.string(),
+  context: z
+    .object({
+      member: memberSchema.optional(),
+      guild: guildSchema.optional(),
+      channel: channelSchema.optional(),
+    })
+    .optional(),
+  resolved: z
+    .object({
+      members: z.record(z.string(), memberSchema),
+      roles: z.record(z.string(), roleSchema),
+      channels: z.record(z.string(), channelSchema),
+    })
+    .optional(),
+  focused: z.object({ name: z.string(), value: z.string() }).optional(),
+});
+
+/** What `handle_command` returns. */
+export const commandOutputSchema = z.object({
+  actions: z
+    .array(
+      z.discriminatedUnion('type', [
+        z.object({
+          type: z.literal('reply'),
+          content: z.string().min(1).max(2000),
+          ephemeral: z.boolean().optional(),
+        }),
+      ]),
+    )
+    .max(5),
+});
+
+/** What `autocomplete` returns. */
+export const choicesSchema = z.object({
+  choices: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(100),
+        value: z.union([z.string().max(100), z.number()]),
+      }),
+    )
+    .max(25),
+});
+
+export type CommandInput = z.infer<typeof commandInputSchema>;
+export type PluginAction = z.infer<typeof commandOutputSchema>['actions'][number];
+export type PluginChoice = z.infer<typeof choicesSchema>['choices'][number];
 export type PluginCommandSpec = z.infer<typeof commandSchema>;
 export type PluginManifest = z.infer<typeof manifestSchema>;
 type OptionSpec = z.infer<typeof option>;

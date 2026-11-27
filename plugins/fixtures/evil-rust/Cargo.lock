@@ -49,6 +49,7 @@ name = "evil-rust"
 version = "0.1.0"
 dependencies = [
  "extism-pdk",
+ "roboteco",
  "serde_json",
 ]
 
@@ -265,6 +266,15 @@ checksum = "72f81bee8c8ef9b577d1681a70ebbc962c232461e397b22c208c43c04b67a155"
 dependencies = [
  "rmp",
  "serde",
+]
+
+[[package]]
+name = "roboteco"
+version = "0.1.0"
+dependencies = [
+ "extism-pdk",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

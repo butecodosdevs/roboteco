@@ -1,3 +1,4 @@
+import { claimCapabilities } from './expose';
 import type { Type } from './types';
 
 const injectables = new WeakSet<Type>();
@@ -6,6 +7,7 @@ const instances = new Map<Type, unknown>();
 export function Injectable() {
   return (target: Type, _context: ClassDecoratorContext) => {
     injectables.add(target);
+    claimCapabilities(target);
   };
 }
 
