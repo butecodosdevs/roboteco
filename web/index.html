@@ -278,10 +278,12 @@ function pluginCard(p) {
         <div style="min-width:0">
           <div style="font-weight:500;font-size:13px">${esc(p.id)}${p.version ? `<span class="dim" style="font-weight:400;font-size:11.5px;margin-left:6px">${esc(p.version)}</span>` : ""}</div>
           <div class="mono dim" style="margin-top:1px">${esc(p.wasm)}</div>
+          ${p.source ? `<div class="dim" style="margin-top:1px;font-size:11.5px">fonte em <span class="mono">${esc(p.source.dir)}</span> · ${esc(p.source.toolchain)}${p.source.available ? "" : " (não instalado)"}</div>` : ""}
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto">
         ${status}
+        ${p.source ? `<button class="btn sm" data-act="plugin-build" data-id="${esc(p.id)}" ${p.source.available ? "" : `disabled title="${esc(p.source.toolchain)} não está instalado"`}>Compilar</button>` : ""}
         <button class="btn sm" data-act="plugin-remove" data-id="${esc(p.id)}">Remover</button>
       </div>
     </div>
@@ -476,6 +478,14 @@ async function pluginAction(act) {
       const payload = await api("/api/panel/plugins/deploy", { method: "POST", body: {} });
       plugins = payload.plugins;
       toast(`${plural(payload.commands, "comando publicado", "comandos publicados")} em ${payload.guild}`);
+      render();
+    } else if (act.dataset.act === "plugin-build") {
+      button.disabled = true;
+      button.textContent = "Compilando…";
+      const payload = await api(`/api/panel/plugins/${encodeURIComponent(id)}/build`, { method: "POST", body: {} });
+      plugins = payload.plugins;
+      const fresh = payload.plugins.find((p) => p.id === id);
+      toast(`${id}: ${payload.log}${fresh?.loaded ? "" : " — não carregou, veja o erro"}`);
       render();
     } else if (act.dataset.act === "plugin-remove") {
       if (!confirm(`Remover ${id} do registry? O arquivo .wasm continua no disco.`)) return;

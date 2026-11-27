@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { z } from 'zod';
 import { Injectable, inject, isBuiltInCommand, registerPanelRoute } from '@/core';
 import { commandCatalog } from '@/core/lifecycle';
+import { PluginBuildService, type PluginSource } from './plugin-build.service';
 import { PluginDeployService } from './plugin-deploy.service';
 import {
   type LoadedPlugin,
@@ -29,6 +30,8 @@ export interface PanelPlugin {
   required: string[];
   autocompletes: boolean;
   failure: string | null;
+  /** Source directory that can rebuild the WASM, when there is one. */
+  source: PluginSource | null;
   commands: { name: string; description: string; options: string[] }[];
 }
 
@@ -38,6 +41,7 @@ export class PluginPanelService {
   private readonly engine = inject(PluginEngineService);
   private readonly manifests = inject(PluginManifestService);
   private readonly deployer = inject(PluginDeployService);
+  private readonly builder = inject(PluginBuildService);
 
   list(): Promise<PanelPlugin[]> {
     return this.registry
@@ -85,6 +89,7 @@ export class PluginPanelService {
       required,
       autocompletes: loaded?.autocompletes ?? false,
       failure: this.registry.failure(definition.id) ?? null,
+      source: await this.builder.source(definition.id),
       commands,
     };
   }
@@ -141,6 +146,12 @@ export class PluginPanelService {
     return this.write([...definitions, definition]);
   }
 
+  /** Rebuilds the WASM from its source, then reloads so the panel shows the fresh version. */
+  async build(id: string): Promise<{ log: string; plugins: PanelPlugin[] }> {
+    const { log } = await this.builder.build(id);
+    return { log, plugins: await this.refresh() };
+  }
+
   async refresh(): Promise<PanelPlugin[]> {
     await this.registry.reload();
     return this.list();
@@ -185,6 +196,10 @@ export function registerPluginPanel(): void {
       else return { status: 405, body: { error: 'use POST /api/panel/plugins' } };
     } else if (action === 'refresh' && method === 'POST') {
       next = await panel.refresh();
+    } else if (action === 'build' && method === 'POST') {
+      if (!id) return { status: 400, body: { error: 'informe o plugin em /plugins/<id>/build' } };
+      const { log, plugins } = await panel.build(id);
+      return { body: { log, plugins, registry: await registry.definitions() } };
     } else if (action === 'deploy' && method === 'POST') {
       const result = await panel.deploy();
       return { body: { ...result, plugins: await panel.list() } };
