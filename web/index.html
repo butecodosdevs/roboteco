@@ -20,6 +20,7 @@
       <a data-go="resources"><span class="ic"></span>Recursos</a>
       <i>Plataforma</i>
       <a data-go="plugins"><span class="ic"></span>Plugins<span class="count" id="nav-plugins">0</span></a>
+      <a data-go="commands"><span class="ic"></span>Embutidos<span class="count" id="nav-commands">0</span></a>
       <a data-go="settings"><span class="ic"></span>Configurações</a>
       <a data-go="about"><span class="ic"></span>Como funciona</a>
     </nav>
@@ -39,6 +40,7 @@ const ICON = {
   mod: '<path d="M8 2.6 3.4 4.4v3.4c0 2.6 1.9 4.9 4.6 5.6 2.7-.7 4.6-3 4.6-5.6V4.4L8 2.6Z"/><path d="m6 8 1.5 1.5L10.2 6.7"/>',
   resources: '<rect x="2.4" y="2.4" width="4.6" height="4.6" rx="1"/><rect x="9" y="2.4" width="4.6" height="4.6" rx="1"/><rect x="2.4" y="9" width="4.6" height="4.6" rx="1"/><rect x="9" y="9" width="4.6" height="4.6" rx="1"/>',
   plugins: '<path d="M6 2.6v2.1a1.4 1.4 0 0 1-1.4 1.4H2.6v4.4h2a1.4 1.4 0 0 1 1.4 1.4v1.5h4.4v-1.5a1.4 1.4 0 0 1 1.4-1.4h2V6.1h-2A1.4 1.4 0 0 0 10.4 4.7V2.6z"/>',
+  commands: '<path d="M5.6 4.4 2.8 8l2.8 3.6M10.4 4.4 13.2 8l-2.8 3.6"/>',
   settings: '<circle cx="8" cy="8" r="2.1"/><path d="M8 2.2v1.4M8 12.4v1.4M2.2 8h1.4M12.4 8h1.4M3.9 3.9l1 1M11.1 11.1l1 1M12.1 3.9l-1 1M4.9 11.1l-1 1"/>',
   about: '<circle cx="8" cy="8" r="5.9"/><path d="M8 7.2v3.4M8 5.3v.3"/>',
   sun: '<circle cx="8" cy="8" r="2.8"/><path d="M8 1.8v1M8 13.2v1M1.8 8h1M13.2 8h1M3.7 3.7l.7.7M11.6 11.6l.7.7M12.3 3.7l-.7.7M4.4 11.6l-.7.7"/>',
@@ -122,7 +124,7 @@ function skeletonFor(v) {
   if (v === "overview") return skHead() + skMetrics() + `<div class="cols"><div class="stack">${skList(4)}${skList(3)}</div><div class="stack"><section class="card pad">${sk("120px", 11)}<div style="margin-top:14px">${skBars(5)}</div></section><section class="card pad">${sk("96px", 11)}<div style="margin-top:14px">${skDl(5)}</div></section></div></div>`;
   if (v === "mod") return skHead() + `<div class="stack">${skTable(8)}</div>`;
   if (v === "resources") return skHead() + `<div class="cols"><div class="stack">${skMetrics(2)}${skTable(4)}</div><div class="stack">${skList(3)}<section class="card pad">${sk("120px", 11)}<div style="margin-top:14px">${skBars(4)}</div></section></div></div>`;
-  if (v === "plugins") return skHead() + `<div class="stack">${skCardH("220px")}${skCardH("180px")}</div>`;
+  if (v === "plugins" || v === "commands") return skHead() + `<div class="stack">${skCardH("220px")}${skCardH("180px")}</div>`;
   if (v === "settings") return skHead() + `<div class="stack">${skTable(5)}${skList(2)}</div>`;
   return skHead() + `<div class="cols"><div class="stack">${skList(4)}</div><div class="stack">${skList(3)}</div></div>`;
 }
@@ -376,12 +378,20 @@ function builtinCard(group) {
 </section>`;
 }
 
-function builtinsSection() {
-  if (builtins === null) return `<section class="card pad" style="margin-top:12px">${skCardH("90px")}</section>`;
-  if (!builtins.length) return "";
-  const total = builtins.reduce((n, g) => n + g.commands.length, 0);
-  return `<div class="sec-title" style="margin:20px 0 12px">Comandos embutidos <span class="hint" style="font-weight:400">${plural(total, "comando", "comandos")} em ${plural(builtins.length, "módulo", "módulos")} — sempre publicados, não dá para desligar por aqui</span></div>
-  <div class="plug-list">${builtins.map(builtinCard).join("")}</div>`;
+function builtinsBody() {
+  if (builtins === null) return `<div class="plug-list">${skCardH("220px")}${skCardH("180px")}</div>`;
+  if (!builtins.length) return `<section class="card">${emptyRow("Nenhum comando embutido carregado.")}</section>`;
+  return `<div class="plug-list">${builtins.map(builtinCard).join("")}</div>`;
+}
+
+function viewCommands() {
+  const total = (builtins ?? []).reduce((n, g) => n + g.commands.length, 0);
+  const head = pageHead(
+    "Comandos embutidos",
+    "Os comandos que vêm no bot, agrupados pelo módulo que os declara. Sempre publicados junto com os plugins — não dá para desligar por aqui.",
+    `<span class="tag code">${plural(total, "comando", "comandos")}</span>`,
+  );
+  return shell(head, builtinsBody());
 }
 
 function viewPlugins() {  const list = plugins ?? [];
@@ -400,7 +410,7 @@ function viewPlugins() {  const list = plugins ?? [];
       <button class="btn pri" data-act="plugin-upload">Enviar</button>
     </div>
     <div class="hint">O zip precisa ter <span class="mono">&lt;id&gt;.wasm</span> na raiz — o resto do formato está em <span class="mono">docs/concepts/plugin-package.md</span>. O painel lê tudo em memória e grava só <span class="mono">plugins/dist/&lt;id&gt;.wasm</span>; nada mais do zip toca o disco. Enviar o mesmo id de novo substitui o arquivo e mantém as permissões.</div>
-  </section>${builtinsSection()}`;
+  </section>`;
   return shell(head, body);
 }
 
@@ -520,6 +530,7 @@ function paintHead() {
   if (out && !out.childElementCount) out.innerHTML = icon("out", 13);
   $("#nav-cases").textContent = nf(data?.counters?.cases ?? 0);
   $("#nav-plugins").textContent = nf(plugins?.length ?? meta?.plugins?.length ?? 0);
+  $("#nav-commands").textContent = nf((builtins ?? []).reduce((n, g) => n + g.commands.length, 0));
   $("#foot-guilds").textContent = nf(meta?.guilds?.length ?? 0);
   $("#foot-ping").textContent = meta?.ping == null ? "—" : `${meta.ping} ms`;
   $("#foot-active").textContent = nf((plugins ?? []).filter((p) => p.loaded).length);
@@ -527,12 +538,14 @@ function paintHead() {
 
 function render() {
   const v = state.view;
-  if (v === "plugins" && (plugins === null || builtins === null)) { loadPlugins().then(render); if (builtins === null) loadBuiltins(); return; }
+  if (v === "plugins" && plugins === null) { loadPlugins().then(render); return; }
+  if (v === "commands" && builtins === null) { loadBuiltins(); return; }
   if (v === "settings" && settings === null) { loadSettings().then(render); return; }
   let html;
   if (v === "mod") html = viewMod();
   else if (v === "resources") html = viewResources();
   else if (v === "plugins") html = viewPlugins();
+  else if (v === "commands") html = viewCommands();
   else if (v === "settings") html = viewSettings();
   else if (v === "about") html = viewAbout();
   else html = viewOverview();
