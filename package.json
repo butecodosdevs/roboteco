@@ -13,6 +13,7 @@
     "build": "tsx scripts/build.ts",
     "start": "node --enable-source-maps --env-file-if-exists=.env dist/index.js",
     "deploy-commands": "tsx --env-file-if-exists=.env src/deploy-commands.ts",
+    "deploy-plugins": "tsx --env-file-if-exists=.env scripts/deploy-plugins.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --env-file-if-exists=.env --import tsx --test --test-concurrency=1 \"tests/**/*.test.ts\"",
     "lint": "biome check . && pnpm lint:structure",

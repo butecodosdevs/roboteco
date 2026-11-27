@@ -76,6 +76,7 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm dev` | Run with reload on change |
 | `pnpm build` / `pnpm start` | Bundle to `dist/` with esbuild and run it (with source maps) |
 | `pnpm deploy-commands` | Register slash commands with Discord. Run after changing command names, descriptions or options |
+| `pnpm deploy-plugins [ids...]` | Publish only the plugins' commands, all of them or just the ones listed. The others stop being registered, so name every plugin you want to keep |
 | `pnpm typecheck` | TypeScript, including `scripts/` and `tests/` |
 | `pnpm test` | Behaviour tests in `tests/`, against the Postgres and Valkey in `.env` (run `pnpm db:migrate` first) |
 | `pnpm lint` | Biome plus [structure rules](concepts/structure-rules.md) |
