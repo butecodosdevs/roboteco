@@ -2,44 +2,27 @@ name: image
 
 # Build arm64 + deploy. Tudo o que é pipeline mora aqui, no repositório do bot.
 #
-# ## O runner
+# ## A divisão em duas partes, e por que ela é assim
 #
-# `vps-arm64` é um container no pod `support/actions-runner` do cluster. Ele
-# precisa estar aqui por um motivo físico: o registry da imagem é `registry.
-# support.svc.cluster.local:5000`, HTTP puro, alcançável só de dentro do cluster
-# — não há DNS público nem porta aberta. Runner do GitHub não consegue empurrar
-# para lá.
+# `ci.yml` roda os testes em `ubuntu-latest` (typecheck, lint, migração de banco
+# novo, `panel:check`) em todo PR e em push na `main`. Este repositório é público
+# e recebe PR de fork, então teste NUNCA roda no runner do cluster: aquele pod
+# tem o `~/.docker/config.json` do registry montado, e código de estranho com
+# essa credencial é exatamente o que não pode acontecer.
 #
-# O container já tem o `~/.docker/config.json` do Secret `registry-credentials`
-# montado, então nenhuma credencial de registry precisa existir como Secret
-# deste repositório.
+# Este workflow só builda e publica, e roda no `vps-arm64` por um motivo físico:
+# o registry é `registry.support.svc.cluster.local:5000`, HTTP puro, sem DNS
+# público e sem porta aberta. Só de dentro do cluster se empurra imagem para
+# lá — um runner do GitHub não consegue, independente de credencial.
 #
-# ## O deploy
-#
-# Depois do push, este job clona `giomartinsdev/gio-random-projects` com a
-# **deploy key** `INFRA_DEPLOY_KEY` (write, escopo de um repositório só), roda o
-# `bump-digest.sh` dele e commita o digest no manifesto. O ArgoCD (auto-sync +
-# selfHeal) aplica. Sem `kubectl apply` de workload e sem chave SSH: o pod não
-# fala com a API do cluster, só com o git.
-#
-# ## Por que `ci.yml` é separado, em runner do GitHub
-#
-# Este repositório é público e recebe PR de fork. Um PR não pode rodar num pod
-# que tem a credencial do registry montada. `ci.yml` roda os testes em
-# `ubuntu-latest`; a imagem só sai de um push na `main`.
+# A garantia de que a imagem é de um commit testado vem do `needs`: o job de
+# deploy só existe depois que o `ci` passou. Sem `skip-tests` nem teste
+# duplicado aqui, porque o runner do cluster não tem Node 26 nem compose.
 
 on:
   push:
-    # `feat/web-panel` está aqui TEMPORARIAMENTE, para provar o pipeline de
-    # ponta a ponta antes do merge do PR #1. Volta a ser só `main` no mesmo
-    # commit que mergear o PR — buildar branch em produção não é o desenho.
-    branches: [main, feat/web-panel]
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      skip-tests:
-        description: "Republicar sem rodar os testes (o commit já passou no CI)"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -62,43 +45,6 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-
-      # `npm i -g` e não `corepack`: o Node 26 removeu o corepack da
-      # distribuição. ANTES do `setup-node`, porque `cache: pnpm` procura o
-      # binário para achar o store e morre com "Unable to locate executable".
-      - name: Install pnpm
-        if: inputs.skip-tests != true
-        run: npm install --global pnpm@12.5.1
-
-      - uses: actions/setup-node@v4
-        if: inputs.skip-tests != true
-        with:
-          node-version: "26"
-          cache: pnpm
-
-      - name: Typecheck and lint
-        if: inputs.skip-tests != true
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm typecheck
-          pnpm lint
-
-      # `panel:check` precisa de Postgres: sobe um servidor HTTP de verdade,
-      # forja sessões no banco e prova que a allowlist recusa. `down -v` antes
-      # porque o volume do compose sobrevive entre jobs neste runner, e um banco
-      # com migração que já não existe no git já mordeu.
-      - name: Panel boundary
-        if: inputs.skip-tests != true
-        run: |
-          set -euo pipefail
-          docker compose down -v >/dev/null 2>&1 || true
-          pnpm services:up
-          trap 'docker compose down -v' EXIT
-          export DISCORD_TOKEN=x DISCORD_CLIENT_ID=x
-          export DATABASE_URL=postgres://roboteco:roboteco@localhost:5432/roboteco
-          export S3_ENDPOINT=http://localhost:3900 S3_ACCESS_KEY_ID=x S3_SECRET_ACCESS_KEY=x S3_BUCKET=roboteco
-          pnpm db:migrate:runtime
-          pnpm panel:check
 
       # O `config.json` do pod só conhece `registry.giomartins.dev:5000` (nome
       # público). O push sai pelo nome do Service, que para o Docker é outro
@@ -153,7 +99,7 @@ jobs:
 
       # Deploy = gravar o digest no manifesto do repo de infra e commitar. O
       # ArgoCD aplica. A deploy key tem write em UM repositório; nada de PAT de
-      # conta aqui.
+      # conta aqui, e o pod não fala com a API do cluster.
       - name: Record the digest in the infra repo
         env:
           DEPLOY_KEY: ${{ secrets.INFRA_DEPLOY_KEY }}
