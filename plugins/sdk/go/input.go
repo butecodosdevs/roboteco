@@ -254,6 +254,10 @@ type CaseCreated struct {
 }
 
 // MessageCreate is the event's data when it is EventMessageCreate, or nil.
+// Decode reads the event's data into v. For Discord events (DiscordEvents) the data is Discord's
+// own JSON: https://discord.com/developers/docs/events/gateway-events
+func (e Event) Decode(v any) error { return json.Unmarshal(e.Data, v) }
+
 func (e Event) MessageCreate() *MessageCreate {
 	return decodeEvent[MessageCreate](e, EventMessageCreate)
 }

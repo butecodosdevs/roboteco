@@ -24,6 +24,8 @@ pub struct Manifest {
     context_menus: Vec<ContextMenu>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     events: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    discord_events: Vec<String>,
     uses: Vec<String>,
     context: Vec<String>,
 }
@@ -37,6 +39,7 @@ impl Manifest {
             commands: vec![],
             context_menus: vec![],
             events: vec![],
+            discord_events: vec![],
             uses: vec![],
             context: vec![],
         }
@@ -56,6 +59,13 @@ impl Manifest {
     /// `reactionAdd`, `levelUp`, `caseCreated`. Each needs an `events.*` permission in the registry.
     pub fn events(mut self, events: &[&str]) -> Self {
         self.events.extend(events.iter().map(|e| e.to_string()));
+        self
+    }
+    /// Discord gateway events delivered to `handle_event` exactly as Discord sends them, e.g.
+    /// `MESSAGE_DELETE` or `GUILD_MEMBER_UPDATE`. Each needs its intent's permission in the
+    /// registry (`intents.GuildMessages`, …); read them with [`Event::decode`](crate::Event::decode).
+    pub fn discord_events(mut self, events: &[&str]) -> Self {
+        self.discord_events.extend(events.iter().map(|e| e.to_string()));
         self
     }
     /// Capabilities this plugin calls, e.g. `["kv.increment", "levels.get"]`.

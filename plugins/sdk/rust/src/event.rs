@@ -40,8 +40,22 @@ pub enum EventData {
     LevelUp(LevelUp),
     /// `caseCreated` (permission `events.moderation`).
     CaseCreated(CaseCreated),
+    /// A Discord gateway event from [`Manifest::discord_events`](crate::Manifest::discord_events),
+    /// with Discord's own JSON. See [`Event::decode`].
+    Discord(Value),
     /// An event this SDK doesn't know yet, with its raw data.
     Other(Value),
+}
+
+impl Event {
+    /// Reads a Discord event's (or unknown event's) data into your own type, following Discord's
+    /// docs: <https://discord.com/developers/docs/events/gateway-events>.
+    pub fn decode<T: DeserializeOwned>(&self) -> Result<T, serde_json::Error> {
+        match &self.data {
+            EventData::Discord(value) | EventData::Other(value) => T::deserialize(value),
+            _ => Err(serde::de::Error::custom("not a Discord event; match on EventData instead")),
+        }
+    }
 }
 
 /// Someone posted a message.
@@ -123,6 +137,9 @@ impl<'de> Deserialize<'de> for Event {
             "reactionAdd" => EventData::ReactionAdd(parse(raw.data)?),
             "levelUp" => EventData::LevelUp(parse(raw.data)?),
             "caseCreated" => EventData::CaseCreated(parse(raw.data)?),
+            name if name.bytes().all(|b| b.is_ascii_uppercase() || b == b'_') => {
+                EventData::Discord(raw.data)
+            }
             _ => EventData::Other(raw.data),
         };
         Ok(Event { event: raw.event, guild_id: raw.guild_id, channel_id: raw.channel_id, data })

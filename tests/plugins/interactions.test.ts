@@ -108,7 +108,7 @@ before(async () => {
   const plugin = await inject(PluginEngineService).load({
     id: 'contract',
     wasm,
-    permissions: ['kv', 'events.members'],
+    permissions: ['kv', 'events.members', 'intents.GuildMessages'],
   });
   inject(PluginRegistryService).add(plugin);
 });

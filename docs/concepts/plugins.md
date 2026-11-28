@@ -5,7 +5,7 @@
 A plugin is a WebAssembly module that adds features to the bot. It can be written in any language that compiles to WASM. There are SDKs for **Rust** (`plugins/sdk/rust`) and **Go** (`plugins/sdk/go`). The bot runs plugins in [Extism](https://extism.org) sandboxes inside worker threads.
 
 A plugin can do what a built-in feature does:
-- **Triggers:** slash commands, autocomplete, context menus, buttons, select menus and forms, events, and runs it scheduled itself.
+- **Triggers:** slash commands, autocomplete, context menus, buttons, select menus and forms, every Discord gateway event (and a few bot events), and runs it scheduled itself.
 - **Answers:** text, embeds, buttons, select menus, editing the message a button is on, and opening forms.
 - **Actions:** posting, editing and deleting messages, reactions, DMs, threads, roles, moderation, storage, levels and XP.
 
@@ -257,6 +257,26 @@ Every call knows its **caller**: the member whose command, click or form trigger
 | `caseCreated` | `events.moderation` | `number`, `action`, `targetId`, `moderatorId`, `reason`, `durationSeconds` |
 
 `levelUp` and `caseCreated` come from `DomainEventsService` (`src/modules/domain-events/`): levels and moderation emit them after their own work, without depending on plugins. A plugin acts on events through capabilities; the return value of `handle_event` is ignored.
+
+### Discord events
+
+The events above are shaped by the bot. Any other Discord gateway event can be had as Discord sends it: list it in the manifest's `discordEvents`, and it arrives in `handle_event` with `event` set to Discord's name (`MESSAGE_DELETE`, `GUILD_MEMBER_UPDATE`, `VOICE_STATE_UPDATE`, …). `data` is Discord's own JSON, documented at [Gateway Events](https://discord.com/developers/docs/events/gateway-events), and the SDKs read it with `event.decode::<T>()` (Rust) or `ev.Decode(&v)` (Go).
+
+```json
+{ "discordEvents": ["MESSAGE_DELETE", "MESSAGE_REACTION_REMOVE", "VOICE_STATE_UPDATE"] }
+```
+
+- **Permissions are Discord's intents.** Each event needs the permission of the intent that delivers it, e.g. `intents.GuildMessages` for `MESSAGE_DELETE`, `intents.GuildVoiceStates` for `VOICE_STATE_UPDATE`, `intents.GuildPresences` for `PRESENCE_UPDATE`. `pnpm plugin check` prints them, and `pnpm plugin schema` lists every event with its permission.
+- **The bot requests the intents the registry grants.** Intents are chosen before plugins load, so granting `intents.GuildMessageTyping` to a plugin makes the bot ask Discord for typing events. Privileged intents (`GuildMembers`, `GuildPresences`, `MessageContent`) also need `DISCORD_PRIVILEGED_INTENTS=true` and the switch in the Developer Portal.
+- **Message content is its own grant.** Without `intents.MessageContent`, `MESSAGE_CREATE` and `MESSAGE_UPDATE` arrive without `content`, `embeds`, `attachments`, `components` and `poll` (also in the messages they quote), as Discord does for bots without that intent.
+- **What's covered:** every guild event in Discord's intents table: server, roles, channels, threads, stage instances, members, bans, the audit log, emojis, stickers, soundboard, integrations, webhooks, invites, voice states and effects, presences, messages, reactions, typing, scheduled events, AutoMod and poll votes.
+- **What's not:**
+  - `INTERACTION_CREATE` and `VOICE_SERVER_UPDATE` carry tokens that act as the bot;
+  - `GUILD_CREATE` is a whole server's state;
+  - events outside a server (DMs, the bot's own user) don't belong to one.
+- **No loops:** events the bot caused itself (its own messages, its reactions, roles it gave) are not delivered, so a plugin can't trigger itself.
+- **Size:** payloads over 64 KB are dropped.
+- **Delivery:** like the events above, these are delivered in order per plugin, at most 20 waiting.
 
 ### Checks the engine makes
 

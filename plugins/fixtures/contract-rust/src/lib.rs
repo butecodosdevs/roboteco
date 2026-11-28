@@ -23,6 +23,7 @@ pub fn manifest() -> FnResult<Json<Value>> {
         ],
         "contextMenus": [{ "type": "user", "name": "Inspect" }],
         "events": ["memberJoin"],
+        "discordEvents": ["MESSAGE_CREATE", "MESSAGE_DELETE"],
         "uses": ["kv.increment", "kv.set"]
     })))
 }
@@ -77,8 +78,15 @@ fn kv(name: &str, input: Value) -> Result<Value, Error> {
 
 #[plugin_fn]
 pub fn handle_event(Json(input): Json<Value>) -> FnResult<Json<Value>> {
-    if input["event"] == "memberJoin" {
+    let event = input["event"].as_str().unwrap_or("");
+    if event == "memberJoin" {
         kv("kv.increment", json!({ "key": "joins" }))?;
+    } else {
+        kv("kv.increment", json!({ "key": format!("gateway:{event}") }))?;
+    }
+    if event == "MESSAGE_CREATE" {
+        let content = input["data"]["content"].as_str().unwrap_or("(none)");
+        kv("kv.set", json!({ "key": "last-content", "value": content }))?;
     }
     Ok(Json(json!({})))
 }
