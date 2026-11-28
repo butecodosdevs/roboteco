@@ -1,6 +1,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { Client } from 'discord.js';
-import type { RegisteredCommand } from './lifecycle';
+import type {
+  Client,
+  RESTPostAPIChatInputApplicationCommandsJSONBody,
+  RESTPostAPIContextMenuApplicationCommandsJSONBody,
+} from 'discord.js';
+
+/** A slash command or a context menu, as Discord needs it to be registered. */
+export type RegisteredCommand =
+  | RESTPostAPIChatInputApplicationCommandsJSONBody
+  | RESTPostAPIContextMenuApplicationCommandsJSONBody;
 
 /**
  * The single seam between core and the panel feature.

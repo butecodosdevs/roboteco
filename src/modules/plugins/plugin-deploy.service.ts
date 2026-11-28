@@ -1,8 +1,7 @@
 import { REST, Routes } from 'discord.js';
 import { and, eq } from 'drizzle-orm';
 import { config } from '@/config';
-import { Injectable } from '@/core';
-import type { RegisteredCommand } from '@/core/lifecycle';
+import { Injectable, type RegisteredCommand } from '@/core';
 import { db, schema } from '@/db';
 
 export interface DeployResult {

@@ -14,12 +14,7 @@ import { isDelegatedComponent, kindOf, parseCustomId } from './component';
 import { contextMenuKey } from './context-menu';
 import { startHttpServer } from './http';
 import { JobRunner } from './job';
-import {
-  registerCommandCatalog,
-  registerCommandNames,
-  registerCommandOwners,
-  registerModules,
-} from './lifecycle';
+import { registerCommandNames, registerModules } from './lifecycle';
 import { privilegedIntents, type ResolvedApp, resolveApp } from './module';
 import { panelGateway } from './panel-gateway';
 import type { Type } from './types';
@@ -100,15 +95,18 @@ export async function bootstrap(root: Type, options: BootstrapOptions): Promise<
   const app = resolveApp(root);
   registerModules(app.modules);
   registerCommandNames([...app.commands.keys(), ...app.contextMenus.map((m) => m.name)]);
-  registerCommandCatalog([
-    ...[...app.commands.values()].map((command) => command.toJSON()),
-    ...[...app.contextMenus.values()].map((menu) => menu.toJSON()),
-  ]);
-  registerCommandOwners(
-    Object.fromEntries(
+  // Handed straight to the panel, which is the only reader: keeping a copy here would be the
+  // module-level state the structure rules forbid.
+  panelGateway()?.describe({
+    catalog: [
+      ...[...app.commands.values()].map((command) => command.toJSON()),
+      ...[...app.contextMenus.values()].map((menu) => menu.toJSON()),
+    ],
+    builtIn: [...app.commands.keys(), ...app.contextMenus.map((menu) => menu.name)],
+    owners: Object.fromEntries(
       app.modules.flatMap((module) => module.commands.map((name) => [name, module.name])),
     ),
-  );
+  });
   const client = new Client({
     intents: selectIntents(app, options.privilegedIntents),
     partials: app.partials,

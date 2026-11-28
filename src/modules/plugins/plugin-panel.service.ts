@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { Injectable, inject, isBuiltInCommand } from '@/core';
-import { commandCatalog, type RegisteredCommand } from '@/core/lifecycle';
+import { Injectable, inject, isBuiltInCommand, type RegisteredCommand } from '@/core';
+import { PanelCatalogService } from '@/modules/panel/panel-catalog.service';
 import { PanelTogglesService } from '@/modules/panel/panel-toggles.service';
 import { PanelUsageService } from '@/modules/panel/panel-usage.service';
 import type { PluginSource } from './plugin-build.service';
@@ -68,6 +68,7 @@ export class PluginPanelService {
   private readonly builder = inject(PluginBuildService);
   private readonly toggles = inject(PanelTogglesService);
   private readonly usage = inject(PanelUsageService);
+  private readonly catalog = inject(PanelCatalogService);
 
   async list(
     guildId?: string,
@@ -186,9 +187,11 @@ export class PluginPanelService {
    */
   async deploy(id?: string): Promise<{ commands: number; guild: string; plugin: number | null }> {
     const disabled = new Set(this.toggles.disabled());
-    const body: RegisteredCommand[] = [...commandCatalog()].filter(
-      (command) => !disabled.has(command.name),
-    );
+    // The catalog is what core handed over at boot; a disabled command is left out on purpose, so
+    // the toggle reaches Discord. Context menus of built-ins come from the same list.
+    const body: RegisteredCommand[] = this.catalog
+      .commands()
+      .filter((command) => !disabled.has(command.name));
     let plugin: number | null = null;
     for (const loaded of this.registry.all()) {
       const specs: RegisteredCommand[] = [

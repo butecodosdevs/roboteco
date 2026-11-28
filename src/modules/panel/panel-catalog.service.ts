@@ -1,5 +1,5 @@
+import type { RegisteredCommand } from '@/core';
 import { Injectable } from '@/core';
-import type { RegisteredCommand } from '@/core/lifecycle';
 
 /**
  * What the bot publishes, as the panel needs it: the full catalog to list commands, the built-in
