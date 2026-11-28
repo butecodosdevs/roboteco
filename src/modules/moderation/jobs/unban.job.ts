@@ -19,8 +19,10 @@ export class UnbanJob {
     const banned = await guild.bans.fetch(userId).catch(() => null);
     if (banned) {
       const reason = t(guild.preferredLocale, 'moderation.tempBan.expired');
+      const moderation = inject(ModerationService);
+      await moderation.expect(guildId, 'unban', userId, client.user.id);
       await guild.members.unban(userId, reason);
-      await inject(ModerationService).recordAutomatic(guild, 'unban', banned.user, reason);
+      await moderation.recordAutomatic(guild, 'unban', banned.user, reason);
     }
     await tempBans.complete(guildId, userId);
   }

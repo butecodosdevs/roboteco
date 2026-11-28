@@ -15,6 +15,7 @@ import { MessageUpdateEvent } from './events/message-update.event';
 import { RoleCreateEvent } from './events/role-create.event';
 import { RoleDeleteEvent } from './events/role-delete.event';
 import { RoleUpdateEvent } from './events/role-update.event';
+import { VoiceStateUpdateEvent } from './events/voice-state-update.event';
 
 @Module({
   intents: [
@@ -22,6 +23,7 @@ import { RoleUpdateEvent } from './events/role-update.event';
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildVoiceStates,
   ],
   partials: [Partials.Message, Partials.Channel, Partials.GuildMember],
   commands: [LogsCommand],
@@ -40,6 +42,7 @@ import { RoleUpdateEvent } from './events/role-update.event';
     RoleCreateEvent,
     RoleDeleteEvent,
     RoleUpdateEvent,
+    VoiceStateUpdateEvent,
   ],
 })
 export class LogsModule {}

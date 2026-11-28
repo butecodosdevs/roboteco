@@ -7,10 +7,11 @@ import {
 } from 'discord.js';
 import { and, eq } from 'drizzle-orm';
 import { cache } from '@/cache';
-import { Injectable } from '@/core';
+import { Injectable, inject } from '@/core';
 import { db, schema } from '@/db';
 import { t } from '@/i18n';
 import { logger } from '@/logger';
+import { LogsService } from '@/modules/logs/logs.service';
 
 export type TempVoiceChannel = typeof schema.tempVoiceChannels.$inferSelect;
 export type TempVoiceHub = typeof schema.tempVoiceHubs.$inferSelect;
@@ -57,6 +58,8 @@ const requiredBotPermissions = [
 
 @Injectable()
 export class TempVoiceService {
+  private readonly logs = inject(LogsService);
+
   canManage(guild: Guild): boolean {
     return guild.members.me?.permissions.has(requiredBotPermissions) ?? false;
   }
@@ -127,6 +130,7 @@ export class TempVoiceService {
     const existing = await this.ownedBy(guild.id, member.id);
     const existingChannel = existing ? guild.channels.cache.get(existing.channelId) : undefined;
     if (existingChannel?.type === ChannelType.GuildVoice) {
+      await this.logs.expectVoiceAction(guild.id, 'move', member.id, member.id);
       await member.voice.setChannel(existingChannel).catch(() => undefined);
       return;
     }
@@ -179,6 +183,7 @@ export class TempVoiceService {
       ownerId: member.id,
     });
 
+    await this.logs.expectVoiceAction(guild.id, 'move', member.id, member.id);
     const moved = await member.voice
       .setChannel(channel)
       .then(() => true)

@@ -5,6 +5,12 @@ import { db, schema, userScope } from '@/db';
 import { logger } from '@/logger';
 
 const joins = schema.inviteJoins;
+const joinMemoMs = 60_000;
+
+export interface UsedInvite {
+  code: string;
+  inviterId: string | null;
+}
 
 @Injectable()
 export class InvitesService {
@@ -12,6 +18,7 @@ export class InvitesService {
     string,
     Map<string, { uses: number; inviterId: string | null }>
   >();
+  private readonly joining = new Map<string, { at: number; used: Promise<UsedInvite | null> }>();
 
   async snapshot(guild: Guild): Promise<void> {
     if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageGuild)) return;
@@ -36,14 +43,36 @@ export class InvitesService {
     this.uses.get(guildId)?.delete(code);
   }
 
-  async recordJoin(member: GuildMember): Promise<void> {
+  /**
+   * The invite a member joined with. The invite tracker and the server log both ask when a member
+   * joins, so the invite list is fetched and compared once per join.
+   */
+  inviteUsed(member: GuildMember): Promise<UsedInvite | null> {
+    const key = `${member.guild.id}:${member.id}`;
+    const now = Date.now();
+    for (const [k, pending] of this.joining) {
+      if (now - pending.at > joinMemoMs) this.joining.delete(k);
+    }
+    const pending = this.joining.get(key);
+    if (pending) return pending.used;
+    const used = this.detectInvite(member).catch(() => null);
+    this.joining.set(key, { at: now, used });
+    return used;
+  }
+
+  private async detectInvite(member: GuildMember): Promise<UsedInvite | null> {
     const before = this.uses.get(member.guild.id) ?? new Map();
     await this.snapshot(member.guild);
     const after = this.uses.get(member.guild.id) ?? new Map();
-    let used: { code: string; inviterId: string | null } | undefined;
+    let used: UsedInvite | null = null;
     for (const [code, now] of after) {
       if (now.uses > (before.get(code)?.uses ?? 0)) used = { code, inviterId: now.inviterId };
     }
+    return used;
+  }
+
+  async recordJoin(member: GuildMember): Promise<void> {
+    const used = await this.inviteUsed(member);
     await db
       .insert(joins)
       .values({

@@ -5,6 +5,7 @@ import {
   PermissionFlagsBits,
   type User,
 } from 'discord.js';
+import { cache } from '@/cache';
 import { type GuildInteraction, type GuildModalInteraction, Injectable, inject } from '@/core';
 import { type MessageKey, t, translator, type Vars } from '@/i18n';
 import {
@@ -53,6 +54,15 @@ const requiredPermission: Record<CaseAction, { flag: bigint; name: MessageKey }>
   unban: { flag: PermissionFlagsBits.BanMembers, name: 'moderation.permissions.banMembers' },
 };
 
+// The gateway event for an action the bot takes can arrive before the API call returns, so the
+// mark is set first. Listeners (the server log) use it to avoid repeating what the case shows.
+const handledTtlSeconds = 60;
+/** Actions the bot announces before taking them. A purge is keyed by channel, the rest by member. */
+export type ExpectedAction = CaseAction | 'purge';
+
+const handledKey = (guildId: string, action: ExpectedAction, userId: string) =>
+  `moderation:handled:${action}:${guildId}:${userId}`;
+
 const notifyBeforeAction = new Set<CaseAction>(['kick', 'ban']);
 
 @Injectable()
@@ -87,6 +97,7 @@ export class ModerationService {
 
     let notified = !notify;
     if (notify && notifyBeforeAction.has(action)) notified = await this.notify(guild, request);
+    await this.expect(guild.id, action, target.id, moderator.id);
     await request.run({ member, auditReason });
     if (notify && !notifyBeforeAction.has(action)) notified = await this.notify(guild, request);
 
@@ -134,6 +145,25 @@ export class ModerationService {
     });
   }
 
+  /** Marks an action the bot is about to take, with who asked for it. */
+  async expect(
+    guildId: string,
+    action: ExpectedAction,
+    userId: string,
+    moderatorId: string,
+  ): Promise<void> {
+    await cache.set(handledKey(guildId, action, userId), moderatorId, 'EX', handledTtlSeconds);
+  }
+
+  /** The moderator behind an action the bot just took, or null when it happened outside the bot. */
+  async consumeExpected(
+    guildId: string,
+    action: ExpectedAction,
+    userId: string,
+  ): Promise<string | null> {
+    return cache.getdel(handledKey(guildId, action, userId));
+  }
+
   private async escalate(
     guild: Guild,
     target: User,
@@ -154,6 +184,7 @@ export class ModerationService {
     const reason = t(guild.preferredLocale, 'moderation.escalation.reason', { count: warnings });
     const auditReason = `${guild.client.user.tag}: ${reason}`.slice(0, 512);
     const duration = settings.escalationDurationSeconds ?? 3600;
+    await this.expect(guild.id, action, target.id, guild.client.user.id);
     if (action === 'timeout') {
       if (!member.moderatable) return undefined;
       await member.timeout(duration * 1000, auditReason);

@@ -7,6 +7,7 @@ export class MessageBulkDeleteEvent {
   private readonly logs = inject(LogsService);
 
   async execute(...[messages, channel]: ClientEvents[Events.MessageBulkDelete]) {
-    await this.logs.messagesBulkDeleted(channel.guild, channel.id, messages.size);
+    const parentId = channel.isThread() ? channel.parentId : null;
+    await this.logs.messagesBulkDeleted(channel.guild, channel.id, messages, parentId);
   }
 }

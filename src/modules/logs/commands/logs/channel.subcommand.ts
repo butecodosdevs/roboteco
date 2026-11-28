@@ -1,4 +1,9 @@
-import { ChannelType, MessageFlags, SlashCommandSubcommandBuilder } from 'discord.js';
+import {
+  ChannelType,
+  MessageFlags,
+  PermissionFlagsBits,
+  SlashCommandSubcommandBuilder,
+} from 'discord.js';
 import { config } from '@/config';
 import { type GuildInteraction, Subcommand } from '@/core';
 import { updateGuildSettings } from '@/db';
@@ -22,6 +27,12 @@ export class ChannelSubcommand {
         : tr('logs.replies.channelCleared'),
     ];
     if (channel && !config.privilegedIntents) lines.push(tr('logs.replies.intentDisabled'));
+    if (
+      channel &&
+      !interaction.guild.members.me?.permissions.has(PermissionFlagsBits.ViewAuditLog)
+    ) {
+      lines.push(tr('logs.replies.auditLogMissing'));
+    }
     return interaction.reply({
       content: lines.join('\n'),
       flags: MessageFlags.Ephemeral,

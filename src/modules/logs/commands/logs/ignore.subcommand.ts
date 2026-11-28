@@ -2,6 +2,7 @@ import { MessageFlags, SlashCommandSubcommandBuilder } from 'discord.js';
 import { type GuildInteraction, Subcommand } from '@/core';
 import { getGuildSettings, updateGuildSettings } from '@/db';
 import { localize, translator } from '@/i18n';
+import { maxIgnoredChannels } from '../../logs.service';
 
 @Subcommand(
   localize(new SlashCommandSubcommandBuilder(), 'logs.ignore').addChannelOption((opt) =>
@@ -20,6 +21,12 @@ export class IgnoreSubcommand {
         content: tr('logs.replies.alreadyIgnored', { channel: channel.toString() }),
         flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
+      });
+    }
+    if (ignored.size >= maxIgnoredChannels) {
+      return interaction.reply({
+        content: tr('logs.replies.ignoreFull', { max: maxIgnoredChannels }),
+        flags: MessageFlags.Ephemeral,
       });
     }
     ignored.add(channel.id);

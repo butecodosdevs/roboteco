@@ -1,4 +1,9 @@
-import { EmbedBuilder, MessageFlags, SlashCommandSubcommandBuilder } from 'discord.js';
+import {
+  EmbedBuilder,
+  MessageFlags,
+  PermissionFlagsBits,
+  SlashCommandSubcommandBuilder,
+} from 'discord.js';
 import { type GuildInteraction, Subcommand } from '@/core';
 import { getGuildSettings } from '@/db';
 import { localize, translator } from '@/i18n';
@@ -24,6 +29,13 @@ export class StatusSubcommand {
       value: logEvents
         .map((event) => `${disabled.has(event) ? '🔴' : '🟢'} ${tr(`logs.events.${event}`)}`)
         .join('\n'),
+    });
+    const canReadAudit = interaction.guild.members.me?.permissions.has(
+      PermissionFlagsBits.ViewAuditLog,
+    );
+    embed.addFields({
+      name: tr('logs.replies.statusAuditLog'),
+      value: tr(canReadAudit ? 'logs.replies.auditLogReadable' : 'logs.replies.auditLogMissing'),
     });
     if (ignored.length > 0) {
       embed.addFields({

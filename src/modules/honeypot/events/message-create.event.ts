@@ -30,6 +30,7 @@ export class MessageCreateEvent {
     const reason = t(message.guild.preferredLocale, 'honeypot.banReason', {
       channel: message.channel.name,
     });
+    await this.moderation.expect(message.guildId, 'ban', message.author.id, message.client.user.id);
     await message.guild.members.ban(message.author, {
       deleteMessageSeconds: honeypot.deleteMessageSeconds,
       reason,
