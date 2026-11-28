@@ -2,3 +2,9 @@ allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:
   - '@types/node@26.6.11'
+# `@esbuild-kit/esm-loader` (a dependency of `drizzle-kit`, itself replaced by
+# tsx) still pins `esbuild@~0.18.20`, which Dependabot reports for the dev
+# server advisory fixed in 0.25.0. Nothing here runs `esbuild serve`; the pin
+# only ever reaches the bundler. One version for the whole tree.
+overrides:
+  esbuild@<0.25.0: 0.28.2
