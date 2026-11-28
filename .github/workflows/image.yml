@@ -1,0 +1,191 @@
+name: image
+
+# Build arm64 + deploy. Tudo o que é pipeline mora aqui, no repositório do bot.
+#
+# ## O runner
+#
+# `vps-arm64` é um container no pod `support/actions-runner` do cluster. Ele
+# precisa estar aqui por um motivo físico: o registry da imagem é `registry.
+# support.svc.cluster.local:5000`, HTTP puro, alcançável só de dentro do cluster
+# — não há DNS público nem porta aberta. Runner do GitHub não consegue empurrar
+# para lá.
+#
+# O container já tem o `~/.docker/config.json` do Secret `registry-credentials`
+# montado, então nenhuma credencial de registry precisa existir como Secret
+# deste repositório.
+#
+# ## O deploy
+#
+# Depois do push, este job clona `giomartinsdev/gio-random-projects` com a
+# **deploy key** `INFRA_DEPLOY_KEY` (write, escopo de um repositório só), roda o
+# `bump-digest.sh` dele e commita o digest no manifesto. O ArgoCD (auto-sync +
+# selfHeal) aplica. Sem `kubectl apply` de workload e sem chave SSH: o pod não
+# fala com a API do cluster, só com o git.
+#
+# ## Por que `ci.yml` é separado, em runner do GitHub
+#
+# Este repositório é público e recebe PR de fork. Um PR não pode rodar num pod
+# que tem a credencial do registry montada. `ci.yml` roda os testes em
+# `ubuntu-latest`; a imagem só sai de um push na `main`.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip-tests:
+        description: "Republicar sem rodar os testes (o commit já passou no CI)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Um build por vez: o runner é um pod com um daemon e 20Gi de disco, e o
+  # push no repo de infra não pode competir com ele mesmo.
+  group: image
+  cancel-in-progress: false
+
+env:
+  APP: roboteco
+  REGISTRY: registry.support.svc.cluster.local:5000
+  INFRA_REPO: giomartinsdev/gio-random-projects
+
+jobs:
+  build:
+    # arm64 NATIVO: o nó é Oracle ARM e o runner é um pod nele. Nada de QEMU.
+    runs-on: vps-arm64
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      # `npm i -g` e não `corepack`: o Node 26 removeu o corepack da
+      # distribuição. ANTES do `setup-node`, porque `cache: pnpm` procura o
+      # binário para achar o store e morre com "Unable to locate executable".
+      - name: Install pnpm
+        if: inputs.skip-tests != true
+        run: npm install --global pnpm@12.5.1
+
+      - uses: actions/setup-node@v4
+        if: inputs.skip-tests != true
+        with:
+          node-version: "26"
+          cache: pnpm
+
+      - name: Typecheck and lint
+        if: inputs.skip-tests != true
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm lint
+
+      # `panel:check` precisa de Postgres: sobe um servidor HTTP de verdade,
+      # forja sessões no banco e prova que a allowlist recusa. `down -v` antes
+      # porque o volume do compose sobrevive entre jobs neste runner, e um banco
+      # com migração que já não existe no git já mordeu.
+      - name: Panel boundary
+        if: inputs.skip-tests != true
+        run: |
+          set -euo pipefail
+          docker compose down -v >/dev/null 2>&1 || true
+          pnpm services:up
+          trap 'docker compose down -v' EXIT
+          export DISCORD_TOKEN=x DISCORD_CLIENT_ID=x
+          export DATABASE_URL=postgres://roboteco:roboteco@localhost:5432/roboteco
+          export S3_ENDPOINT=http://localhost:3900 S3_ACCESS_KEY_ID=x S3_SECRET_ACCESS_KEY=x S3_BUCKET=roboteco
+          pnpm db:migrate:runtime
+          pnpm panel:check
+
+      # O `config.json` do pod só conhece `registry.giomartins.dev:5000` (nome
+      # público). O push sai pelo nome do Service, que para o Docker é outro
+      # host, então a entrada é duplicada num diretório gravável — o original é
+      # read-only e o BuildKit precisa escrever ao lado dele.
+      - name: Make the registry credential usable from the cluster name
+        run: |
+          set -euo pipefail
+          src="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+          [ -s "$src" ] || { echo "::error::sem credencial do registry no pod do runner"; exit 1; }
+          dir=$(mktemp -d); chmod 700 "$dir"
+          python3 - "$src" "$dir/config.json" "$REGISTRY" <<'PY'
+          import json, sys
+          src, dst, host = sys.argv[1:4]
+          cfg = json.load(open(src))
+          auths = cfg.setdefault("auths", {})
+          if host not in auths:
+              donor = next((v for v in auths.values() if v), None)
+              if donor is None:
+                  sys.exit("::error::config.json sem auths")
+              auths[host] = dict(donor)
+          json.dump(cfg, open(dst, "w"))
+          PY
+          chmod 600 "$dir/config.json"
+          echo "DOCKER_CONFIG=$dir" >> "$GITHUB_ENV"
+
+      - name: Build (arm64)
+        run: |
+          set -euo pipefail
+          docker build --platform linux/arm64 \
+            --tag "$REGISTRY/$APP:latest" \
+            --tag "$REGISTRY/$APP:${{ github.sha }}" \
+            --file Dockerfile .
+
+      - name: Push and read the digest
+        id: push
+        run: |
+          set -euo pipefail
+          # Os dois nomes vão para o registry: `:latest` é o que um `docker pull`
+          # manual usa, o sha é o que fica auditável. O manifesto fixa o DIGEST,
+          # que é o mesmo blob para os dois.
+          out=$(docker push "$REGISTRY/$APP:${{ github.sha }}")
+          printf '%s\n' "$out" | tail -3
+          docker push "$REGISTRY/$APP:latest" >/dev/null
+          # `docker push` não tem saída estruturada: o digest sai na linha
+          # `...: digest: sha256:...`. Casar com `sha256:` + 64 hex cobre os dois
+          # formatos e ignora as linhas de progresso.
+          digest=$(printf '%s\n' "$out" | grep -oE 'sha256:[0-9a-f]{64}' | tail -1)
+          case "$digest" in sha256:*) ;; *) echo "::error::push não devolveu digest"; exit 1 ;; esac
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "$APP -> $digest"
+
+      # Deploy = gravar o digest no manifesto do repo de infra e commitar. O
+      # ArgoCD aplica. A deploy key tem write em UM repositório; nada de PAT de
+      # conta aqui.
+      - name: Record the digest in the infra repo
+        env:
+          DEPLOY_KEY: ${{ secrets.INFRA_DEPLOY_KEY }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [ -n "$DEPLOY_KEY" ] || { echo "::error::falta o secret INFRA_DEPLOY_KEY"; exit 1; }
+
+          # `GIT_SSH_COMMAND` com `IdentitiesOnly`: sem isso o ssh oferece as
+          # chaves do agente do runner primeiro e o GitHub recusa por chave
+          # errada antes de chegar na certa.
+          keyfile=$(mktemp); chmod 600 "$keyfile"
+          printf '%s\n' "$DEPLOY_KEY" > "$keyfile"
+          export GIT_SSH_COMMAND="ssh -i $keyfile -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+          git clone --depth 1 "git@github.com:$INFRA_REPO.git" _infra
+          cd _infra
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          .github/scripts/bump-digest.sh "$APP" "$DIGEST"
+          if git diff --cached --quiet; then
+            echo "digest já era o do manifesto; nada a commitar"
+            exit 0
+          fi
+          git commit -m "deploy: imagem arm64 do roboteco (${{ github.sha }})"
+
+          # O repo de infra recebe commits de outros workflows: rebase e repete.
+          for i in 1 2 3 4; do
+            if git push origin HEAD:main; then
+              echo "digest publicado"; exit 0
+            fi
+            echo "  push falhou (tentativa $i); rebase e repete"
+            git pull --rebase --autostash origin main || true
+            sleep $((i * 3))
+          done
+          echo "::error::não consegui publicar o commit do digest"
+          exit 1
