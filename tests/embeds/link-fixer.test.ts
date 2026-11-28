@@ -3,43 +3,52 @@ import { test } from 'node:test';
 import '@/app.module';
 import { EmbedsService } from '@/modules/embeds/embeds.service';
 
-// EmbedsService.fix is a pure function: it rewrites supported links to their embeds.now form and
-// leaves everything else untouched. These tests drive it directly, with no database or Discord.
+// EmbedsService.fix is a pure function, so these drive it directly, with no database or Discord.
 const service = new EmbedsService();
 const fix = (content: string) => service.fix(content).content;
 const changed = (content: string) => service.fix(content).changed;
 
 test('a link from each supported site is rewritten to its embeds.now form', () => {
-  assert.ok(fix('veja https://x.com/u/status/1').includes('embeds.now/x.com/u/status/1'));
-  assert.ok(fix('https://twitter.com/u/status/1').includes('embeds.now/twitter.com/u/status/1'));
-  assert.ok(fix('https://www.instagram.com/p/ABC/').includes('embeds.now/instagram.com/p/ABC/'));
-  assert.ok(fix('https://vm.tiktok.com/XYZ/').includes('embeds.now/vm.tiktok.com/XYZ/'));
-  assert.ok(fix('https://www.reddit.com/r/x/comments/1/t/').includes('embeds.now/reddit.com/r/x/comments/1/t/'));
-  assert.ok(fix('https://open.spotify.com/track/HASH').includes('embeds.now/open.spotify.com/track/HASH'));
-  assert.ok(fix('https://threads.net/@a/post/1').includes('embeds.now/threads.net/@a/post/1'));
-  assert.ok(fix('https://bsky.app/profile/a/post/1').includes('embeds.now/bsky.app/profile/a/post/1'));
-  assert.ok(fix('https://pin.it/abc').includes('embeds.now/pin.it/abc'));
-  assert.ok(fix('https://www.facebook.com/x/posts/1').includes('embeds.now/facebook.com/x/posts/1'));
+  const cases: [string, string][] = [
+    ['veja https://x.com/u/status/1', 'veja https://embeds.now/x.com/u/status/1'],
+    ['https://twitter.com/u/status/1', 'https://embeds.now/twitter.com/u/status/1'],
+    ['https://www.instagram.com/p/ABC/', 'https://embeds.now/instagram.com/p/ABC/'],
+    ['https://vm.tiktok.com/XYZ/', 'https://embeds.now/vm.tiktok.com/XYZ/'],
+    ['https://www.reddit.com/r/x/comments/1/t/', 'https://embeds.now/reddit.com/r/x/comments/1/t/'],
+    ['https://open.spotify.com/track/HASH', 'https://embeds.now/open.spotify.com/track/HASH'],
+    ['https://threads.net/@a/post/1', 'https://embeds.now/threads.net/@a/post/1'],
+    ['https://bsky.app/profile/a/post/1', 'https://embeds.now/bsky.app/profile/a/post/1'],
+    ['https://pin.it/abc', 'https://embeds.now/pin.it/abc'],
+    ['https://www.facebook.com/x/posts/1', 'https://embeds.now/facebook.com/x/posts/1'],
+  ];
+  for (const [input, expected] of cases) {
+    assert.deepEqual(service.fix(input), { changed: true, content: expected }, input);
+  }
 });
 
 test('www. is dropped but meaningful subdomains, the query string and trailing punctuation are kept', () => {
-  assert.ok(fix('https://x.com/u/1?t=5').includes('embeds.now/x.com/u/1?t=5'), 'query string kept');
-  assert.ok(fix('(https://x.com/u/1).').includes('embeds.now/x.com/u/1).'), 'trailing punctuation stays outside the link');
-  assert.ok(fix('https://open.spotify.com/track/H').includes('embeds.now/open.spotify.com/'), 'open. subdomain kept');
-  assert.ok(fix('https://mobile.twitter.com/a/1').includes('embeds.now/mobile.twitter.com/a/1'), 'mobile. subdomain kept');
+  assert.equal(fix('https://x.com/u/1?t=5'), 'https://embeds.now/x.com/u/1?t=5');
+  assert.equal(fix('https://mobile.twitter.com/a/1'), 'https://embeds.now/mobile.twitter.com/a/1');
+  // A quote closing the sentence would be percent-encoded into the link if it weren't split off.
+  assert.equal(fix('see "https://x.com/u/1"'), 'see "https://embeds.now/x.com/u/1"');
+  assert.equal(fix('(https://x.com/u/1).'), '(https://embeds.now/x.com/u/1).');
 });
 
 test('unsupported hosts, already-fixed links and plain text are left unchanged', () => {
-  const unsupported = 'https://youtube.com/watch?v=1 and https://example.com/a';
-  assert.equal(fix(unsupported), unsupported);
-  assert.equal(fix('https://embeds.now/x.com/a/1'), 'https://embeds.now/x.com/a/1');
-  assert.equal(changed('hello world, no links here'), false);
+  for (const text of [
+    'https://youtube.com/watch?v=1 and https://example.com/a',
+    'https://embeds.now/x.com/a/1',
+    'hello world, no links here',
+  ]) {
+    assert.deepEqual(service.fix(text), { changed: false, content: text });
+  }
 });
 
 test('every supported link in a message is rewritten', () => {
-  const out = fix('olha https://x.com/a/1 e também https://www.tiktok.com/@u/video/9 agora');
-  assert.ok(out.includes('embeds.now/x.com/a/1'));
-  assert.ok(out.includes('embeds.now/tiktok.com/@u/video/9'));
+  assert.equal(
+    fix('olha https://x.com/a/1 e também https://www.tiktok.com/@u/video/9 agora'),
+    'olha https://embeds.now/x.com/a/1 e também https://embeds.now/tiktok.com/@u/video/9 agora',
+  );
 });
 
 test('a link the member suppressed with <...> is left alone', () => {
@@ -56,7 +65,5 @@ test('links inside code (fenced or inline) are left as typed', () => {
   const fenced = '```\nhttps://x.com/u/1\n```';
   assert.equal(fix(fenced), fenced);
 
-  // A link outside the code span is still fixed, even when a code span is present.
-  const mixed = '`code` e https://x.com/u/2';
-  assert.ok(fix(mixed).includes('embeds.now/x.com/u/2'));
+  assert.equal(fix('`code` e https://x.com/u/2'), '`code` e https://embeds.now/x.com/u/2');
 });
