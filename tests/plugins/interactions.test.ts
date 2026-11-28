@@ -246,6 +246,22 @@ test('a command queued behind a stuck one is acknowledged in time, then answered
   );
 });
 
+test('a plugin that allocates without limit is stopped by the memory cap and recovers', async () => {
+  const hog = interaction('command', { commandName: 'alloc' });
+  await listener.execute(hog);
+  // The cap traps the plugin at once; without it the call would run into the 2 s timeout, and
+  // the bot would acknowledge first ("thinking…") before reporting it.
+  assert.deepEqual(
+    hog.calls.map(([kind]: Call) => kind),
+    ['reply'],
+  );
+  assert.equal(hog.calls[0]?.[1].flags, MessageFlags.Ephemeral);
+
+  const next = interaction('command', { commandName: 'panel', user: { id: '200000000000000703' } });
+  await listener.execute(next);
+  assert.equal(json(next.calls.at(-1)?.[1]).embeds[0].title, 'Panel');
+});
+
 test('a component from an uninstalled plugin is answered, not left to time out', async () => {
   const ghost = interaction('button', {
     customId: 'plg:ghost:inc',

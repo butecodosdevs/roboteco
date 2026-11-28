@@ -19,7 +19,8 @@ pub fn manifest() -> FnResult<Json<Value>> {
             { "name": "panel", "description": "A message with a button and a select" },
             { "name": "form", "description": "Opens a form" },
             { "name": "staff", "description": "Staff only", "defaultMemberPermissions": ["BanMembers"] },
-            { "name": "spin", "description": "Never answers" }
+            { "name": "spin", "description": "Never answers" },
+            { "name": "alloc", "description": "Allocates until the sandbox stops it" }
         ],
         "contextMenus": [{ "type": "user", "name": "Inspect" }],
         "events": ["memberJoin"],
@@ -48,6 +49,13 @@ pub fn handle_command(Json(input): Json<Value>) -> FnResult<Json<Value>> {
         }]}),
         (_, Some("staff")) => reply("staff only".into()),
         (_, Some("spin")) => loop {},
+        (_, Some("alloc")) => {
+            let mut chunks: Vec<Vec<u8>> = Vec::new();
+            loop {
+                chunks.push(vec![1u8; 1 << 20]);
+                std::hint::black_box(&chunks);
+            }
+        }
         _ => reply("unknown".into()),
     };
     Ok(Json(out))
