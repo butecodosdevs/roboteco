@@ -20,6 +20,7 @@ import {
 } from '@/modules/plugins/plugin-manifest.service';
 import { PluginRegistryService } from '@/modules/plugins/plugin-registry.service';
 import { uniqueGuildId } from './fakes';
+import { typedDispatches } from './typed-dispatches';
 
 // Real Discord payloads, recorded with `/dev record` and anonymized. Each one is replayed
 // into the echo fixture, which saves exactly what it received; that must match what Discord sent.
@@ -168,12 +169,18 @@ async function replay(text: string, readsContent: boolean) {
   }
 }
 
+const recorded = recordings('gateway');
+// A typed payload stands in only until a real one of the same event is recorded.
+const typed = Object.entries(typedDispatches)
+  .filter(([, packet]) => !recorded.some(({ name }) => name.split('.')[0] === packet.t))
+  .map(([name, packet]) => ({ name, text: JSON.stringify(packet) }));
+
 describe('recorded Discord events', () => {
-  for (const { name, text } of recordings('gateway')) {
+  for (const { name, text } of [...recorded, ...typed]) {
     test(name, async () => {
       const plain = await replay(text, false);
       const full = await replay(text, true);
-      if (name.endsWith('.bot') || Buffer.byteLength(JSON.stringify(full.d)) > 64 * 1024) {
+      if (/\.(typed-)?bot$/.test(name) || Buffer.byteLength(JSON.stringify(full.d)) > 64 * 1024) {
         assert.equal(plain.input, null);
         assert.equal(full.input, null);
         return;
