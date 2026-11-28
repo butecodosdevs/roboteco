@@ -7,10 +7,10 @@ import {
 import { type GuildInteraction, Subcommand } from '@/core';
 import { getGuildSettings } from '@/db';
 import { localize, translator } from '@/i18n';
-import { logEvents } from '../../logs.service';
+import { logEvents } from '@/modules/logs/logs.service';
 
 @Subcommand(localize(new SlashCommandSubcommandBuilder(), 'logs.status'))
-export class StatusSubcommand {
+export class LogStatusSubcommand {
   async execute(interaction: GuildInteraction) {
     const tr = translator(interaction.locale);
     const settings = await getGuildSettings(interaction.guildId);

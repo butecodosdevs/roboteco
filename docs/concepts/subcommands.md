@@ -114,3 +114,21 @@ import { TagCommand } from './commands/tag/tag.command';
 @Module({ commands: [TagCommand] })
 export class TagsModule {}
 ```
+
+## Subcommand groups
+
+A group gathers related subcommands under one more word: `/moderation log server`, `/moderation log toggle`. Discord allows three levels at most (`/command group subcommand`), 25 subcommands and groups per command, and 25 subcommands per group. A command can mix groups with plain subcommands, but then it has no options of its own. The framework checks these limits when the bot starts.
+
+- The group: `@SubcommandGroup(localize(new SlashCommandSubcommandGroupBuilder(), '<module>.<group>'), { subcommands: [...] })` on an empty class, in `commands/<name>/<group>/<group>.group.ts`. Its subcommands go in the same folder.
+- The parent lists it in `groups`: `@Command({ data, guildOnly: true, subcommands: [StatusSubcommand], groups: [LogGroup] })`.
+- Cooldowns, `guildOnly`, the default permission and autocomplete work for subcommands inside groups as they do for plain ones. Each cooldown is per subcommand: `/moderation log toggle` and `/moderation log ignore` don't share one.
+
+Real use: `src/modules/moderation/commands/moderation/log/`, which holds `/moderation log cases` (where cases are posted) and the server log settings (`server`, `toggle`, `ignore`, `unignore`, `status`), whose events and service stay in `src/modules/logs/`.
+
+```ts
+// src/modules/moderation/commands/moderation/log/log.group.ts
+@SubcommandGroup(localize(new SlashCommandSubcommandGroupBuilder(), 'moderation.commands.logGroup'), {
+  subcommands: [CasesSubcommand, ServerSubcommand, ToggleSubcommand /* … */],
+})
+export class LogGroup {}
+```

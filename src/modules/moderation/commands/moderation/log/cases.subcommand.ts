@@ -1,14 +1,14 @@
 import { ChannelType, MessageFlags, SlashCommandSubcommandBuilder } from 'discord.js';
 import { type GuildInteraction, inject, Subcommand } from '@/core';
 import { localize, translator } from '@/i18n';
-import { ModerationSettingsService } from '../../moderation-settings.service';
+import { ModerationSettingsService } from '../../../moderation-settings.service';
 
 @Subcommand(
-  localize(new SlashCommandSubcommandBuilder(), 'moderation.commands.settingsLog').addChannelOption(
+  localize(new SlashCommandSubcommandBuilder(), 'moderation.commands.logCases').addChannelOption(
     (opt) => localize(opt, 'moderation.options.logChannel').addChannelTypes(ChannelType.GuildText),
   ),
 )
-export class LogSubcommand {
+export class CasesSubcommand {
   private readonly settings = inject(ModerationSettingsService);
 
   async execute(interaction: GuildInteraction) {

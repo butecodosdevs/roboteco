@@ -4,11 +4,12 @@
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| [mise](https://mise.jdx.dev) | latest | `mise install` installs the Node and pnpm pinned in `mise.toml` |
+| [mise](https://mise.jdx.dev) | latest | `mise install` installs the Node, pnpm, Rust and Go pinned in `mise.toml` |
 | [Node.js](https://nodejs.org) | 26.10.0 (min. 22.12) | Runtime |
 | [pnpm](https://pnpm.io) | 12.5.1 | Package manager |
 | [Docker](https://docs.docker.com/get-docker/) + Compose | Compose v2+ | Runs PostgreSQL, Garage and Valkey locally |
-| [Rust](https://rustup.rs) with `wasm32-unknown-unknown` | optional | Only to build the example [plugin](concepts/plugins.md) and the test fixture (`pnpm plugins:build`, needed by `pnpm test`). Go plugins need [Go](https://go.dev) 1.24+ |
+| [Rust](https://rustup.rs) | stable | Builds the [plugins](concepts/plugins.md) and the Rust test fixtures with `pnpm plugins:build`, which `pnpm test` needs. `rust-toolchain.toml` adds the `wasm32-unknown-unknown` target on the first build |
+| [Go](https://go.dev) | 1.27 (min. 1.24) | Builds the Go test fixture in `pnpm plugins:build`, and Go plugins |
 
 ## Discord application
 
@@ -53,6 +54,7 @@ Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
 ```sh
 mise install
 pnpm install
+pnpm plugins:build     # WASM plugins and test fixtures; needed by pnpm test
 pnpm services:up       # PostgreSQL + Garage + Valkey
 pnpm storage:init      # Garage layout, key and bucket (safe to rerun)
 pnpm db:migrate
@@ -72,6 +74,10 @@ With `NODE_ENV=development` (the default), the bot also loads `/dev`, which is n
 - `/dev voice`: join, leave, disconnect, move, server mute or deafen `member` in a voice `channel` (default: where the member is).
 
 Add `actor` (and `reason`) to pretend the audit log credits that user, so you can see "By" lines without a second account. Discord writes no audit entry for some events, such as message edits, joins and boosts. For those, and for any other option a scenario doesn't use, the reply says what was ignored. Fake joins, leaves and channel deletes reach every listener, so the reply also lists what else they touched.
+
+Two more are for the [plugin](concepts/plugins.md#recorded-discord-payloads) tests:
+- `/dev record on:True`: save one anonymized example of each Discord event and `/dev fidelity` interaction into `tests/fixtures/discord`, until `on:False`.
+- `/dev fidelity`: every option type, plus a panel with a button, a form and each kind of select. The **Fidelity user** and **Fidelity message** menus go with it.
 
 ## Scripts
 
@@ -93,6 +99,6 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm db:generate` / `db:migrate` | Create / apply migrations |
 | `pnpm db:migrate:runtime` | Apply migrations the way production does (no drizzle-kit) |
 | `pnpm prod:up` / `prod:logs` | Build and start `compose.prod.yaml` / follow the bot's logs |
-| `pnpm plugins:build` | Build the example WASM plugins into `plugins/dist/` |
+| `pnpm plugins:build` | Build the example WASM plugin and the test fixtures into `plugins/dist/` |
 | `pnpm plugin check\|run\|click\|submit\|event\|job\|schema` | Validate a plugin; run its commands, buttons, forms, events and jobs without Discord; export the contract's JSON Schema ([plugins](concepts/plugins.md#quick-start)) |
 | `pnpm db:push` / `db:studio` | Sync the schema without a migration (local only) / browse data |

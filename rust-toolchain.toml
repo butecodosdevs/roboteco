@@ -1,0 +1,6 @@
+# Plugins compile to WebAssembly. rustup reads this file on any cargo run in the repo and installs
+# the target on first use, so `pnpm plugins:build` (needed by `pnpm test`) works without manual setup.
+[toolchain]
+channel = "stable"
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"

@@ -12,7 +12,6 @@ import { ClamavService } from '../../clamav.service';
 import { PhishingListService } from '../../phishing-list.service';
 import { ScanService } from '../../scan.service';
 import { threatSources } from '../../threats.service';
-import { refuseWithoutManageGuild } from './require-manage-guild';
 
 @Subcommand(localize(new SlashCommandSubcommandBuilder(), 'safety.status'))
 export class StatusSubcommand {
@@ -21,7 +20,6 @@ export class StatusSubcommand {
   private readonly phishingList = inject(PhishingListService);
 
   async execute(interaction: GuildInteraction) {
-    if (await refuseWithoutManageGuild(interaction)) return;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const tr = translator(interaction.locale);
     const settings = await getGuildSettings(interaction.guildId);

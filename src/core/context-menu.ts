@@ -10,6 +10,7 @@ import {
 } from 'discord.js';
 import { t } from '@/i18n';
 import { Cooldowns, replyCooldown } from './cooldown';
+import { lacksDefaultPermissions, refuseMissing } from './permissions';
 import type { Type } from './types';
 
 export type GuildUserContextInteraction = UserContextMenuCommandInteraction<'cached'>;
@@ -76,6 +77,11 @@ export class ContextMenuHandler {
         flags: MessageFlags.Ephemeral,
       });
     }
+    const missing = lacksDefaultPermissions(
+      this.data.default_member_permissions,
+      interaction.memberPermissions,
+    );
+    if (missing !== null) return refuseMissing(interaction, missing);
     const wait = this.cooldowns.remaining(interaction.user.id, this.cooldown);
     if (wait > 0) return replyCooldown(interaction, wait);
     return this.instance.execute(interaction);

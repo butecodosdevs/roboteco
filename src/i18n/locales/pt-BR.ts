@@ -32,6 +32,7 @@ import type { Messages } from '../types';
 
 export const ptBR: Messages = {
   errors: {
+    missingPermission: 'Você precisa de {permissions} para usar isto.',
     commandFailed: 'Algo deu errado ao executar esse comando.',
     guildOnly: 'Este comando só funciona dentro de um servidor.',
     cooldown: 'Calma. Você poderá usar isto de novo {when}.',

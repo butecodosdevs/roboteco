@@ -1,0 +1,395 @@
+{
+  "t": "INTERACTION_CREATE",
+  "d": {
+    "version": 1,
+    "type": 3,
+    "token": "token-43",
+    "message": {
+      "webhook_id": "100000000000000002",
+      "type": 20,
+      "tts": false,
+      "timestamp": "2026-11-28T07:37:02.304000+00:00",
+      "pinned": false,
+      "mentions": [],
+      "mention_roles": [],
+      "mention_everyone": false,
+      "interaction_metadata": {
+        "user": {
+          "username": "username-17",
+          "public_flags": 0,
+          "primary_guild": null,
+          "id": "100000000000000003",
+          "global_name": "global_name-18",
+          "display_name_styles": {
+            "font_id": 17,
+            "effect_id": 4,
+            "colors": [15999128]
+          },
+          "discriminator": "0",
+          "collectibles": null,
+          "clan": null,
+          "avatar_decoration_data": null,
+          "avatar": "avatar-19"
+        },
+        "type": 2,
+        "name": "name-24",
+        "id": "100000000000000027",
+        "command_type": 1,
+        "authorizing_integration_owners": {
+          "0": "100000000000000001"
+        }
+      },
+      "interaction": {
+        "user": {
+          "username": "username-17",
+          "public_flags": 0,
+          "primary_guild": null,
+          "id": "100000000000000003",
+          "global_name": "global_name-18",
+          "display_name_styles": {
+            "font_id": 17,
+            "effect_id": 4,
+            "colors": [15999128]
+          },
+          "discriminator": "0",
+          "collectibles": null,
+          "clan": null,
+          "avatar_decoration_data": null,
+          "avatar": "avatar-19"
+        },
+        "type": 2,
+        "name": "name-24",
+        "id": "100000000000000027"
+      },
+      "id": "100000000000000028",
+      "flags": 64,
+      "embeds": [],
+      "edited_timestamp": null,
+      "content": "content-25",
+      "components": [
+        {
+          "type": 1,
+          "id": 1,
+          "components": [
+            {
+              "type": 2,
+              "style": 1,
+              "label": "label-26",
+              "id": 2,
+              "custom_id": "dev.fidelityButton"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "id": 3,
+          "components": [
+            {
+              "type": 3,
+              "placeholder": "placeholder-27",
+              "options": [
+                {
+                  "value": "red",
+                  "label": "label-29"
+                },
+                {
+                  "value": "blue",
+                  "label": "label-31"
+                }
+              ],
+              "min_values": 1,
+              "max_values": 2,
+              "id": 4,
+              "custom_id": "dev.fidelitySelect:pick"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "id": 5,
+          "components": [
+            {
+              "type": 5,
+              "placeholder": "placeholder-33",
+              "min_values": 1,
+              "max_values": 5,
+              "id": 6,
+              "custom_id": "dev.fidelitySelect:who"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "id": 7,
+          "components": [
+            {
+              "type": 6,
+              "placeholder": "placeholder-35",
+              "min_values": 1,
+              "max_values": 5,
+              "id": 8,
+              "custom_id": "custom_id-36"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "id": 9,
+          "components": [
+            {
+              "type": 8,
+              "placeholder": "placeholder-37",
+              "min_values": 1,
+              "max_values": 5,
+              "id": 10,
+              "custom_id": "custom_id-38"
+            }
+          ]
+        }
+      ],
+      "channel_id": "100000000000000017",
+      "author": {
+        "username": "username-39",
+        "public_flags": 0,
+        "primary_guild": null,
+        "id": "100000000000000002",
+        "global_name": null,
+        "display_name_styles": null,
+        "discriminator": "2695",
+        "collectibles": null,
+        "clan": null,
+        "bot": true,
+        "avatar_decoration_data": null,
+        "avatar": null
+      },
+      "attachments": [],
+      "application_id": "100000000000000002"
+    },
+    "member": {
+      "user": {
+        "username": "username-17",
+        "public_flags": 0,
+        "primary_guild": null,
+        "id": "100000000000000003",
+        "global_name": "global_name-18",
+        "display_name_styles": {
+          "font_id": 17,
+          "effect_id": 4,
+          "colors": [15999128]
+        },
+        "discriminator": "0",
+        "collectibles": null,
+        "clan": null,
+        "avatar_decoration_data": null,
+        "avatar": "avatar-19"
+      },
+      "unusual_dm_activity_until": null,
+      "roles": [],
+      "premium_since": null,
+      "permissions": "18014398509481983",
+      "pending": false,
+      "nick": null,
+      "mute": false,
+      "joined_at": "2024-08-31T23:52:48.154000+00:00",
+      "flags": 0,
+      "deaf": false,
+      "communication_disabled_until": null,
+      "banner": null,
+      "avatar": null
+    },
+    "locale": "en-US",
+    "id": "100000000000000032",
+    "guild_locale": "en-US",
+    "guild_id": "100000000000000001",
+    "guild": {
+      "locale": "en-US",
+      "id": "100000000000000001",
+      "features": ["features-20"]
+    },
+    "entitlements": [],
+    "entitlement_sku_ids": [],
+    "data": {
+      "values": [
+        "100000000000000003",
+        "100000000000000002",
+        "100000000000000013",
+        "100000000000000007",
+        "100000000000000009"
+      ],
+      "resolved": {
+        "users": {
+          "100000000000000003": {
+            "username": "username-17",
+            "public_flags": 0,
+            "primary_guild": null,
+            "id": "100000000000000003",
+            "global_name": "global_name-18",
+            "display_name_styles": {
+              "font_id": 17,
+              "effect_id": 4,
+              "colors": [15999128]
+            },
+            "discriminator": "0",
+            "collectibles": null,
+            "clan": null,
+            "avatar_decoration_data": null,
+            "avatar": "avatar-19"
+          },
+          "100000000000000013": {
+            "username": "name-7",
+            "public_flags": 65536,
+            "primary_guild": null,
+            "id": "100000000000000013",
+            "global_name": null,
+            "display_name_styles": null,
+            "discriminator": "0219",
+            "collectibles": null,
+            "clan": null,
+            "bot": true,
+            "avatar_decoration_data": null,
+            "avatar": "avatar-44"
+          },
+          "100000000000000002": {
+            "username": "username-39",
+            "public_flags": 0,
+            "primary_guild": null,
+            "id": "100000000000000002",
+            "global_name": null,
+            "display_name_styles": null,
+            "discriminator": "2695",
+            "collectibles": null,
+            "clan": null,
+            "bot": true,
+            "avatar_decoration_data": null,
+            "avatar": null
+          },
+          "100000000000000009": {
+            "username": "name-5",
+            "public_flags": 0,
+            "primary_guild": null,
+            "id": "100000000000000009",
+            "global_name": null,
+            "display_name_styles": null,
+            "discriminator": "4395",
+            "collectibles": null,
+            "clan": null,
+            "bot": true,
+            "avatar_decoration_data": null,
+            "avatar": null
+          },
+          "100000000000000007": {
+            "username": "name-4",
+            "public_flags": 0,
+            "primary_guild": null,
+            "id": "100000000000000007",
+            "global_name": null,
+            "display_name_styles": null,
+            "discriminator": "4886",
+            "collectibles": null,
+            "clan": null,
+            "bot": true,
+            "avatar_decoration_data": null,
+            "avatar": "avatar-45"
+          }
+        },
+        "members": {
+          "100000000000000003": {
+            "unusual_dm_activity_until": null,
+            "roles": [],
+            "premium_since": null,
+            "permissions": "18014398509481983",
+            "pending": false,
+            "nick": null,
+            "joined_at": "2024-08-31T23:52:48.154000+00:00",
+            "flags": 0,
+            "communication_disabled_until": null,
+            "banner": null,
+            "avatar": null
+          },
+          "100000000000000013": {
+            "unusual_dm_activity_until": null,
+            "roles": ["100000000000000012"],
+            "premium_since": null,
+            "permissions": "18014398509481983",
+            "pending": false,
+            "nick": null,
+            "joined_at": "2026-01-02T18:13:41.984000+00:00",
+            "flags": 0,
+            "communication_disabled_until": null,
+            "banner": null,
+            "avatar": null
+          },
+          "100000000000000002": {
+            "unusual_dm_activity_until": null,
+            "roles": ["100000000000000014"],
+            "premium_since": null,
+            "permissions": "18014398509481983",
+            "pending": false,
+            "nick": null,
+            "joined_at": "2026-04-11T18:58:16.119000+00:00",
+            "flags": 0,
+            "communication_disabled_until": null,
+            "banner": null,
+            "avatar": null
+          },
+          "100000000000000009": {
+            "unusual_dm_activity_until": null,
+            "roles": ["100000000000000008"],
+            "premium_since": null,
+            "permissions": "18014398509481983",
+            "pending": false,
+            "nick": null,
+            "joined_at": "2025-05-23T04:37:45.563000+00:00",
+            "flags": 0,
+            "communication_disabled_until": null,
+            "banner": null,
+            "avatar": null
+          },
+          "100000000000000007": {
+            "unusual_dm_activity_until": null,
+            "roles": ["100000000000000006"],
+            "premium_since": null,
+            "permissions": "18014398509481983",
+            "pending": false,
+            "nick": null,
+            "joined_at": "2025-05-17T05:35:38.036000+00:00",
+            "flags": 0,
+            "communication_disabled_until": null,
+            "banner": null,
+            "avatar": null
+          }
+        }
+      },
+      "id": 6,
+      "custom_id": "dev.fidelitySelect:who",
+      "component_type": 5
+    },
+    "context": 0,
+    "channel_id": "100000000000000017",
+    "channel": {
+      "type": 0,
+      "topic": null,
+      "theme_color": null,
+      "rate_limit_per_user": 0,
+      "position": 0,
+      "permissions": "18014398509481983",
+      "parent_id": "100000000000000015",
+      "nsfw": false,
+      "name": "name-11",
+      "last_message_id": "100000000000000018",
+      "id": "100000000000000017",
+      "icon_emoji": {
+        "name": "👋",
+        "id": null
+      },
+      "guild_id": "100000000000000001",
+      "flags": 0
+    },
+    "authorizing_integration_owners": {
+      "0": "100000000000000001"
+    },
+    "attachment_size_limit": 1073741824,
+    "application_id": "100000000000000002",
+    "app_permissions": "18014398509481983"
+  }
+}

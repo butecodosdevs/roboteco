@@ -36,6 +36,13 @@ function withoutContent(message: Json): Json {
   return copy;
 }
 
+// What Discord withholds from bots without the Message Content intent.
+const contentStrippers: Partial<Record<GatewayEvent, (data: Json) => Json>> = {
+  MESSAGE_CREATE: withoutContent,
+  MESSAGE_UPDATE: withoutContent,
+  AUTO_MODERATION_ACTION_EXECUTION: ({ content: _, matched_content: __, ...rest }) => rest,
+};
+
 function actorIds(data: Json): unknown[] {
   const author = data.author as Json | undefined;
   const user = data.user as Json | undefined;
@@ -81,11 +88,11 @@ export class PluginEventsService {
     }
 
     const channelId = typeof data.channel_id === 'string' ? data.channel_id : null;
-    const isMessage = event === 'MESSAGE_CREATE' || event === 'MESSAGE_UPDATE';
+    const strip = contentStrippers[event];
     await Promise.all(
       subscribers.map((plugin) => {
         const readsContent = plugin.definition.permissions.includes(messageContentPermission);
-        const payload = isMessage && !readsContent ? withoutContent(data) : data;
+        const payload = strip && !readsContent ? strip(data) : data;
         return this.deliver([plugin], { event, guildId, channelId, data: payload });
       }),
     );

@@ -1,0 +1,189 @@
+{
+  "t": "MESSAGE_CREATE",
+  "d": {
+    "webhook_id": "100000000000000002",
+    "type": 20,
+    "tts": false,
+    "timestamp": "2026-11-28T06:53:50.204000+00:00",
+    "pinned": false,
+    "nonce": "100000000000000028",
+    "mentions": [],
+    "mention_roles": [],
+    "mention_everyone": false,
+    "member": {
+      "roles": ["100000000000000014"],
+      "premium_since": null,
+      "pending": false,
+      "nick": null,
+      "mute": false,
+      "joined_at": "2026-04-11T18:58:16.119000+00:00",
+      "flags": 0,
+      "deaf": false,
+      "communication_disabled_until": null,
+      "banner": null,
+      "avatar": null
+    },
+    "interaction_metadata": {
+      "user": {
+        "username": "username-17",
+        "public_flags": 0,
+        "primary_guild": null,
+        "id": "100000000000000003",
+        "global_name": "global_name-18",
+        "display_name_styles": {
+          "font_id": 17,
+          "effect_id": 4,
+          "colors": [15999128]
+        },
+        "discriminator": "0",
+        "collectibles": null,
+        "clan": null,
+        "avatar_decoration_data": null,
+        "avatar": "avatar-19"
+      },
+      "type": 2,
+      "name": "name-23",
+      "id": "100000000000000027",
+      "command_type": 1,
+      "authorizing_integration_owners": {
+        "0": "100000000000000001"
+      }
+    },
+    "interaction": {
+      "user": {
+        "username": "username-17",
+        "public_flags": 0,
+        "primary_guild": null,
+        "id": "100000000000000003",
+        "global_name": "global_name-18",
+        "display_name_styles": {
+          "font_id": 17,
+          "effect_id": 4,
+          "colors": [15999128]
+        },
+        "discriminator": "0",
+        "collectibles": null,
+        "clan": null,
+        "avatar_decoration_data": null,
+        "avatar": "avatar-19"
+      },
+      "type": 2,
+      "name": "name-23",
+      "member": {
+        "roles": [],
+        "premium_since": null,
+        "pending": false,
+        "nick": null,
+        "mute": false,
+        "joined_at": "2024-08-31T23:52:48.154000+00:00",
+        "flags": 0,
+        "deaf": false,
+        "communication_disabled_until": null,
+        "banner": null,
+        "avatar": null
+      },
+      "id": "100000000000000027"
+    },
+    "id": "100000000000000029",
+    "flags": 0,
+    "embeds": [],
+    "edited_timestamp": null,
+    "content": "content-24",
+    "components": [
+      {
+        "type": 1,
+        "id": 1,
+        "components": [
+          {
+            "type": 2,
+            "style": 1,
+            "label": "label-25",
+            "id": 2,
+            "custom_id": "plg:echo:form"
+          }
+        ]
+      },
+      {
+        "type": 1,
+        "id": 3,
+        "components": [
+          {
+            "type": 3,
+            "options": [
+              {
+                "value": "red",
+                "label": "Red"
+              },
+              {
+                "value": "blue",
+                "label": "Blue"
+              }
+            ],
+            "min_values": 1,
+            "max_values": 2,
+            "id": 4,
+            "custom_id": "plg:echo:pick"
+          }
+        ]
+      },
+      {
+        "type": 1,
+        "id": 5,
+        "components": [
+          {
+            "type": 5,
+            "min_values": 1,
+            "max_values": 2,
+            "id": 6,
+            "custom_id": "plg:echo:who"
+          }
+        ]
+      },
+      {
+        "type": 1,
+        "id": 7,
+        "components": [
+          {
+            "type": 6,
+            "min_values": 1,
+            "max_values": 2,
+            "id": 8,
+            "custom_id": "plg:echo:groups"
+          }
+        ]
+      },
+      {
+        "type": 1,
+        "id": 9,
+        "components": [
+          {
+            "type": 8,
+            "min_values": 1,
+            "max_values": 2,
+            "id": 10,
+            "custom_id": "plg:echo:where"
+          }
+        ]
+      }
+    ],
+    "channel_type": 0,
+    "channel_id": "100000000000000018",
+    "author": {
+      "username": "username-26",
+      "public_flags": 0,
+      "primary_guild": null,
+      "id": "100000000000000002",
+      "global_name": null,
+      "display_name_styles": null,
+      "discriminator": "2695",
+      "collectibles": null,
+      "clan": null,
+      "bot": true,
+      "avatar_decoration_data": null,
+      "avatar": null
+    },
+    "attachments": [],
+    "application_id": "100000000000000002",
+    "guild_id": "100000000000000001"
+  }
+}

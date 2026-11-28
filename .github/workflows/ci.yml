@@ -67,16 +67,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # `npm i -g` e não `corepack`: o Node 26 removeu o corepack da
-      # distribuição, e o passo falha com "corepack: command not found".
-      #
-      # ANTES do `setup-node`: o `cache: pnpm` lê o caminho do pnpm para achar
-      # o store, e com o pnpm ainda ausente o passo morre em "Unable to locate
-      # executable file: pnpm".
-      - run: |
-          npm install --global pnpm@12.5.1
-          pnpm --version
+      # Toolchain from `mise.toml` and `rust-toolchain.toml`: the same Node,
+      # pnpm, Rust and Go a contributor gets locally, so "it builds" means the
+      # same thing in CI and on a laptop. First step because it provides pnpm.
+      - uses: jdx/mise-action@v2
 
+      # `cache: pnpm` reads pnpm's store path, so pnpm must already exist —
+      # mise installed it above.
       - uses: actions/setup-node@v4
         with:
           node-version: "26"
@@ -98,15 +95,11 @@ jobs:
       - name: Panel boundary
         run: pnpm panel:check
 
-      # Plugins are Rust/Go source in the repo, and the tests load a built WASM
-      # (`tests/plugins/*` says "run pnpm plugins:build first"). Without this
-      # step the suite would either skip or fail on a missing file — and the
-      # image build compiles the same sources, so a plugin that does not
-      # compile is caught before it reaches a registry the bot reads.
-      - name: Plugin toolchain
-        run: |
-          rustup target add wasm32-unknown-unknown
-          pnpm plugins:build
-
+      # Plugins are Rust/Go source (plugins/dist is gitignored), and the test
+      # suite loads built WASM — `tests/plugins/*` fails with "run pnpm
+      # plugins:build first". The image build compiles the same sources, so
+      # this step is also what catches a plugin that stops compiling, before
+      # it reaches a registry the bot reads.
       - name: Tests
-        run: pnpm test
+        run: pnpm plugins:build && pnpm test
+

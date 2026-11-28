@@ -73,6 +73,7 @@ async function run(
     locale: 'en-US',
     memberPermissions: member.permissions,
     options: {
+      getSubcommandGroup: () => null,
       getSubcommand: () => sub,
       getString: (name: string) => options[name] ?? null,
       getChannel: () => null,

@@ -2,7 +2,7 @@ import { MessageFlags, SlashCommandSubcommandBuilder } from 'discord.js';
 import { type GuildInteraction, Subcommand } from '@/core';
 import { getGuildSettings, updateGuildSettings } from '@/db';
 import { defaultLocale, localizations, localize, t, translator } from '@/i18n';
-import { type LogEvent, logEvents } from '../../logs.service';
+import { type LogEvent, logEvents } from '@/modules/logs/logs.service';
 
 @Subcommand(
   localize(new SlashCommandSubcommandBuilder(), 'logs.toggle')

@@ -1,10 +1,9 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import { cache } from '@/cache';
 import { config } from '@/config';
 import { Injectable, inject, isBuiltInCommand } from '@/core';
-import { reportError } from '@/logger';
+import { logger, reportError } from '@/logger';
 import { type LoadedPlugin, PluginEngineService } from './plugin-engine.service';
 import type {
   PluginCommandSpec,
@@ -29,7 +28,7 @@ const registrySchema = z.object({
     z.object({
       id: z.string().regex(/^[a-z0-9-]{1,32}$/),
       wasm: z.string(),
-      /** `false` keeps the definition on disk but out of the runtime. */
+      /** `false` keeps the definition on disk but is not loaded at runtime. */
       enabled: z.boolean().default(true),
       permissions: z.array(z.string()).default([]),
       allowedHosts: z.array(z.string()).optional(),
@@ -46,6 +45,7 @@ export class PluginRegistryService {
   private readonly loaded = new Map<string, LoadedPlugin>();
   private readonly commands = new Map<string, PluginCommandEntry>();
   private readonly menus = new Map<string, PluginMenuEntry>();
+  /** Why a definition that is on disk did not become a loaded plugin, for the panel card. */
   private readonly failed = new Map<string, string>();
 
   async definitions(path = registryPath): Promise<PluginDefinitionEntry[]> {
@@ -67,17 +67,37 @@ export class PluginRegistryService {
     reserved: (name: string) => boolean = isBuiltInCommand,
   ): Promise<void> {
     this.failed.clear();
-    for (const definition of await this.definitions(path)) {
+    const raw = await readFile(path, 'utf8').catch(() => null);
+    if (raw === null) {
+      logger.warn({ registry: path }, 'Plugin registry not found; check PLUGIN_REGISTRY');
+      return;
+    }
+    const { plugins } = registrySchema.parse(JSON.parse(raw));
+    // An empty registry is the default, so say so: otherwise plugin commands just never appear.
+    if (plugins.length === 0) {
+      logger.info(
+        { registry: path },
+        'No plugins installed. To try the example, set PLUGIN_REGISTRY=plugins/registry.example.json and run pnpm plugins:build',
+      );
+      return;
+    }
+    for (const definition of plugins) {
       if (!definition.enabled) continue;
+      const wasm = resolve(path, '../..', definition.wasm);
       try {
-        const wasm = resolve(path, '../..', definition.wasm);
         this.add(await this.engine.load({ ...definition, wasm }), reserved);
       } catch (error) {
+        // A missing build is a setup step, not a bug: point at the fix instead of reporting a stack.
+        // The panel still gets the reason, which is what its card shows.
         this.failed.set(definition.id, error instanceof Error ? error.message : String(error));
-        // A WASM that was never built is a missing file, not a crash: the panel says so on the card.
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-          reportError(error, { plugin: definition.id }, 'Plugin failed to load');
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          logger.warn(
+            { plugin: definition.id, wasm },
+            'Plugin not built yet; run pnpm plugins:build',
+          );
+          continue;
         }
+        reportError(error, { plugin: definition.id }, 'Plugin failed to load');
       }
     }
   }
@@ -139,10 +159,5 @@ export class PluginRegistryService {
     this.loaded.clear();
     this.commands.clear();
     this.menus.clear();
-  }
-
-  async purgeGuild(guildId: string): Promise<void> {
-    for (const plugin of this.loaded.values())
-      await cache.del(`plugins:kv:${plugin.id}:${guildId}`);
   }
 }

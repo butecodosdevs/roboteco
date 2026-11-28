@@ -263,7 +263,7 @@ Limits: 2 s per call, 64 MB of memory, no filesystem, and calls to each plugin a
 
 ### Prerequisites
 
-- [mise](https://mise.jdx.dev), which installs the pinned Node.js and pnpm (or Node.js ≥ 22.12 and pnpm yourself)
+- [mise](https://mise.jdx.dev), which installs the pinned Node.js, pnpm, Rust and Go (or install Node.js ≥ 22.12, pnpm, [Rust](https://rustup.rs) and [Go](https://go.dev) ≥ 1.24 yourself)
 - Docker with Compose, to run Postgres, Valkey and Garage
 - A Discord application and bot token from the [Developer Portal](https://discord.com/developers/applications)
 
@@ -273,6 +273,7 @@ Limits: 2 s per call, 64 MB of memory, no filesystem, and calls to each plugin a
 mise install
 cp .env.example .env   # fill in DISCORD_TOKEN and DISCORD_CLIENT_ID
 pnpm install
+pnpm plugins:build     # WASM plugins and test fixtures; needed by pnpm test
 pnpm services:up && pnpm storage:init && pnpm db:migrate
 pnpm deploy-commands
 pnpm dev
@@ -302,7 +303,7 @@ See [docs/getting-started.md](docs/getting-started.md) for the full Discord app 
 | `pnpm storage:init` | Create the Garage bucket and keys |
 | `pnpm db:generate` / `db:migrate` | Generate / apply Drizzle migrations |
 | `pnpm db:studio` | Open Drizzle Studio |
-| `pnpm plugins:build` | Build the example plugin and the test fixture (Rust) |
+| `pnpm plugins:build` | Build the example plugin and the test fixtures (Rust and Go) |
 | `pnpm prod:up` / `prod:logs` | Start the production stack / follow the bot logs |
 
 ---
@@ -367,17 +368,7 @@ docs/                   concept guides and worked examples
 
 ## Contributing
 
-1. Read [docs/README.md](docs/README.md) and find your task in [*How do I…*](docs/README.md#how-do-i).
-2. Put new behaviour in a feature module under `src/modules/<feature>/` and register it in `src/app.module.ts`.
-3. Add every user-facing string to **both** `en-US` and `pt-BR`.
-4. Change the database only through `src/db/schema.ts` + `pnpm db:generate`, and commit the generated migration.
-5. Before opening a pull request, run:
-
-   ```sh
-   pnpm typecheck && pnpm lint && pnpm build
-   ```
-
-AI coding agents should start at [AGENTS.md](AGENTS.md), which lists the project rules.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks to run and how pull requests are reviewed and merged. AI coding agents should start at [AGENTS.md](AGENTS.md), which lists the project rules.
 
 ---
 

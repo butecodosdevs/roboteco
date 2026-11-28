@@ -1,6 +1,8 @@
 export const logsPtBR = {
-  command: { name: 'logs', description: 'Configura o registro de eventos do servidor' },
-  channel: { name: 'canal', description: 'Define o canal de logs (vazio desativa o registro)' },
+  server: {
+    name: 'servidor',
+    description: 'Define o canal de log de eventos do servidor (vazio desativa)',
+  },
   toggle: { name: 'alternar', description: 'Ativa ou desativa o registro de um tipo de evento' },
   ignore: { name: 'ignorar', description: 'Para de registrar mensagens de um canal' },
   unignore: { name: 'designorar', description: 'Volta a registrar mensagens de um canal' },
@@ -39,13 +41,14 @@ export const logsPtBR = {
     eventEnabled: 'Agora registrando: {event}.',
     eventDisabled: 'Deixando de registrar: {event}.',
     ignored: 'As mensagens em {channel} não serão mais registradas.',
-    ignoreFull: 'Você pode ignorar no máximo {max} canais. Remova um com /logs unignore antes.',
+    ignoreFull:
+      'Você pode ignorar no máximo {max} canais. Remova um com /moderacao log designorar antes.',
     alreadyIgnored: '{channel} já está sendo ignorado.',
     unignored: 'As mensagens em {channel} voltarão a ser registradas.',
     notIgnored: '{channel} não estava sendo ignorado.',
     statusTitle: 'Registro de eventos',
     statusChannel: 'Canal',
-    statusNoChannel: 'Não definido. Use /logs canal.',
+    statusNoChannel: 'Não definido. Use /moderacao log servidor.',
     statusEvents: 'Eventos',
     statusIgnored: 'Canais ignorados',
     statusAuditLog: 'Registro de auditoria',

@@ -32,6 +32,7 @@ import { welcomeEnUS } from '@/modules/welcome/i18n/en-US';
 // `name` keys are the canonical command/option identifiers that handlers match on.
 export const enUS = {
   errors: {
+    missingPermission: 'You need {permissions} to use this.',
     commandFailed: 'Something went wrong running that command.',
     guildOnly: 'This command only works inside a server.',
     cooldown: 'Slow down. You can use this again {when}.',
