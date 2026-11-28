@@ -21,7 +21,7 @@ import {
 import { PluginRegistryService } from '@/modules/plugins/plugin-registry.service';
 import { uniqueGuildId } from './fakes';
 
-// Real Discord payloads, recorded with `pnpm record-discord` and anonymized. Each one is replayed
+// Real Discord payloads, recorded with `/dev record` and anonymized. Each one is replayed
 // into the echo fixture, which saves exactly what it received; that must match what Discord sent.
 const dir = 'tests/fixtures/discord';
 const wasm = 'plugins/dist/echo.wasm';
@@ -37,7 +37,7 @@ const server = JSON.parse(readFileSync(join(dir, 'server.json'), 'utf8')) as {
   guild: Json;
 };
 const recordings = (folder: string) =>
-  readdirSync(join(dir, folder))
+  (existsSync(join(dir, folder)) ? readdirSync(join(dir, folder)) : [])
     .filter((file) => file.endsWith('.json'))
     .map((file) => ({
       name: file.slice(0, -'.json'.length),
@@ -116,7 +116,8 @@ before(async () => {
   const engine = inject(PluginEngineService);
   const registry = inject(PluginRegistryService);
   echoPlugin = await engine.load({ id: 'echo', wasm, permissions: ['kv', ...intents] });
-  registry.add(echoPlugin);
+  // It takes over /dev fidelity and the Fidelity menus, which the dev module owns outside tests.
+  registry.add(echoPlugin, () => false);
   // Not in the registry: it gets the inputs the Rust fixture got, straight from the engine.
   goPlugin = await engine.load({ id: 'echo-go', wasm: goWasm, permissions: ['kv'] });
 });
@@ -267,7 +268,7 @@ function expectedInvocation(name: string, d: Json, guild: Json) {
   const caller = d.member;
   const channel = guild.channels.find((c: Json) => c.id === d.channel.id);
   const base = {
-    kind: kinds[name] ?? (name.startsWith('command.') ? 'command' : 'select'),
+    kind: kinds[name] ?? (name === 'command' ? 'command' : 'select'),
     command: d.type === 2 || d.type === 4 ? data.name : '',
     subcommand: null as string | null,
     options: {} as Json,
@@ -375,11 +376,23 @@ function discordInteraction(d: Json, guild: Json) {
   return { interaction: built, client };
 }
 
+/** The dev module's component IDs as the echo plugin's: the only change made to a recording. */
+function pluginComponentId(id: string): string {
+  const [name, arg] = id.split(':');
+  const own: Record<string, string> = {
+    'dev.fidelityButton': 'form',
+    'dev.fidelitySelect': arg ?? '',
+    'dev.fidelityModal': 'feedback',
+  };
+  return `plg:echo:${own[name ?? ''] ?? id}`;
+}
+
 describe('recorded Discord interactions', () => {
   for (const { name, text } of recordings('interactions')) {
     test(name, async () => {
       const guildId = freshGuild();
       const { d } = inServer<{ d: Json }>(text, guildId);
+      if (d.data.custom_id) d.data.custom_id = pluginComponentId(d.data.custom_id);
       const guild = inServer<Json>(JSON.stringify(server.guild), guildId);
       const { interaction, client } = discordInteraction(d, guild);
       // A listener per replay: they share a user, and its cooldown would refuse the next command.

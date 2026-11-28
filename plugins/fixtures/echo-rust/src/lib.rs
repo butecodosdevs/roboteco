@@ -1,4 +1,4 @@
-//! Test fixture for `pnpm test` and `pnpm record-discord`: saves every input it receives, so tests
+//! Test fixture for `pnpm test`: saves every input it receives, so tests
 //! can compare what reached the plugin, and what the SDK read, with what Discord sent.
 use extism_pdk::*;
 use roboteco::{kv, Command, Event, EventData};
@@ -70,26 +70,22 @@ fn private(content: &str) -> Value {
     json!({ "actions": [{ "type": "reply", "ephemeral": true, "content": content }] })
 }
 
+// Declares the names of `/dev fidelity` and its menus, so payloads recorded with `/dev record`
+// replay into this plugin unchanged. Component IDs are mapped to its own by the test.
 #[plugin_fn]
 pub fn manifest() -> FnResult<Json<Value>> {
     let option = |kind: &str, name: &str| json!({ "type": kind, "name": name, "description": name });
     Ok(Json(json!({
         "name": "echo", "version": "1.0.0",
         "commands": [{
-            "name": "fidelity", "description": "Records what plugins receive",
-            "subcommands": [
-                { "name": "options", "description": "Every option type", "options": [
-                    { "type": "string", "name": "text", "description": "text", "required": true },
-                    option("integer", "count"), option("number", "ratio"), option("boolean", "flag"),
-                    option("user", "member"), option("channel", "place"), option("role", "group")
-                ] },
-                { "name": "panel", "description": "A button, a form and every kind of select" },
-                { "name": "search", "description": "Autocomplete", "options": [
-                    { "type": "string", "name": "query", "description": "query", "autocomplete": true }
-                ] }
-            ]
+            "name": "dev", "description": "Records what plugins receive",
+            "subcommands": [{ "name": "fidelity", "description": "Every option type", "options": [
+                { "type": "string", "name": "text", "description": "text", "required": true, "autocomplete": true },
+                option("integer", "number"), option("number", "ratio"), option("boolean", "flag"),
+                option("user", "member"), option("channel", "place"), option("role", "group")
+            ] }]
         }],
-        "contextMenus": [{ "type": "user", "name": "Echo user" }, { "type": "message", "name": "Echo message" }],
+        "contextMenus": [{ "type": "user", "name": "Fidelity user" }, { "type": "message", "name": "Fidelity message" }],
         "context": ["member", "guild", "channel"],
         "discordEvents": GATEWAY_EVENTS,
         "uses": ["kv.set"]
@@ -99,22 +95,7 @@ pub fn manifest() -> FnResult<Json<Value>> {
 #[plugin_fn]
 pub fn handle_command(Json(input): Json<Value>) -> FnResult<Json<Value>> {
     echo(&input)?;
-    if input["subcommand"] != "panel" {
-        return Ok(Json(private("recorded")));
-    }
-    Ok(Json(json!({ "actions": [{
-        "type": "reply",
-        "content": "Use each of these once.",
-        "components": [
-            [{ "type": "button", "style": "primary", "id": "form", "label": "Open the form" }],
-            [{ "type": "select", "id": "pick", "options": [
-                { "label": "Red", "value": "red" }, { "label": "Blue", "value": "blue" }
-            ], "max": 2 }],
-            [{ "type": "select", "menu": "user", "id": "who", "max": 2 }],
-            [{ "type": "select", "menu": "role", "id": "groups", "max": 2 }],
-            [{ "type": "select", "menu": "channel", "id": "where", "max": 2 }]
-        ]
-    }]})))
+    Ok(Json(private("recorded")))
 }
 
 #[plugin_fn]

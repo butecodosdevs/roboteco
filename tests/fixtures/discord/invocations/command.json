@@ -1,9 +1,9 @@
 {
-  "channelId": "100000000000000018",
-  "command": "Echo user",
+  "channelId": "100000000000000017",
+  "command": "dev",
   "context": {
     "channel": {
-      "id": "100000000000000018",
+      "id": "100000000000000017",
       "name": "name-11",
       "type": 0
     },
@@ -26,9 +26,17 @@
     }
   },
   "guildId": "100000000000000001",
-  "kind": "userMenu",
+  "kind": "command",
   "locale": "en-US",
-  "options": {},
+  "options": {
+    "flag": true,
+    "group": "100000000000000014",
+    "member": "100000000000000003",
+    "number": 1,
+    "place": "100000000000000017",
+    "ratio": 1.2,
+    "text": "value-22"
+  },
   "permissions": [
     "CreateInstantInvite",
     "KickMembers",
@@ -85,24 +93,34 @@
     "BypassSlowmode"
   ],
   "resolved": {
-    "channels": {},
-    "members": {},
-    "roles": {}
-  },
-  "subcommand": null,
-  "target": {
-    "member": {
-      "avatarUrl": "https://cdn.discordapp.com/avatars/100000000000000003/avatar-19.webp",
-      "bot": false,
-      "displayName": "global_name-18",
-      "id": "100000000000000003",
-      "joinedAt": "2024-08-31T23:52:48.154Z",
-      "owner": true,
-      "roles": [],
-      "username": "username-17"
+    "channels": {
+      "100000000000000017": {
+        "id": "100000000000000017",
+        "name": "name-11",
+        "type": 0
+      }
     },
-    "message": null,
-    "userId": "100000000000000003"
+    "members": {
+      "100000000000000003": {
+        "avatarUrl": "https://cdn.discordapp.com/avatars/100000000000000003/avatar-19.webp",
+        "bot": false,
+        "displayName": "global_name-18",
+        "id": "100000000000000003",
+        "joinedAt": "2024-08-31T23:52:48.154Z",
+        "owner": true,
+        "roles": [],
+        "username": "username-17"
+      }
+    },
+    "roles": {
+      "100000000000000014": {
+        "color": 15277667,
+        "id": "100000000000000014",
+        "name": "name-8",
+        "position": 6
+      }
+    }
   },
+  "subcommand": "fidelity",
   "userId": "100000000000000003"
 }

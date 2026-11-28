@@ -68,6 +68,10 @@ With `NODE_ENV=development` (the default), the bot also loads `/dev`, which is n
 
 Add `actor` (and `reason`) to pretend the audit log credits that user, so you can see "By" lines without a second account. Discord writes no audit entry for some events, such as message edits, joins and boosts. For those, and for any other option a scenario doesn't use, the reply says what was ignored. Fake joins, leaves and channel deletes reach every listener, so the reply also lists what else they touched.
 
+Two more are for the [plugin](concepts/plugins.md#recorded-discord-payloads) tests:
+- `/dev record on:True`: save one anonymized example of each Discord event and `/dev fidelity` interaction into `tests/fixtures/discord`, until `on:False`.
+- `/dev fidelity`: every option type, plus a panel with a button, a form and each kind of select. The **Fidelity user** and **Fidelity message** menus go with it.
+
 ## Scripts
 
 | Script | Purpose |
@@ -86,6 +90,5 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm db:migrate:runtime` | Apply migrations the way production does (no drizzle-kit) |
 | `pnpm prod:up` / `prod:logs` | Build and start `compose.prod.yaml` / follow the bot's logs |
 | `pnpm plugins:build` | Build the example WASM plugin and the test fixtures into `plugins/dist/` |
-| `pnpm record-discord` | Record anonymized Discord payloads for the plugin tests ([plugins](concepts/plugins.md#recorded-discord-payloads)) |
 | `pnpm plugin check\|run\|click\|submit\|event\|job\|schema` | Validate a plugin; run its commands, buttons, forms, events and jobs without Discord; export the contract's JSON Schema ([plugins](concepts/plugins.md#quick-start)) |
 | `pnpm db:push` / `db:studio` | Sync the schema without a migration (local only) / browse data |

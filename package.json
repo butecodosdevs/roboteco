@@ -29,8 +29,7 @@
     "prod:up": "docker compose -f compose.prod.yaml up -d --build",
     "prod:logs": "docker compose -f compose.prod.yaml logs -f bot",
     "plugins:build": "sh scripts/build-plugins.sh",
-    "plugin": "tsx --env-file-if-exists=.env scripts/plugin.ts",
-    "record-discord": "tsx --env-file-if-exists=.env scripts/record-discord.ts"
+    "plugin": "tsx --env-file-if-exists=.env scripts/plugin.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1178.0",

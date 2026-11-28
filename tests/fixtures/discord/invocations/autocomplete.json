@@ -1,9 +1,9 @@
 {
-  "channelId": "100000000000000018",
-  "command": "fidelity",
+  "channelId": "100000000000000017",
+  "command": "dev",
   "context": {
     "channel": {
-      "id": "100000000000000018",
+      "id": "100000000000000017",
       "name": "name-11",
       "type": 0
     },
@@ -26,14 +26,14 @@
     }
   },
   "focused": {
-    "name": "query",
+    "name": "text",
     "value": ""
   },
   "guildId": "100000000000000001",
   "kind": "autocomplete",
   "locale": "en-US",
   "options": {
-    "query": ""
+    "text": ""
   },
   "permissions": [
     "CreateInstantInvite",
@@ -95,6 +95,6 @@
     "members": {},
     "roles": {}
   },
-  "subcommand": "search",
+  "subcommand": "fidelity",
   "userId": "100000000000000003"
 }

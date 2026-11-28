@@ -1,15 +1,18 @@
 {
-  "channelId": "100000000000000018",
+  "channelId": "100000000000000017",
   "command": "",
   "component": {
     "fields": {},
     "id": "pick",
-    "messageId": "100000000000000029",
-    "values": ["red"]
+    "messageId": "100000000000000028",
+    "values": [
+      "red",
+      "blue"
+    ]
   },
   "context": {
     "channel": {
-      "id": "100000000000000018",
+      "id": "100000000000000017",
       "name": "name-11",
       "type": 0
     },
