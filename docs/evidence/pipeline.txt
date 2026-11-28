@@ -1,0 +1,10 @@
+$ gh run list --branch feat/web-panel --limit 2     # head 843dbb3
+image  pull_request  success  843dbb3  run 46159500227
+ci  pull_request  success  843dbb3  run 46159500283
+
+# image.yml on the same commit: it builds arm64 on the cluster runner and stops there.
+# No push, no digest commit, no deploy — that is the pull_request path.
+  build | Make the registry credential usable from the cluster name | skipped
+  build | Build (arm64) | success
+  build | Push and read the digest | skipped
+  build | Record the digest in the infra repo | skipped

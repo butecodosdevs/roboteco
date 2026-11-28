@@ -1,0 +1,27 @@
+$ kubectl -n roboteco get pods,svc,pvc
+NAME                            READY   STATUS      RESTARTS   AGE
+pod/garage-5cfb5fd79c-x6h2l     1/1     Running     0          9h
+pod/pg-backup-29930760-9q7k7    0/1     Completed   0          9h
+pod/postgres-6c788f577c-lss5l   1/1     Running     0          10h
+pod/roboteco-5d8bcd59d-74vff    1/1     Running     0          16m
+pod/valkey-6469b9767-n9dmr      1/1     Running     0          12h
+
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
+service/garage     ClusterIP   10.43.148.214   <none>        3900/TCP,3901/TCP   10h
+service/postgres   ClusterIP   10.43.55.205    <none>        5432/TCP            10h
+service/roboteco   ClusterIP   10.43.104.110   <none>        3000/TCP            12h
+service/valkey     ClusterIP   10.43.39.118    <none>        6379/TCP            12h
+
+NAME                                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/garage-data      Bound    pvc-94f6d681-793a-431d-9846-52aad436523d   5Gi        RWO            local-path     <unset>                 10h
+persistentvolumeclaim/postgres-data    Bound    pvc-67c86826-314d-4d26-aee2-c0c78bebe768   5Gi        RWO            local-path     <unset>                 10h
+persistentvolumeclaim/roboteco-panel   Bound    pvc-4ac87a1d-0eef-4568-97c5-18f7741867e1   1Gi        RWO            local-path     <unset>                 12h
+
+$ kubectl -n roboteco get pod -l app.kubernetes.io/name=roboteco -o jsonpath={.items[0].spec.containers[0].image}
+registry.giomartins.dev:5000/roboteco@sha256:1af0f5bf6dd7c2fb3d95c77d87dc5915d2dfa4cc521f0495042dd72fcb6985f8
+
+$ kubectl -n argocd get application roboteco
+Synced Healthy 0f32678ec9abc8fec1bd9ac7af0843100354a3e2
+
+$ curl https://roboteco.giomartins.dev/health
+{"status":"ok","ping":123,"cache":"unavailable"}

@@ -331,14 +331,17 @@ Migrations must stay compatible with the previous release, so a rollback never b
 
 ### CI/CD
 
-[`ci.yml`](.github/workflows/ci.yml) runs `typecheck`, `lint`, a migration on a
-fresh Postgres and `panel:check` on every pull request and on `main`.
+[`ci.yml`](.github/workflows/ci.yml) runs `typecheck`, `lint`, `build`, a
+migration on a fresh Postgres and the test suite on every pull request and on
+`main`. The suite includes [`tests/panel/boundary.test.ts`](tests/panel/boundary.test.ts),
+which forges sessions and hits the panel over real HTTP.
 
-The image is built by `giomartinsdev/gio-random-projects`, which owns the
-self-hosted arm64 runner, the registry credential and the manifests. Its
-`roboteco-image.yml` polls this repository's `main` every 15 minutes, builds
-when the commit changes, and commits the new digest. Nothing here needs a
-secret: the deploy side never trusts code from a public repository.
+[`image.yml`](.github/workflows/image.yml) builds the arm64 image on the
+cluster runner — the registry is `registry.support.svc.cluster.local:5000`,
+plain HTTP, reachable only from inside. On a pull request it builds and stops;
+on `main`, gated on `ci` passing via `workflow_run`, it pushes and commits the
+new digest to `giomartinsdev/gio-random-projects`, where ArgoCD picks it up.
+Neither workflow needs a secret in this repository.
 
 ---
 
