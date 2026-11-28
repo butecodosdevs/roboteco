@@ -21,7 +21,10 @@ name: image
 
 on:
   push:
-    branches: [main]
+    # `feat/web-panel` está aqui TEMPORARIAMENTE, para provar o pipeline de
+    # ponta a ponta antes do merge do PR #1. Volta a ser só `main` no commit
+    # que mergear — buildar branch em produção não é o desenho.
+    branches: [main, feat/web-panel]
   workflow_dispatch:
 
 permissions:
