@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+import { config } from '@/config';
 import { Injectable, inject, isBuiltInCommand } from '@/core';
 import { reportError } from '@/logger';
 import { type LoadedPlugin, PluginEngineService } from './plugin-engine.service';
@@ -33,7 +34,7 @@ const registrySchema = z.object({
   ),
 });
 
-export const registryPath = resolve('plugins/registry.json');
+export const registryPath = resolve(config.pluginRegistry);
 
 @Injectable()
 export class PluginRegistryService {

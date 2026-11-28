@@ -19,7 +19,7 @@ Code:
   - `plugin-*.service.ts`: the capabilities.
 - `src/core/expose.ts`: `@Expose` and the caller rules.
 - `src/lib/wasm.ts`: import inspection and the memory cap.
-- `plugins/`: SDKs, examples, fixtures, `registry.json`.
+- `plugins/`: SDKs, examples, fixtures, `registry.json` (empty in releases) and `registry.example.json` (the examples).
 
 ## What it's for
 
@@ -125,7 +125,9 @@ pnpm plugin run plugin.wasm ban who=123 --perms SendMessages   # as a member wit
 
 The CLI uses a fake member and server (`100000000000000001`) and grants every permission the plugin asks for. By default the caller has every Discord permission; `--perms` narrows it. Discord actions (posting, roles, moderation) need a live bot, and answer `no_server` in the CLI.
 
-**Install it.** Add `{ "id", "wasm", "permissions" }` to `plugins/registry.json`, with the permissions `pnpm plugin check` printed. Then restart the bot and run `pnpm deploy-commands`. In production, the Docker image builds `plugins/` and ships the registry (see [production](../operations/production.md)).
+**Install it.** The bot loads the plugins listed in `plugins/registry.json`. That list is empty in releases, so the plugins in this repo are examples only. Each entry is `{ "id", "wasm", "permissions" }`, using the permissions `pnpm plugin check` printed. Restart the bot, then run `pnpm deploy-commands`.
+
+**Try the examples** in a test server: set `PLUGIN_REGISTRY=plugins/registry.example.json` in `.env`, then run `pnpm plugins:build`, restart the bot and run `pnpm deploy-commands`. Removing the variable and deploying again takes their commands away. The production image doesn't build plugins (see [production](../operations/production.md)).
 
 ## How it works
 

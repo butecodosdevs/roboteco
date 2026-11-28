@@ -31,6 +31,7 @@ Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
 | `SENTRY_DSN` | no | error reporting, off when empty |
 | `HEALTH_PORT` | no | serves `GET /health` when set |
 | `GUILD_DATA_RETENTION_DAYS` | no | days to keep a server's data after the bot leaves (default 30) |
+| `PLUGIN_REGISTRY` | no | plugin registry to load (default `plugins/registry.json`, empty; `plugins/registry.example.json` loads the examples) |
 | `DISCORD_GUILD_ID` | no | your test server ID. When set, `deploy-commands` registers commands on that server instantly instead of globally |
 | `DATABASE_URL` | yes | `postgres://roboteco:roboteco@localhost:5432/roboteco` |
 | `VALKEY_URL` | no | `redis://localhost:6379` (default) |

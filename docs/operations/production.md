@@ -74,4 +74,4 @@ Garage data (uploaded files) lives in the `garage-data` volume. Back that up wit
 
 ### Plugins
 
-The image builds the WASM plugins from `plugins/` in a separate stage (Rust and Go, the same `scripts/build-plugins.sh` as `pnpm plugins:build`) and ships `plugins/registry.json` with `plugins/dist/`. A plugin is installed in production by adding it to the registry and redeploying (see [plugins](../concepts/plugins.md)).
+No plugins are installed in releases: the image ships the empty `plugins/registry.json`, and the plugins in `plugins/` are examples. Installing one in production means adding it to the registry and building its WASM into the image (see [plugins](../concepts/plugins.md)).

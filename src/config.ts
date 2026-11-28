@@ -24,6 +24,7 @@ const schema = z.object({
     .transform((v) => v || undefined),
   HEALTH_PORT: z.coerce.number().int().positive().optional(),
   GUILD_DATA_RETENTION_DAYS: z.coerce.number().int().min(0).default(30),
+  PLUGIN_REGISTRY: z.string().min(1).default('plugins/registry.json'),
   DISCORD_GUILD_ID: z
     .string()
     .optional()
@@ -50,6 +51,7 @@ export const config = {
   sentryDsn: parsed.data.SENTRY_DSN,
   healthPort: parsed.data.HEALTH_PORT,
   guildDataRetentionDays: parsed.data.GUILD_DATA_RETENTION_DAYS,
+  pluginRegistry: parsed.data.PLUGIN_REGISTRY,
   databaseUrl: parsed.data.DATABASE_URL,
   valkeyUrl: parsed.data.VALKEY_URL,
   s3: {
