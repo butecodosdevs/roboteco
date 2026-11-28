@@ -9,7 +9,13 @@ name: ci
 # montado e o daemon do cluster ao lado — não é um risco teórico. Runner do
 # GitHub não tem credencial nenhuma, e em repositório público ele é de graça.
 #
-# O build da imagem é outro workflow (`image.yml`), que só roda na `main`.
+# O build da imagem é outro workflow (`image.yml`), que só roda na `main` e só
+# DEPOIS que este passa: ele escuta `workflow_run` deste workflow, não o `push`.
+#
+# Este workflow roda em `pull_request` E em `push: main`, de propósito. O de PR
+# é o que pega o defeito antes do merge; o de push na `main` é o que serve de
+# gatilho para o build — sem ele, um merge direto (ou um commit sem PR) não
+# testaria nada e o `image.yml` não teria um `workflow_run` para esperar.
 #
 # ## Por que só o Postgres, e não o `docker compose` inteiro
 #
