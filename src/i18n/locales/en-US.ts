@@ -3,6 +3,7 @@ import { automodEnUS } from '@/modules/automod/i18n/en-US';
 import { birthdaysEnUS } from '@/modules/birthdays/i18n/en-US';
 import { countingEnUS } from '@/modules/counting/i18n/en-US';
 import { customCommandsEnUS } from '@/modules/custom-commands/i18n/en-US';
+import { devEnUS } from '@/modules/dev/i18n/en-US';
 import { dropsEnUS } from '@/modules/drops/i18n/en-US';
 import { feedsEnUS } from '@/modules/feeds/i18n/en-US';
 import { giveawaysEnUS } from '@/modules/giveaways/i18n/en-US';
@@ -46,6 +47,7 @@ export const enUS = {
   starboard: starboardEnUS,
   welcome: welcomeEnUS,
   logs: logsEnUS,
+  dev: devEnUS,
   reminders: remindersEnUS,
   privacy: privacyEnUS,
   drops: dropsEnUS,

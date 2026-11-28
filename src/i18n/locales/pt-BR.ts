@@ -3,6 +3,7 @@ import { automodPtBR } from '@/modules/automod/i18n/pt-BR';
 import { birthdaysPtBR } from '@/modules/birthdays/i18n/pt-BR';
 import { countingPtBR } from '@/modules/counting/i18n/pt-BR';
 import { customCommandsPtBR } from '@/modules/custom-commands/i18n/pt-BR';
+import { devPtBR } from '@/modules/dev/i18n/pt-BR';
 import { dropsPtBR } from '@/modules/drops/i18n/pt-BR';
 import { feedsPtBR } from '@/modules/feeds/i18n/pt-BR';
 import { giveawaysPtBR } from '@/modules/giveaways/i18n/pt-BR';
@@ -46,6 +47,7 @@ export const ptBR: Messages = {
   starboard: starboardPtBR,
   welcome: welcomePtBR,
   logs: logsPtBR,
+  dev: devPtBR,
   reminders: remindersPtBR,
   privacy: privacyPtBR,
   drops: dropsPtBR,
