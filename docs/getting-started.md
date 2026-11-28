@@ -13,7 +13,7 @@
 ## Discord application
 
 1. Create an application in the [Developer Portal](https://discord.com/developers/applications) and add a bot. Copy the bot token and the application ID.
-2. Invite the bot: OAuth2 → URL Generator → scopes `bot` + `applications.commands`, permissions **View Channels**, **Send Messages**, **Send Messages in Threads**, **Embed Links**, **Read Message History**, **Manage Messages**, **Add Reactions**, **Manage Roles**, **Manage Channels**, **Move Members**, **Mute Members**, **Deafen Members**, **Manage Server** (lockdowns, invite tracking, AutoMod), **Create Private Threads**, **Manage Threads**, **Kick Members**, **Ban Members** and **Moderate Members** (the permission that allows timeouts).
+2. Invite the bot: OAuth2 → URL Generator → scopes `bot` + `applications.commands`, permissions **View Channels**, **Send Messages**, **Send Messages in Threads**, **Embed Links**, **Read Message History**, **Manage Messages**, **Add Reactions**, **Manage Roles**, **Manage Channels**, **Move Members**, **Mute Members**, **Deafen Members**, **Manage Server** (lockdowns, invite tracking, AutoMod), **View Audit Log** (who did each action in the server log), **Create Private Threads**, **Manage Threads**, **Kick Members**, **Ban Members** and **Moderate Members** (the permission that allows timeouts).
 3. Put the bot's role above every role it should assign, and above the members it should moderate.
 4. For `welcome`, `logs`, `antiraid`, `invites` and `counting`, enable **Server Members Intent** and **Message Content Intent** under Bot → Privileged Gateway Intents, and set `DISCORD_PRIVILEGED_INTENTS=true`. Without that variable the bot starts without them and logs which modules are affected.
 
@@ -55,6 +55,17 @@ pnpm dev
 ```
 
 For production, see [running in production](operations/production.md).
+
+## Testing events by hand
+
+With `NODE_ENV=development` (the default), the bot also loads `/dev`, which is never deployed in production. It fires a fake gateway event built from real objects in your server. Every listener handles it as if Discord had sent it, but nothing actually changes on Discord.
+
+- `/dev message`: edit, delete or bulk delete the latest messages in `channel` (default: here), optionally only those by `author`.
+- `/dev member`: join, leave, kick, nickname, role (`role`), timeout, boost, ban or unban for `member` (default: you).
+- `/dev channel` and `/dev role`: create, update or delete `channel` (default: here) or `role`.
+- `/dev voice`: join, leave, disconnect, move, server mute or deafen `member` in a voice `channel` (default: where the member is).
+
+Add `actor` (and `reason`) to pretend the audit log credits that user, so you can see "By" lines without a second account. Discord writes no audit entry for some events, such as message edits, joins and boosts. For those, and for any other option a scenario doesn't use, the reply says what was ignored. Fake joins, leaves and channel deletes reach every listener, so the reply also lists what else they touched.
 
 ## Scripts
 

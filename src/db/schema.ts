@@ -32,6 +32,14 @@ export const guilds = pgTable('guilds', {
   welcomeMessage: text('welcome_message'),
   welcomeRoleId: text('welcome_role_id'),
   serverLogChannelId: text('server_log_channel_id'),
+  serverLogDisabledEvents: jsonb('server_log_disabled_events')
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  serverLogIgnoredChannels: jsonb('server_log_ignored_channels')
+    .$type<string[]>()
+    .notNull()
+    .default([]),
   purgeJobId: integer('purge_job_id'),
   escalationWarnings: integer('escalation_warnings'),
   escalationAction: text('escalation_action', { enum: ['timeout', 'kick', 'ban'] }),

@@ -1,6 +1,7 @@
 import { MessageFlags, SlashCommandSubcommandBuilder } from 'discord.js';
-import { type GuildInteraction, Subcommand } from '@/core';
+import { type GuildInteraction, inject, Subcommand } from '@/core';
 import { localize, translator } from '@/i18n';
+import { LogsService } from '@/modules/logs/logs.service';
 import { currentRoom, refuse } from './current-room';
 
 @Subcommand(
@@ -9,6 +10,8 @@ import { currentRoom, refuse } from './current-room';
   ),
 )
 export class KickSubcommand {
+  private readonly logs = inject(LogsService);
+
   async execute(interaction: GuildInteraction) {
     const tr = translator(interaction.locale);
     const current = await currentRoom(interaction);
@@ -19,6 +22,14 @@ export class KickSubcommand {
     }
     await current.channel.permissionOverwrites.edit(user.id, { Connect: false });
     const member = current.channel.members.get(user.id);
+    if (member) {
+      await this.logs.expectVoiceAction(
+        interaction.guildId,
+        'disconnect',
+        user.id,
+        interaction.user.id,
+      );
+    }
     await member?.voice.disconnect('Kicked from temporary voice channel').catch(() => undefined);
     const content = tr('tempVoice.replies.kicked', { user: user.toString() });
     return interaction.reply({

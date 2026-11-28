@@ -2,6 +2,7 @@ import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.
 import { Command, type GuildInteraction, inject } from '@/core';
 import { localize, translator } from '@/i18n';
 import { ModLogService } from '../../mod-log.service';
+import { ModerationService } from '../../moderation.service';
 
 @Command({
   data: localize(new SlashCommandBuilder(), 'moderation.commands.purge')
@@ -14,6 +15,7 @@ import { ModLogService } from '../../mod-log.service';
 })
 export class PurgeCommand {
   private readonly log = inject(ModLogService);
+  private readonly moderation = inject(ModerationService);
 
   async execute(interaction: GuildInteraction) {
     const tr = translator(interaction.locale);
@@ -44,6 +46,7 @@ export class PurgeCommand {
     const user = interaction.options.getUser('user');
     const recent = await channel.messages.fetch({ limit: 100 });
     const targets = recent.filter((m) => !user || m.author.id === user.id).first(count);
+    await this.moderation.expect(guild.id, 'purge', channel.id, interaction.user.id);
     const deleted = await channel.bulkDelete(targets, true);
 
     if (deleted.size === 0) return interaction.editReply(tr('moderation.replies.purgedNone'));

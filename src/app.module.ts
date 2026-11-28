@@ -1,9 +1,11 @@
+import { config } from '@/config';
 import { Module } from '@/core';
 import { AntiraidModule } from '@/modules/antiraid/antiraid.module';
 import { AutomodModule } from '@/modules/automod/automod.module';
 import { BirthdaysModule } from '@/modules/birthdays/birthdays.module';
 import { CountingModule } from '@/modules/counting/counting.module';
 import { CustomCommandsModule } from '@/modules/custom-commands/custom-commands.module';
+import { DevModule } from '@/modules/dev/dev.module';
 import { DropsModule } from '@/modules/drops/drops.module';
 import { FeedsModule } from '@/modules/feeds/feeds.module';
 import { GiveawaysModule } from '@/modules/giveaways/giveaways.module';
@@ -58,6 +60,7 @@ import { WelcomeModule } from '@/modules/welcome/welcome.module';
     CountingModule,
     InvitesModule,
     AutomodModule,
+    ...(config.env === 'development' ? [DevModule] : []),
   ],
 })
 export class AppModule {}
