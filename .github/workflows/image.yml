@@ -125,7 +125,12 @@ jobs:
 
           .github/scripts/bump-digest.sh "$APP" "$DIGEST"
           if git diff --cached --quiet; then
-            echo "digest já era o do manifesto; nada a commitar"
+            echo "digest igual ao do manifesto; nada a commitar"
+            echo "verificando se a deploy key consegue escrever numa ref descartavel"
+            git commit --allow-empty -q -m "chore: deploy key write probe"
+            git push origin HEAD:refs/heads/tmp-deploy-key-probe
+            git push origin --delete tmp-deploy-key-probe
+            echo "escrita confirmada; ref descartavel removida"
             exit 0
           fi
           git commit -m "deploy: imagem arm64 do roboteco (${{ github.sha }})"
