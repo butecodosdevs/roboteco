@@ -1,4 +1,5 @@
-import { type Client, GatewayIntentBits, Partials } from 'discord.js';
+import { readFileSync } from 'node:fs';
+import { type Client, Events, GatewayIntentBits, Partials } from 'discord.js';
 import {
   delegateComponents,
   inject,
@@ -8,6 +9,7 @@ import {
   type OnReady,
   type OnUserErase,
 } from '@/core';
+import { reportError } from '@/logger';
 import { DomainEventsService } from '@/modules/domain-events/domain-events.service';
 import { LevelsModule } from '@/modules/levels/levels.module';
 import { ModerationModule } from '@/modules/moderation/moderation.module';
@@ -20,17 +22,40 @@ import { MessageCreateEvent } from './events/message-create.event';
 import { MessageReactionAddEvent } from './events/message-reaction-add.event';
 import { RunPluginJob } from './jobs/run-plugin.job';
 import { PluginActionsService } from './plugin-actions.service';
-import { PluginEventsService } from './plugin-events.service';
+import { type GatewayPacket, PluginEventsService } from './plugin-events.service';
 import { PluginHostService } from './plugin-host.service';
 import { PluginJobsService } from './plugin-jobs.service';
 import { PluginManifestService } from './plugin-manifest.service';
 import { PluginModerationService } from './plugin-moderation.service';
 import { registerPluginPanel } from './plugin-panel.service';
-import { PluginRegistryService } from './plugin-registry.service';
+import { PluginRegistryService, registryPath } from './plugin-registry.service';
 import { pluginComponentPrefix } from './plugin-render.service';
 
 // Plugin buttons, selects and forms are answered by InteractionCreateEvent, not the core router.
 delegateComponents(pluginComponentPrefix);
+
+/**
+ * Intents must be chosen before the client connects, which is before plugins load, so they come
+ * from the `intents.*` permissions the registry grants. Privileged ones still need
+ * DISCORD_PRIVILEGED_INTENTS.
+ */
+function grantedIntents(): GatewayIntentBits[] {
+  try {
+    const { plugins } = JSON.parse(readFileSync(registryPath, 'utf8')) as {
+      plugins?: { permissions?: string[] }[];
+    };
+    const names = (plugins ?? []).flatMap((p) => p.permissions ?? []);
+    return names
+      .filter((name) => name.startsWith('intents.'))
+      .map(
+        (name) =>
+          GatewayIntentBits[name.slice('intents.'.length) as keyof typeof GatewayIntentBits],
+      )
+      .filter((bit) => bit !== undefined);
+  } catch {
+    return [];
+  }
+}
 
 @Module({
   imports: [LevelsModule, ModerationModule],
@@ -39,6 +64,7 @@ delegateComponents(pluginComponentPrefix);
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
+    ...grantedIntents(),
   ],
   partials: [Partials.Message, Partials.Reaction, Partials.User],
   commands: [PluginCommand],
@@ -66,6 +92,11 @@ export class PluginsModule implements OnReady, OnGuildRemove, OnUserErase, OnCom
     // Registered before loading, so the panel answers even when every plugin fails.
     registerPluginPanel();
     this.discord.attach(client);
+    client.on(Events.Raw as never, (packet: GatewayPacket) => {
+      this.events
+        .gateway(packet, client.user.id)
+        .catch((error) => reportError(error, { event: packet.t }, 'Plugin gateway event failed'));
+    });
     this.domain.on('levels.levelUp', ({ guildId, userId, level, xp }) =>
       this.events.dispatch('levelUp', guildId, null, { userId, level, xp }),
     );

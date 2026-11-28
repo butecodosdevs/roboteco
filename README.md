@@ -223,23 +223,23 @@ Time-based work goes through the same database. A command calls `schedule(Job, r
 
 ### Plugin sandbox
 
-Plugins are WebAssembly modules that declare their own slash commands. They take JSON in and return JSON actions out. They never see the token, the disk or the network, unless a permission is granted in `plugins/registry.json`.
+Plugins are WebAssembly modules that add commands, context menus, buttons and forms, and react to Discord events and scheduled runs. They take JSON in and return JSON out. They never see the token, the database, the disk or the network. Everything else goes through one host function, `call`, to capabilities: service methods marked `@Expose`, each behind a permission granted in `plugins/registry.json` (empty in releases).
 
 ```mermaid
 flowchart LR
-  member["Member runs /coin flip"] --> host["PluginsModule"]
+  trigger["Member runs a command,<br/>clicks, or a Discord event fires"] --> host["PluginsModule"]
   host -->|"JSON input"| sandbox
   subgraph sandbox["Extism sandbox (worker thread)"]
     wasm["plugin.wasm<br/>Rust · Go · …"]
   end
-  sandbox -->|"JSON actions"| validate["zod validation"]
-  validate -->|"reply, no mentions"| discord["Discord"]
-  wasm -. "kv_get / kv_set (kv)" .-> valkey[("Valkey<br/>per plugin and server")]
-  wasm -. "xp_grant (xp.grant)" .-> levels["LevelsService"]
-  wasm -. "http_request (allowlist)" .-> web["Allowed hosts"]
+  sandbox -->|"replies, embeds, buttons, forms"| validate["zod validation"]
+  validate -->|"no mentions"| discord["Discord"]
+  wasm -. "call(kv.*)" .-> postgres[("Postgres<br/>per plugin and server")]
+  wasm -. "call(messages, roles, moderation, …)" .-> services["Bot services<br/>(checks what the caller may do)"]
+  wasm -. "call(schedule.create)" .-> jobs["Job runner"]
 ```
 
-Limits: 2 s per call, 64 MB of memory, no filesystem, and calls to each plugin are queued one at a time. At load time the bot inspects the WASM's imports and refuses any plugin that imports a function it wasn't granted. See [plugins](docs/concepts/plugins.md).
+Limits: 2 s per call, 64 MB of memory, no filesystem, and calls to each plugin are queued one at a time. A plugin can't do for a member what the member couldn't do themselves. See [plugins](docs/concepts/plugins.md).
 
 ---
 
@@ -302,7 +302,7 @@ See [docs/getting-started.md](docs/getting-started.md) for the full Discord app 
 | `pnpm storage:init` | Create the Garage bucket and keys |
 | `pnpm db:generate` / `db:migrate` | Generate / apply Drizzle migrations |
 | `pnpm db:studio` | Open Drizzle Studio |
-| `pnpm plugins:build` | Build the example WASM plugins (Rust and Go) |
+| `pnpm plugins:build` | Build the example plugin and the test fixture (Rust) |
 | `pnpm prod:up` / `prod:logs` | Start the production stack / follow the bot logs |
 
 ---
@@ -358,7 +358,7 @@ src/
   i18n/                 translation helpers and combined locales
   lib/                  durations, safe URL fetching, WASM inspection
 drizzle/                SQL migrations
-plugins/                WASM plugin sources and registry.json
+plugins/                WASM plugin SDKs, the hello-rust example, the test fixture, registry.json
 scripts/                build, structure lint, storage init, backups
 docs/                   concept guides and worked examples
 ```

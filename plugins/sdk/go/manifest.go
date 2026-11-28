@@ -9,6 +9,9 @@ type Plugin struct {
 	ContextMenus []ContextMenu `json:"contextMenus,omitempty"`
 	// Events lists the events handle_event receives, e.g. EventMessageCreate.
 	Events []string `json:"events,omitempty"`
+	// DiscordEvents lists Discord gateway events handle_event receives as Discord sends them,
+	// e.g. "MESSAGE_DELETE". Each needs the intent's permission (intents.GuildMessages, ...).
+	DiscordEvents []string `json:"discordEvents,omitempty"`
 	// Uses lists the capabilities the plugin calls, e.g. "kv.increment", "discord.messages.send".
 	Uses []string `json:"uses"`
 	// Context lists what is pushed with every interaction: "member", "guild", "channel".

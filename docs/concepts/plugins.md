@@ -5,7 +5,7 @@
 A plugin is a WebAssembly module that adds features to the bot. It can be written in any language that compiles to WASM. There are SDKs for **Rust** (`plugins/sdk/rust`) and **Go** (`plugins/sdk/go`). The bot runs plugins in [Extism](https://extism.org) sandboxes inside worker threads.
 
 A plugin can do what a built-in feature does:
-- **Triggers:** slash commands, autocomplete, context menus, buttons, select menus and forms, events, and runs it scheduled itself.
+- **Triggers:** slash commands, autocomplete, context menus, buttons, select menus and forms, every Discord gateway event (and a few bot events), and runs it scheduled itself.
 - **Answers:** text, embeds, buttons, select menus, editing the message a button is on, and opening forms.
 - **Actions:** posting, editing and deleting messages, reactions, DMs, threads, roles, moderation, storage, levels and XP.
 
@@ -19,7 +19,7 @@ Code:
   - `plugin-*.service.ts`: the capabilities.
 - `src/core/expose.ts`: `@Expose` and the caller rules.
 - `src/lib/wasm.ts`: import inspection and the memory cap.
-- `plugins/`: SDKs, examples, fixtures, `registry.json` (empty in releases) and `registry.example.json` (the examples).
+- `plugins/`: SDKs, the `hello-rust` example, the test fixture, `registry.json` (empty in releases) and `registry.example.json` (loads the example).
 
 ## What it's for
 
@@ -260,6 +260,26 @@ Every call knows its **caller**: the member whose command, click or form trigger
 
 `levelUp` and `caseCreated` come from `DomainEventsService` (`src/modules/domain-events/`): levels and moderation emit them after their own work, without depending on plugins. A plugin acts on events through capabilities; the return value of `handle_event` is ignored.
 
+### Discord events
+
+The events above are shaped by the bot. Any other Discord gateway event can be had as Discord sends it: list it in the manifest's `discordEvents`, and it arrives in `handle_event` with `event` set to Discord's name (`MESSAGE_DELETE`, `GUILD_MEMBER_UPDATE`, `VOICE_STATE_UPDATE`, …). `data` is Discord's own JSON, documented at [Gateway Events](https://discord.com/developers/docs/events/gateway-events), and the SDKs read it with `event.decode::<T>()` (Rust) or `ev.Decode(&v)` (Go).
+
+```json
+{ "discordEvents": ["MESSAGE_DELETE", "MESSAGE_REACTION_REMOVE", "VOICE_STATE_UPDATE"] }
+```
+
+- **Permissions are Discord's intents.** Each event needs the permission of the intent that delivers it, e.g. `intents.GuildMessages` for `MESSAGE_DELETE`, `intents.GuildVoiceStates` for `VOICE_STATE_UPDATE`, `intents.GuildPresences` for `PRESENCE_UPDATE`. `pnpm plugin check` prints them, and `pnpm plugin schema` lists every event with its permission.
+- **The bot requests the intents the registry grants.** Intents are chosen before plugins load, so granting `intents.GuildMessageTyping` to a plugin makes the bot ask Discord for typing events. Privileged intents (`GuildMembers`, `GuildPresences`, `MessageContent`) also need `DISCORD_PRIVILEGED_INTENTS=true` and the switch in the Developer Portal.
+- **Message content is its own grant.** Without `intents.MessageContent`, `MESSAGE_CREATE` and `MESSAGE_UPDATE` arrive without `content`, `embeds`, `attachments`, `components` and `poll` (also in the messages they quote), as Discord does for bots without that intent.
+- **What's covered:** every guild event in Discord's intents table: server, roles, channels, threads, stage instances, members, bans, the audit log, emojis, stickers, soundboard, integrations, webhooks, invites, voice states and effects, presences, messages, reactions, typing, scheduled events, AutoMod and poll votes.
+- **What's not:**
+  - `INTERACTION_CREATE` and `VOICE_SERVER_UPDATE` carry tokens that act as the bot;
+  - `GUILD_CREATE` is a whole server's state;
+  - events outside a server (DMs, the bot's own user) don't belong to one.
+- **No loops:** events the bot caused itself (its own messages, its reactions, roles it gave) are not delivered, so a plugin can't trigger itself.
+- **Size:** payloads over 64 KB are dropped.
+- **Delivery:** like the events above, these are delivered in order per plugin, at most 20 waiting.
+
 ### Checks the engine makes
 
 These are made by the engine, so services don't repeat them:
@@ -288,15 +308,131 @@ Plugin storage (`plugin_kv`), the messages plugins posted (`plugin_messages`) an
 
 ## Examples
 
-All of these are built with `pnpm plugins:build`.
+One runnable example lives in the repo. `pnpm plugins:build` builds it, and `PLUGIN_REGISTRY=plugins/registry.example.json` loads it in a test server:
 
 | Plugin | Shows |
 | --- | --- |
 | `plugins/hello-rust` | `/hello` with autocomplete; `/count` with a button that updates the message; `/flavor`, a select; `/feedback`, a form; `/profile` and the **Profile** user menu (embeds, `levels.get`); the **Quote** message menu |
-| `plugins/coin-go` | `/coin flip call:heads\|tails` with a "Flip again" button, `/coin stats` as an embed: subcommands, choices, KV |
-| `plugins/remind-go` | `/nudge` (`schedule.create`, then `handle_job` posts with `discord.messages.send`), a 🏓 reaction on "ping" (`messageCreate`, `discord.reactions.add`), level-up congratulations (`levelUp`, embeds), `/levelup-channel` limited to Manage Server |
-| `plugins/fixtures/contract-rust` | The raw JSON contract without an SDK, used by `pnpm test` |
-| `plugins/fixtures/evil-rust`, `greedy-rust` | Hostile tests: loops, memory, network, calling capabilities it shouldn't, farming XP |
+| `plugins/fixtures/contract-rust` | The raw JSON contract without an SDK, used by `pnpm test` (including a command that allocates until the memory cap stops it) |
+
+The samples below cover the rest. Each is a complete `lib.rs` or `main.go`.
+
+**Discord events (Rust): a voice activity feed.** It posts voice joins, leaves and moves, and taken-back reactions, in the channel stored under `feed` in KV. Registry permissions: `kv`, `messages.send`, `intents.GuildVoiceStates`, `intents.GuildMessageReactions`.
+
+```rust
+use extism_pdk::*;
+use roboteco::*;
+use serde::Deserialize;
+
+#[plugin_fn]
+pub fn manifest() -> FnResult<Json<Manifest>> {
+    Ok(Json(
+        Manifest::new("activity", "1.0.0")
+            .uses(&["kv.get", "kv.set", "kv.delete", "discord.messages.send"])
+            .discord_events(&["VOICE_STATE_UPDATE", "MESSAGE_REACTION_REMOVE"]),
+    ))
+}
+
+// Only the fields used; serde ignores the rest of Discord's payload.
+#[derive(Deserialize)]
+struct VoiceState {
+    user_id: String,
+    channel_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ReactionRemove {
+    user_id: String,
+    channel_id: String,
+    message_id: String,
+}
+
+#[plugin_fn]
+pub fn handle_event(Json(event): Json<Event>) -> FnResult<Json<Done>> {
+    let Some(feed) = kv::get("feed")? else { return Ok(Json(Done)) };
+    let line = match event.event.as_str() {
+        "VOICE_STATE_UPDATE" => {
+            let state: VoiceState = event.decode()?;
+            // Discord only says where the member is now, so where they were is kept in KV.
+            let key = format!("voice:{}", state.user_id);
+            let before = kv::get(&key)?;
+            match &state.channel_id {
+                Some(now) => kv::set(&key, now.as_str())?,
+                None => {
+                    kv::delete(&key)?;
+                }
+            }
+            match (before, state.channel_id) {
+                (None, Some(now)) => Some(format!("🔊 <@{}> joined <#{now}>", state.user_id)),
+                (Some(was), None) => Some(format!("🔈 <@{}> left <#{was}>", state.user_id)),
+                (Some(was), Some(now)) if was != now => {
+                    Some(format!("🔀 <@{}> moved from <#{was}> to <#{now}>", state.user_id))
+                }
+                _ => None,
+            }
+        }
+        "MESSAGE_REACTION_REMOVE" => {
+            let r: ReactionRemove = event.decode()?;
+            Some(format!(
+                "↩️ <@{}> took back a reaction on https://discord.com/channels/{}/{}/{}",
+                r.user_id, event.guild_id, r.channel_id, r.message_id
+            ))
+        }
+        _ => None,
+    };
+    if let Some(line) = line {
+        messages::send(Some(&feed), line)?;
+    }
+    Ok(Json(Done))
+}
+```
+
+**Bot events, reactions and embeds (Go).** It reacts 🏓 to "ping" and congratulates level-ups in the channel stored under `levelup-channel`. Registry permissions: `kv`, `messages.send`, `reactions`, `events.messages`, `events.levels`.
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"roboteco.dev/sdk"
+)
+
+//go:wasmexport manifest
+func manifest() int32 {
+	return roboteco.Manifest(roboteco.Plugin{
+		Name: "cheers", Version: "1.0.0",
+		Uses:   []string{"kv.get", "discord.messages.send", "discord.reactions.add"},
+		Events: []string{roboteco.EventMessageCreate, roboteco.EventLevelUp},
+	})
+}
+
+//go:wasmexport handle_event
+func handleEvent() int32 {
+	return roboteco.HandleEvent(func(ev roboteco.Event) error {
+		if m := ev.MessageCreate(); m != nil && m.Message.Content == "ping" {
+			return roboteco.Reactions.Add(m.Message.ChannelID, m.Message.ID, "🏓")
+		}
+		if up := ev.LevelUp(); up != nil {
+			// levelUp has no channel of its own, so the plugin keeps one.
+			channel, ok, err := roboteco.KV.Get("levelup-channel")
+			if err != nil || !ok {
+				return err
+			}
+			congrats := roboteco.Embed{
+				Title:       "🎉 Level up!",
+				Description: fmt.Sprintf("<@%s> reached level **%d**.", up.UserID, up.Level),
+				Color:       0x57F287,
+			}
+			_, err = roboteco.Messages.Send(channel, roboteco.Message{Embeds: []roboteco.Embed{congrats}})
+			return err
+		}
+		return nil
+	})
+}
+
+func main() {}
+```
 
 Tested (`pnpm test`, against the real Postgres and Valkey, with Discord faked):
 - every refusal: caller permissions, staff roles, hierarchy, ownership of messages, the XP and DM budgets;

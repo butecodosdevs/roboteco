@@ -8,7 +8,7 @@
 | [Node.js](https://nodejs.org) | 26.10.0 (min. 22.12) | Runtime |
 | [pnpm](https://pnpm.io) | 12.5.1 | Package manager |
 | [Docker](https://docs.docker.com/get-docker/) + Compose | Compose v2+ | Runs PostgreSQL, Garage and Valkey locally |
-| [Rust](https://rustup.rs) with `wasm32-unknown-unknown`, [Go](https://go.dev) 1.24+ | optional | Only to build the example [plugins](concepts/plugins.md) (`pnpm plugins:build`) |
+| [Rust](https://rustup.rs) with `wasm32-unknown-unknown` | optional | Only to build the example [plugin](concepts/plugins.md) and the test fixture (`pnpm plugins:build`, needed by `pnpm test`). Go plugins need [Go](https://go.dev) 1.24+ |
 
 ## Discord application
 
@@ -36,7 +36,7 @@ Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
 | `PANEL_ALLOWED_EMAILS` | no | comma-separated, case-insensitive Discord account emails allowed in; also editable from the panel, where changes apply without a restart |
 | `DISCORD_CLIENT_SECRET` | no | OAuth2 client secret from the Discord Developer Portal; reuses `DISCORD_CLIENT_ID`, redirect URI is `${PANEL_URL}/api/auth/callback/discord` |
 | `GUILD_DATA_RETENTION_DAYS` | no | days to keep a server's data after the bot leaves (default 30) |
-| `PLUGIN_REGISTRY` | no | plugin registry to load (default `plugins/registry.json`, empty; `plugins/registry.example.json` loads the examples) |
+| `PLUGIN_REGISTRY` | no | plugin registry to load (default `plugins/registry.json`, empty; `plugins/registry.example.json` loads the `hello-rust` example) |
 | `DISCORD_GUILD_ID` | no | your test server ID. When set, `deploy-commands` registers commands on that server instantly instead of globally |
 | `DATABASE_URL` | yes | `postgres://roboteco:roboteco@localhost:5432/roboteco` |
 | `VALKEY_URL` | no | `redis://localhost:6379` (default) |

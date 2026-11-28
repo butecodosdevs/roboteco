@@ -20,8 +20,12 @@ import type { ContextKind } from './discord-data.service';
 import {
   choicesSchema,
   type EventInput,
+  type GatewayEvent,
+  gatewayEvents,
   type Invocation,
+  intentPermission,
   type JobInput,
+  messageContentPermission,
   type PluginAction,
   type PluginChoice,
   type PluginCommandSpec,
@@ -40,6 +44,8 @@ export const knownPermissions = (): Set<string> =>
     'http',
     ...allCapabilities().flatMap((c) => (c.permission ? [c.permission] : [])),
     ...Object.values(pluginEvents),
+    ...Object.values(gatewayEvents).map(intentPermission),
+    messageContentPermission,
   ]);
 
 export interface PluginDefinition {
@@ -60,6 +66,7 @@ export interface LoadedPlugin {
   commands: PluginCommandSpec[];
   contextMenus: PluginContextMenuSpec[];
   events: PluginEvent[];
+  discordEvents: GatewayEvent[];
   exports: Set<string>;
   autocompletes: boolean;
   permissions: Permission[];
@@ -161,10 +168,14 @@ export class PluginEngineService {
       const permission = pluginEvents[event];
       needed.set(permission, [...(needed.get(permission) ?? []), `the ${event} event`]);
     }
+    for (const event of manifest.discordEvents) {
+      const permission = intentPermission(gatewayEvents[event]);
+      needed.set(permission, [...(needed.get(permission) ?? []), event]);
+    }
     const exports = new Set(wasmExports(wasm));
     const exportsNeeded: [boolean, string, string][] = [
       [manifest.commands.length + manifest.contextMenus.length > 0, 'handle_command', 'commands'],
-      [manifest.events.length > 0, 'handle_event', 'events'],
+      [manifest.events.length + manifest.discordEvents.length > 0, 'handle_event', 'events'],
       [access.uses.has('schedule.create'), 'handle_job', 'schedule.create'],
     ];
     const missingExport = exportsNeeded.find(([needs, name]) => needs && !exports.has(name));
@@ -198,6 +209,7 @@ export class PluginEngineService {
       commands: manifest.commands,
       contextMenus: manifest.contextMenus,
       events: manifest.events,
+      discordEvents: manifest.discordEvents,
       exports,
       autocompletes: exports.has('autocomplete'),
       permissions: [...access.granted],
