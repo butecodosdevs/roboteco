@@ -91,7 +91,6 @@ const accessSchema = z.object({
     .array(z.string().trim().toLowerCase().email())
     .min(1)
     .max(50)
-    // Duplicates would render twice and mean nothing; order is whatever the panel sent.
     .transform((list) => [...new Set(list)]),
 });
 

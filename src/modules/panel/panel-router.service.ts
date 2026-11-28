@@ -3,27 +3,23 @@ import type { Client } from 'discord.js';
 import { Injectable } from '@/core';
 
 export interface PanelRequest {
-  /** Path after `/api/panel/<segment>/`. Empty when the route was called bare. */
   segments: string[];
   query: URLSearchParams;
   method: string;
-  /** Parsed JSON body for POST/PUT/PATCH/DELETE, `undefined` otherwise. */
   body: unknown;
   client: Client;
-  /** Raw request, for cookies and the remote address. */
   request: IncomingMessage;
 }
 
 export interface PanelReply {
   status?: number;
   body: unknown;
-  /** Extra response headers, used by the session routes to set and clear the cookie. */
   headers?: Record<string, string>;
 }
 
 export type PanelRoute = (request: PanelRequest) => Promise<PanelReply> | PanelReply;
 
-/** Better Auth answers `/api/auth/*` itself; the panel only forwards. */
+/** Better Auth answers `/api/auth/*`; the panel only forwards. */
 export type PanelAuthHandler = (
   request: IncomingMessage,
   response: ServerResponse,

@@ -39,7 +39,6 @@ function running(key: string): string | null {
     case 'SENTRY_DSN':
       return config.sentryDsn ?? null;
     case 'PANEL_ALLOWED_EMAILS':
-      // Read live, so "ativo" means what the next request will actually check.
       return liveSetting('PANEL_ALLOWED_EMAILS');
     default:
       return null;

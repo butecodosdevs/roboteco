@@ -102,6 +102,11 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # The image only ships what esbuild writes, so a file that typecheck accepts but the bundle
+      # cannot resolve would break on deploy and not here.
+      - name: Build
+        run: pnpm build
+
       # Empty database, migration from scratch: the path a new deploy takes. The
       # production `initContainer` runs exactly this script.
       - name: Migrate
