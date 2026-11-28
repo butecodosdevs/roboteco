@@ -1,10 +1,18 @@
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
-import { Collection, PermissionsBitField } from 'discord.js';
+import {
+  AuditLogEvent,
+  Collection,
+  OverwriteType,
+  PermissionFlagsBits,
+  PermissionsBitField,
+} from 'discord.js';
 import { eq } from 'drizzle-orm';
 import '@/app.module';
 import { closeCache } from '@/cache';
+import { inject } from '@/core';
 import { closeDb, db, schema, updateGuildSettings } from '@/db';
+import { AuditService } from '@/modules/logs/audit.service';
 import { LogsService } from '@/modules/logs/logs.service';
 import { uniqueGuildId } from '../plugins/fakes';
 
@@ -35,7 +43,12 @@ function logChannel(id = LOG) {
   return { sent, channel };
 }
 
-async function guildWith(settings: Record<string, unknown>, locale = 'en-US', channel: any = null) {
+async function guildWith(
+  settings: Record<string, unknown>,
+  locale = 'en-US',
+  channel: any = null,
+  audit = false,
+) {
   const id = uniqueGuildId();
   created.push(id);
   await updateGuildSettings(id, locale, settings);
@@ -43,10 +56,14 @@ async function guildWith(settings: Record<string, unknown>, locale = 'en-US', ch
     id,
     preferredLocale: locale,
     memberCount: 10,
-    // A `me` member without View Audit Log means the module skips audit-log attribution cleanly.
-    members: { me: { permissions: new PermissionsBitField([]) } },
+    // Without View Audit Log the module skips attribution; `audit` grants it so simulated entries show.
+    members: {
+      me: { permissions: new PermissionsBitField(audit ? [PermissionFlagsBits.ViewAuditLog] : []) },
+    },
     client: { user: { id: 'bot00000000000001' } },
     channels: { fetch: async (cid: string) => (channel && cid === channel.id ? channel : null) },
+    // The real audit log is empty in tests; simulated entries are what attribution reads.
+    fetchAuditLogs: async () => null,
   } as any;
 }
 
@@ -155,4 +172,71 @@ test('a member update is logged for a real change and skipped for a no-op', asyn
   const same = { ...common, nickname: 'Same', guild: g2, roles: { cache: new Collection([['r1', role('r1')]]) } };
   await service.memberUpdated({ ...same } as any, { ...same } as any);
   assert.equal(noop.sent.length, 0, 'nothing tracked changed');
+});
+
+test('a ban is attributed to the moderator the audit log names', async () => {
+  const { sent, channel } = logChannel();
+  const guild = await guildWith({ serverLogChannelId: LOG }, 'en-US', channel, true);
+  // Pretend Discord wrote an audit entry crediting mod000...1 with the ban (no second account needed).
+  inject(AuditService).simulate(guild.id, {
+    action: AuditLogEvent.MemberBanAdd,
+    targetId: 'b1',
+    executorId: 'mod00000000000001',
+  });
+  await service.memberBanned({ guild, user: { id: 'b1', username: 'bad', bot: false } } as any);
+  assert.equal(sent.length, 1);
+  assert.ok(sent[0]?.includes('<@b1>'), 'names the banned user');
+  assert.ok(sent[0]?.includes('<@mod00000000000001>'), 'credits the moderator from the audit log');
+});
+
+test('joining and leaving a voice channel are logged', async () => {
+  const join = logChannel();
+  const gJoin = await guildWith({ serverLogChannelId: LOG }, 'en-US', join.channel);
+  const member = { id: 'u1', user: { id: 'u1', bot: false }, guild: gJoin };
+  await service.voiceStateUpdated(
+    { channelId: null, member, serverMute: null, serverDeaf: null } as any,
+    { channelId: 'v1', member, serverMute: null, serverDeaf: null } as any,
+  );
+  assert.equal(join.sent.length, 1);
+  assert.ok(join.sent[0]?.includes('<@u1>') && join.sent[0]?.includes('<#v1>'), 'names member and channel');
+
+  const leave = logChannel();
+  const gLeave = await guildWith({ serverLogChannelId: LOG }, 'en-US', leave.channel);
+  const m2 = { id: 'u1', user: { id: 'u1', bot: false }, guild: gLeave };
+  await service.voiceStateUpdated(
+    { channelId: 'v1', member: m2, serverMute: null, serverDeaf: null } as any,
+    { channelId: null, member: m2, serverMute: null, serverDeaf: null } as any,
+  );
+  assert.equal(leave.sent.length, 1);
+  assert.ok(leave.sent[0]?.includes('<@u1>'), 'names the member who left');
+});
+
+test('a role permission change is logged with the permissions that moved', async () => {
+  const { sent, channel } = logChannel();
+  const guild = await guildWith({ serverLogChannelId: LOG }, 'en-US', channel);
+  const base = { guild, id: 'r1', name: 'Staff', color: 0, hoist: false, mentionable: false, toString: () => '<@&r1>' };
+  await service.roleUpdated(
+    { ...base, permissions: new PermissionsBitField([PermissionFlagsBits.KickMembers]) } as any,
+    { ...base, permissions: new PermissionsBitField([PermissionFlagsBits.KickMembers, PermissionFlagsBits.BanMembers]) } as any,
+  );
+  assert.equal(sent.length, 1);
+  assert.ok(sent[0]?.includes('BanMembers'), 'names the added permission');
+});
+
+test('a channel permission-overwrite change is logged', async () => {
+  const { sent, channel } = logChannel();
+  const guild = await guildWith({ serverLogChannelId: LOG }, 'en-US', channel);
+  const overwrite = (allow: bigint[]) => ({
+    id: 'r1',
+    type: OverwriteType.Role,
+    allow: new PermissionsBitField(allow),
+    deny: new PermissionsBitField([]),
+  });
+  const base = { guild, id: 'c1', name: 'geral', parentId: null, toString: () => '<#c1>' };
+  await service.channelUpdated(
+    { ...base, permissionOverwrites: { cache: new Collection([['r1', overwrite([])]]) } } as any,
+    { ...base, permissionOverwrites: { cache: new Collection([['r1', overwrite([PermissionFlagsBits.SendMessages])]]) } } as any,
+  );
+  assert.equal(sent.length, 1);
+  assert.ok(sent[0]?.includes('SendMessages'), 'names the permission whose overwrite changed');
 });
