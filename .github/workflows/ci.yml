@@ -1,0 +1,87 @@
+name: ci
+
+# Testes do bot, no PR e na `main`.
+#
+# ## Por que `ubuntu-latest` e não o runner do cluster
+#
+# O repositório é público: um PR de fork executa código de estranho. Num runner
+# self-hosted isso significa código de terceiro com o `config.json` do registry
+# montado e o daemon do cluster ao lado — não é um risco teórico. Runner do
+# GitHub não tem credencial nenhuma, e em repositório público ele é de graça.
+#
+# O build da imagem é outro workflow (`image.yml`), que só roda na `main`.
+#
+# ## Por que só o Postgres, e não o `docker compose` inteiro
+#
+# `panel:check` forja sessões no banco e prova a allowlist pelo HTTP; ele nunca
+# fala com o S3. O `config` valida o ambiente todo no import, então as chaves do
+# S3 entram como valor qualquer — é o mesmo motivo do workflow antigo.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: roboteco
+          POSTGRES_PASSWORD: roboteco
+          POSTGRES_DB: roboteco
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U roboteco -d roboteco"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # `src/config.ts` valida o ambiente INTEIRO no import: até o migrator
+      # precisa destas chaves para não morrer em "DISCORD_TOKEN is required"
+      # antes de tocar no banco.
+      DISCORD_TOKEN: x
+      DISCORD_CLIENT_ID: x
+      DATABASE_URL: postgres://roboteco:roboteco@localhost:5432/roboteco
+      S3_ENDPOINT: http://localhost:3900
+      S3_ACCESS_KEY_ID: x
+      S3_SECRET_ACCESS_KEY: x
+      S3_BUCKET: roboteco
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+          cache: pnpm
+
+      # `npm i -g` e não `corepack`: o Node 26 removeu o corepack da
+      # distribuição, e o passo falha com "corepack: command not found".
+      - run: npm install --global pnpm@12.5.1
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      # Banco vazio, migração do zero: é o caminho que um deploy novo percorre.
+      # O `initContainer` de produção roda exatamente este script.
+      - name: Migrate
+        run: pnpm db:migrate:runtime
+
+      - name: Panel boundary
+        run: pnpm panel:check

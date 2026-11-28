@@ -1,0 +1,161 @@
+name: image
+
+# Build arm64 + deploy do bot, disparado por push na `main`.
+#
+# ## O desenho
+#
+# `ci.yml` prova o código em runner do GitHub; este workflow pega o mesmo commit
+# já testado, builda a imagem no runner que vive DENTRO do cluster — o único que
+# alcança o registry, que é HTTP puro e grey-cloud — empurra e avisa o repo de
+# infra, que é quem guarda os manifestos.
+#
+# ## Por que o commit do digest não é feito aqui
+#
+# O digest mora em `k8s/apps/roboteco/roboteco/deployment.yaml`, no repositório
+# `giomartinsdev/gio-random-projects`. Escrever nele daqui exigiria copiar o
+# `bump-digest.sh`, a chave SSH da VPS e a lógica de corrida de push para um
+# segundo repositório — duas cópias da mesma credencial, que é justamente o que
+# este desenho evita. Aqui só vai o digest, por `repository_dispatch`; lá o
+# workflow `roboteco-deploy.yml` faz o commit e o refresh do ArgoCD.
+#
+# ## Segredos
+#
+#   DEPLOY_DISPATCH_TOKEN   fine-grained, só no repo de infra: contents write
+#
+# A credencial do registry NÃO é segredo daqui: o pod do runner já tem o
+# `~/.docker/config.json` montado, e o daemon já aceita o registry inseguro.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip-tests:
+        description: "Republicar sem rodar os testes (o commit já passou no CI)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Um build por vez: o runner é um pod com um só daemon e 20Gi de disco.
+  group: image
+  cancel-in-progress: false
+
+env:
+  APP: roboteco
+  INFRA_REPO: giomartinsdev/gio-random-projects
+
+jobs:
+  build:
+    # arm64 NATIVO: o nó é Oracle ARM e o runner é um pod nele. Nada de QEMU.
+    runs-on: vps-arm64
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        if: inputs.skip-tests != true
+        with:
+          node-version: "26"
+          cache: pnpm
+
+      - name: Install pnpm
+        if: inputs.skip-tests != true
+        run: npm install --global pnpm@12.5.1
+
+      # Os mesmos passos do `ci.yml`, repetidos porque um push na `main` não
+      # herda o resultado do PR: o merge pode trazer um commit novo.
+      - name: Typecheck
+        if: inputs.skip-tests != true
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm lint
+
+      # `panel:check` precisa de Postgres. O runner tem `docker compose` e um
+      # daemon, então o serviço sobe aqui — `down -v` antes porque o volume do
+      # runner sobrevive entre jobs e um banco com migração antiga já mordeu.
+      - name: Panel boundary
+        if: inputs.skip-tests != true
+        run: |
+          set -euo pipefail
+          docker compose down -v >/dev/null 2>&1 || true
+          pnpm services:up
+          trap 'docker compose down -v' EXIT
+          export DISCORD_TOKEN=x DISCORD_CLIENT_ID=x
+          export DATABASE_URL=postgres://roboteco:roboteco@localhost:5432/roboteco
+          export S3_ENDPOINT=http://localhost:3900 S3_ACCESS_KEY_ID=x S3_SECRET_ACCESS_KEY=x S3_BUCKET=roboteco
+          pnpm db:migrate:runtime
+          pnpm panel:check
+
+      # O `config.json` do pod só conhece `registry.giomartins.dev:5000` (nome
+      # público). O push sai pelo nome do Service, que é outro host para o
+      # Docker, então a entrada é duplicada num diretório gravável — o original
+      # é read-only e o BuildKit precisa escrever ao lado dele.
+      - name: Make the registry credential usable from the cluster name
+        env:
+          REGISTRY: registry.support.svc.cluster.local:5000
+        run: |
+          set -euo pipefail
+          src="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+          [ -s "$src" ] || { echo "::error::sem credencial do registry no pod do runner"; exit 1; }
+          dir=$(mktemp -d); chmod 700 "$dir"
+          python3 - "$src" "$dir/config.json" "$REGISTRY" <<'PY'
+          import json, sys
+          src, dst, host = sys.argv[1:4]
+          cfg = json.load(open(src))
+          auths = cfg.setdefault("auths", {})
+          if host not in auths:
+              donor = next((v for v in auths.values() if v), None)
+              if donor is None:
+                  sys.exit("::error::config.json sem auths")
+              auths[host] = dict(donor)
+          json.dump(cfg, open(dst, "w"))
+          PY
+          chmod 600 "$dir/config.json"
+          echo "DOCKER_CONFIG=$dir" >> "$GITHUB_ENV"
+
+      - name: Build
+        env:
+          REGISTRY: registry.support.svc.cluster.local:5000
+        run: |
+          set -euo pipefail
+          docker build --platform linux/arm64 \
+            --tag "$REGISTRY/$APP:latest" \
+            --tag "$REGISTRY/$APP:${{ github.sha }}" \
+            --file Dockerfile .
+
+      - name: Push and read the digest
+        id: push
+        env:
+          REGISTRY: registry.support.svc.cluster.local:5000
+        run: |
+          set -euo pipefail
+          out=$(docker push "$REGISTRY/$APP:${{ github.sha }}")
+          printf '%s\n' "$out" | tail -3
+          docker push "$REGISTRY/$APP:latest" >/dev/null
+          digest=$(printf '%s\n' "$out" | grep -oE 'sha256:[0-9a-f]{64}' | tail -1)
+          case "$digest" in sha256:*) ;; *) echo "::error::push sem digest"; exit 1 ;; esac
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "$APP -> $digest"
+
+      # Deploy = o outro repo gravar o digest e o ArgoCD (auto-sync + selfHeal)
+      # aplicar. Sem `kubectl apply` de workload, aqui ou lá.
+      - name: Hand the digest to the infra repo
+        env:
+          TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [ -n "$TOKEN" ] || { echo "::error::falta o secret DEPLOY_DISPATCH_TOKEN"; exit 1; }
+          code=$(curl -sS -o /tmp/resp -w '%{http_code}' -X POST \
+            -H "authorization: Bearer $TOKEN" \
+            -H "accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$INFRA_REPO/dispatches" \
+            -d "{\"event_type\":\"roboteco-image\",\"client_payload\":{\"digest\":\"$DIGEST\",\"sha\":\"${{ github.sha }}\"}}")
+          case "$code" in
+            204) echo "deploy disparado em $INFRA_REPO" ;;
+            *) cat /tmp/resp; echo "::error::dispatch devolveu HTTP $code"; exit 1 ;;
+          esac
