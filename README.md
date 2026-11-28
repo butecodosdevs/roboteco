@@ -357,17 +357,7 @@ docs/                   concept guides and worked examples
 
 ## Contributing
 
-1. Read [docs/README.md](docs/README.md) and find your task in [*How do I…*](docs/README.md#how-do-i).
-2. Put new behaviour in a feature module under `src/modules/<feature>/` and register it in `src/app.module.ts`.
-3. Add every user-facing string to **both** `en-US` and `pt-BR`.
-4. Change the database only through `src/db/schema.ts` + `pnpm db:generate`, and commit the generated migration.
-5. Before opening a pull request, run:
-
-   ```sh
-   pnpm typecheck && pnpm lint && pnpm build
-   ```
-
-AI coding agents should start at [AGENTS.md](AGENTS.md), which lists the project rules.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks to run and how pull requests are reviewed and merged. AI coding agents should start at [AGENTS.md](AGENTS.md), which lists the project rules.
 
 ---
 
