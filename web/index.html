@@ -11,22 +11,22 @@
   <aside class="rail">
     <div class="brand">
       <div class="mark" id="brandmark"></div>
-      <div class="txt"><b>roboteco</b><span id="foot-tag">painel</span></div>
+      <div class="txt"><b>roboteco</b><span id="brand-tag"></span></div>
     </div>
     <nav class="nav" id="nav">
-      <i>Servidor</i>
-      <a data-go="overview"><span class="ic"></span>Visão geral</a>
-      <i>Plataforma</i>
-      <a data-go="plugins"><span class="ic"></span>Plugins<span class="count" id="nav-plugins">0</span></a>
-      <a data-go="commands"><span class="ic"></span>Embutidos<span class="count" id="nav-commands">0</span></a>
-      <a data-go="settings"><span class="ic"></span>Configurações</a>
-      <a data-go="about"><span class="ic"></span>Como funciona</a>
+      <i id="nav-g1"></i>
+      <a data-go="overview"><span class="ic"></span><span class="lbl" id="nav-overview"></span></a>
+      <i id="nav-g2"></i>
+      <a data-go="plugins"><span class="ic"></span><span class="lbl" id="nav-plugins-lbl"></span><span class="count" id="nav-plugins">0</span></a>
+      <a data-go="commands"><span class="ic"></span><span class="lbl" id="nav-commands-lbl"></span><span class="count" id="nav-commands">0</span></a>
+      <a data-go="settings"><span class="ic"></span><span class="lbl" id="nav-settings"></span></a>
+      <a data-go="about"><span class="ic"></span><span class="lbl" id="nav-about"></span></a>
     </nav>
     <div class="foot">
-      <div class="row"><span style="display:inline-flex;align-items:center;gap:6px"><i class="dot"></i>Gateway</span><b id="foot-ping">—</b></div>
-      <div class="row"><span>Servidores</span><b id="foot-guilds">—</b></div>
-      <div class="row"><span>Plugins ativos</span><b id="foot-active">0</b></div>
-      <button class="foot-out" data-act="logout"><span class="ic"></span>Sair</button>
+      <div class="row"><span style="display:inline-flex;align-items:center;gap:6px"><i class="dot"></i><span id="foot-gateway"></span></span><b id="foot-ping">—</b></div>
+      <div class="row"><span id="foot-guilds-lbl"></span><b id="foot-guilds">—</b></div>
+      <div class="row"><span id="foot-active-lbl"></span><b id="foot-active">0</b></div>
+      <button class="foot-out" data-act="logout"><span class="ic"></span><span id="foot-out-lbl"></span></button>
     </div>
   </aside>
   <main><div class="wrap" id="view"></div></main>
@@ -47,6 +47,433 @@ const ICON = {
 };
 const icon = (n, s = 14) => `<svg viewBox="0 0 16 16" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n] || ""}</svg>`;
 
+/* Textos: pt é a referência; en e zh cobrem tudo o que aparece na tela. */
+const DICT = {
+  pt: {
+    "brand.tag": "painel",
+    "nav.server": "Servidor", "nav.overview": "Painel inicial", "nav.platform": "Plataforma",
+    "nav.plugins": "Plugins", "nav.commands": "Embutidos", "nav.settings": "Configurações", "nav.about": "Como funciona",
+    "foot.gateway": "Gateway", "foot.guilds": "Servidores", "foot.active": "Plugins ativos", "foot.logout": "Sair",
+    "topbar.theme": "Alternar aparência", "lang.label": "Idioma",
+
+    "ov.title": "Painel inicial",
+    "ov.lede": "O que o bot guardou neste servidor. Todo número vem de um SELECT no Postgres.",
+    "ov.m.cases": "Casos de moderação", "ov.m.casesHint": "Numeração contínua por servidor",
+    "ov.m.tickets": "Tickets abertos", "ov.m.suggestions": "Sugestões pendentes", "ov.m.feeds": "Feeds com falha",
+    "ov.m.of": "de", "ov.feedsOk": "Todos respondendo", "ov.feedsFail": "Última checagem falhou", "ov.feedsNone": "Nenhum feed assinado",
+    "ov.cases.title": "Últimos casos", "ov.cases.empty": "Nenhum caso registrado neste servidor.",
+    "ov.leaders.title": "Quem mais conversa",
+    "ov.leaders.empty": "Ninguém ganhou XP ainda.", "ov.leaders.level": "nível {n}",
+    "ov.split.title": "Casos por tipo", "ov.split.empty": "Nenhum caso aplicado ainda.",
+    "ov.stored.title": "O que está guardado", "ov.stored.empty": "Nada além de moderação e níveis por enquanto.",
+    "ov.stored.commands": "Comandos próprios", "ov.stored.selfRoles": "Cargos por reação", "ov.stored.birthdays": "Aniversários",
+    "ov.stored.invites": "Convites rastreados", "ov.stored.scheduled": "Posts agendados", "ov.stored.starboard": "Mensagens no starboard",
+    "ov.feeds.title": "Feeds", "ov.feeds.failing": "falhando", "ov.feeds.count": "falhas", "ov.feeds.empty": "Nenhum feed assinado.",
+    "ov.channels.title": "Canais configurados", "ov.channels.empty": "Nenhum canal especial configurado.",
+    "ov.channels.drop": "Drop", "ov.channels.dropDesc": "a cada {n} mensagens em {ch}",
+    "ov.channels.voice": "Voz temporária", "ov.channels.voiceDesc": "hub {ch}, limite {limit}",
+    "ov.channels.voiceLimitFree": "livre", "ov.channels.voiceTimeout": ", fecha vazio em {n}s",
+    "ov.channels.counting": "Contador", "ov.channels.countingDesc": "canal {ch}, recorde {n}",
+    "ov.channels.current": "{n} atual",
+
+    "col.n": "#", "col.action": "Ação", "col.target": "Alvo", "col.moderator": "Quem aplicou",
+    "col.reason": "Motivo", "col.when": "Quando", "reason.none": "sem motivo",
+    "action.warn": "Advertência", "action.timeout": "Castigo", "action.untimeout": "Fim do castigo",
+    "action.kick": "Expulsão", "action.ban": "Banimento", "action.unban": "Desbanimento",
+
+    "unit.case1": "caso", "unit.caseN": "casos",
+    "unit.report1": "denúncia aberta", "unit.reportN": "denúncias abertas",
+    "unit.giveaway1": "sorteio rolando", "unit.giveawayN": "sorteios rolando",
+    "unit.memberXp1": "membro com XP", "unit.memberXpN": "membros com XP",
+    "unit.module1": "módulo", "unit.moduleN": "módulos",
+    "unit.moduleData1": "módulo com dados", "unit.moduleDataN": "módulos com dados",
+    "unit.command1": "comando", "unit.commandN": "comandos",
+    "unit.use1": "uso", "unit.useN": "usos",
+    "unit.run1": "execução", "unit.runN": "execuções",
+    "unit.member1": "membro", "unit.memberN": "membros",
+    "unit.plugin1": "plugin carregado", "unit.pluginN": "plugins carregados",
+    "unit.published1": "comando publicado", "unit.publishedN": "comandos publicados",
+    "unit.host1": "host liberado", "unit.hostN": "hosts liberados",
+
+    "perm.kv": "guardar chaves por servidor", "perm.xp.grant": "dar XP a um membro",
+    "perm.http": "requisições para hosts liberados", "perm.title": "Permissões que o WASM pede",
+    "perm.base": "só as funções base", "perm.missing": "faltam {list} — o plugin não carrega assim",
+    "perm.hosts": "Hosts liberados", "perm.hostsHint": "separados por vírgula; sem eles a permissão http não faz nada",
+
+    "ps.inactive": "inativo", "ps.nowasm": "sem WASM", "ps.failed": "falhou ao carregar",
+    "ps.loaded": "carregado", "ps.notLoaded": "não carregado", "ps.builtin": "embutido",
+
+    "cmd.on": "ligar", "cmd.off": "desligar", "cmd.commands": "Comandos",
+    "cmd.noneLoaded": "nenhum comando — o plugin não carregou", "cmd.noneInactive": "nenhum comando — o plugin está inativo",
+    "cmd.usesTitle": "usos nos últimos 30 dias",
+
+    "usage.title": "Uso de comandos", "usage.line": "{runs} · {members} nos últimos 30 dias", "usage.aria": "usos por dia",
+    "usage.empty": "Nenhum comando rodou ainda. O gráfico começa a encher no primeiro uso.",
+
+    "plug.usesTitle": "usos nos últimos 30 dias", "plug.off1": "{n} desligado", "plug.offN": "{n} desligados",
+    "plug.publish": "Publicar", "plug.activate": "Ativar", "plug.deactivate": "Inativar",
+    "plug.notLoaded": "o plugin não está carregado", "plug.error": "erro",
+    "plug.source": "fonte em {dir}", "plug.autocomplete": "autocomplete",
+
+    "pl.title": "Plugins",
+    "pl.lede": "O que está em plugins/registry.json e no disco. Ligar, desligar e publicar é por aqui; instalar e compilar é no repositório.",
+    "btn.reload": "Recarregar", "btn.publishAll": "Publicar no Discord",
+    "pl.empty": "Nenhum plugin no registry. Ponha um .wasm em plugins/dist e a entrada em plugins/registry.json.",
+    "pl.install.title": "Como instalar",
+    "pl.install.body": "O painel não recebe arquivos. Compile com pnpm plugins:build, ponha o .wasm em plugins/dist e a entrada em plugins/registry.json; depois clique em Recarregar. O formato está em docs/concepts/plugins.md.",
+    "pl.error": "não consegui falar com o roteador de plugins: {m}",
+
+    "cm.title": "Comandos embutidos",
+    "cm.lede": "Agrupados pelo módulo que os declara. Desligar impede o uso e remove o comando da próxima publicação.",
+    "cm.metric.commands": "Comandos", "cm.metric.in": "Em {n}", "cm.metric.off": "Desligados",
+    "cm.metric.allOn": "Todos ligados", "cm.metric.leave": "Saem na próxima publicação",
+    "cm.empty": "Nenhum comando embutido carregado.",
+
+    "set.k.DISCORD_TOKEN": "Token do bot", "set.h.DISCORD_TOKEN": "Developer Portal → Bot → Reset Token. O bot cai e volta com o token novo.",
+    "set.k.DISCORD_CLIENT_ID": "Application ID", "set.h.DISCORD_CLIENT_ID": "Developer Portal → General Information. Usado para publicar comandos.",
+    "set.k.DISCORD_GUILD_ID": "Servidor de testes", "set.h.DISCORD_GUILD_ID": "Com um ID aqui os comandos vão só para esse servidor, na hora. Vazio publica global.",
+    "set.k.LOG_LEVEL": "Nível de log", "set.h.LOG_LEVEL": "fatal, error, warn, info, debug ou trace.",
+    "set.k.GUILD_DATA_RETENTION_DAYS": "Retenção de dados", "set.h.GUILD_DATA_RETENTION_DAYS": "Dias que os dados de um servidor ficam guardados depois que o bot sai.",
+    "set.k.SENTRY_DSN": "Sentry DSN", "set.h.SENTRY_DSN": "Vazio desliga o envio de erros.",
+    "set.title": "Configurações",
+    "set.lede": "O que o bot usa para falar com o Discord. Salvar grava em panel/settings.json; o que é lido na inicialização só vale depois de reiniciar.",
+    "set.empty": "vazio", "set.active": "ativo", "set.saved": "salvo, reinicie", "set.loading": "Carregando…",
+    "set.notSet": "não definido", "set.restartTitle": "lido na inicialização",
+    "set.apply.title": "Aplicar",
+    "set.apply.hint": "Salvar só escreve o arquivo. Token, Application ID, servidor de testes e nível de log são lidos na inicialização.",
+    "btn.save": "Salvar", "btn.restart": "Reiniciar o bot",
+
+    "ab.title": "Como funciona",
+    "ab.lede": "O painel roda no mesmo processo do bot: mesma porta do /health, mesmo Postgres, mesmas variáveis de ambiente.",
+    "ab.steps.title": "Do evento do Discord até esta tela",
+    "ab.s1.t": "O bot monta os módulos na inicialização",
+    "ab.s1.d": "Cada módulo liga comandos, eventos e tarefas. O AppModule importa todos; o PanelModule liga login e configurações.",
+    "ab.s2.t": "O login é do Google, com allowlist",
+    "ab.s2.d": "Better Auth guarda usuário e sessão nas tabelas auth_* do Postgres. Só os e-mails de PANEL_ALLOWED_EMAILS entram; o cookie dura 24 horas.",
+    "ab.s3.t": "Os comandos vão para o Discord",
+    "ab.s3.d": "Publicar manda um PUT que substitui a lista do servidor. Embutidos e plugins carregados entram, menos os desligados.",
+    "ab.s4.t": "Os dados caem no Postgres",
+    "ab.s4.d": "Moderação, níveis, tickets, sorteios, feeds, lembretes: cada módulo tem sua tabela e o Drizzle versiona o schema.",
+    "ab.s5.t": "O painel lê esse mesmo banco",
+    "ab.s5.d": "As rotas /api/panel fazem SELECT. Com o bot fora do ar você vê o último estado gravado, não uma simulação.",
+    "ab.s6.t": "Plugins são arquivos, não código no bot",
+    "ab.s6.d": "Um .wasm em plugins/dist com entrada em plugins/registry.json. Inativar só marca enabled: false. Instalar e compilar é no repositório.",
+    "ab.env.title": "Este processo", "ab.env.bot": "Bot", "ab.env.gateway": "Gateway",
+    "ab.env.guilds": "Servidores", "ab.env.plugins": "Plugins", "ab.env.session": "Sessão",
+    "ab.env.sessionGoogle": "login do Google", "ab.env.sessionToken": "PANEL_TOKEN no header",
+    "ab.write.title": "O que este painel escreve",
+    "ab.write.body": "Três arquivos: panel/settings.json, panel/commands.json (comandos desligados) e enabled/permissions em plugins/registry.json. O banco é escrito só pelos comandos dentro do Discord.",
+
+    "guild.none": "sem servidor",
+    "nogs.title": "Sem servidores", "nogs.lede": "O bot está no ar mas não entrou em nenhum servidor ainda.",
+
+    "login.title": "Painel do roboteco", "login.sub": "Entre com sua conta do Google.",
+    "login.google": "Entrar com Google", "login.enter": "Entrando…",
+    "login.unconfigured": "Login indisponível: faltam GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET.",
+    "login.nosecret": "Login indisponível: falta PANEL_SECRET com 32 caracteres ou mais.",
+    "login.noallow": "Login indisponível: PANEL_ALLOWED_EMAILS está vazio.",
+    "login.off": "O painel está desligado neste processo.",
+    "login.error": "não consegui falar com o bot: {m}", "login.expired": "sessão expirada; entre de novo",
+    "login.denied": "este e-mail não tem acesso a este painel.", "login.failed": "não entrou: {m}",
+    "login.leaving": "Você saiu.", "login.bye": "Sair",
+
+    "toast.reloaded": "{n}", "toast.published": "{n} em {guild}", "toast.pluginPublished": "{id}: {n}, o resto foi mantido",
+    "toast.cmdOn": "/{c} ligado", "toast.cmdOff": "/{c} desligado — sai da próxima publicação",
+    "toast.plugOn": "{id}: ativado", "toast.plugOff": "{id}: inativado — os comandos saem na próxima publicação",
+    "toast.permOn": "{id}: ganhou {p}", "toast.permOff": "{id}: perdeu {p}",
+    "toast.hosts": "{n} para {id}", "toast.fail": "falhou: {m}",
+    "toast.nothing": "Nada mudou.", "toast.saved": "Salvo. Reinicie o bot para aplicar o que é lido na inicialização.",
+    "toast.restarting": "Reiniciando — volte em alguns segundos",
+    "toast.noRestart": "Este ambiente não deixa o painel reiniciar o processo",
+    "confirm.restart": "Reiniciar o bot agora? A sessão do painel cai.",
+  },
+  en: {
+    "brand.tag": "panel",
+    "nav.server": "Server", "nav.overview": "Dashboard", "nav.platform": "Platform",
+    "nav.plugins": "Plugins", "nav.commands": "Built-in", "nav.settings": "Settings", "nav.about": "How it works",
+    "foot.gateway": "Gateway", "foot.guilds": "Servers", "foot.active": "Active plugins", "foot.logout": "Sign out",
+    "topbar.theme": "Toggle appearance", "lang.label": "Language",
+
+    "ov.title": "Dashboard",
+    "ov.lede": "What the bot has stored for this server. Every number comes from a Postgres SELECT.",
+    "ov.m.cases": "Moderation cases", "ov.m.casesHint": "Numbered per server",
+    "ov.m.tickets": "Open tickets", "ov.m.suggestions": "Pending suggestions", "ov.m.feeds": "Failing feeds",
+    "ov.m.of": "of", "ov.feedsOk": "All responding", "ov.feedsFail": "Last check failed", "ov.feedsNone": "No feeds yet",
+    "ov.cases.title": "Latest cases", "ov.cases.empty": "No cases recorded in this server.",
+    "ov.leaders.title": "Most active",
+    "ov.leaders.empty": "Nobody has earned XP yet.", "ov.leaders.level": "level {n}",
+    "ov.split.title": "Cases by type", "ov.split.empty": "No cases recorded yet.",
+    "ov.stored.title": "Stored data", "ov.stored.empty": "Nothing beyond moderation and levels yet.",
+    "ov.stored.commands": "Custom commands", "ov.stored.selfRoles": "Reaction roles", "ov.stored.birthdays": "Birthdays",
+    "ov.stored.invites": "Tracked invites", "ov.stored.scheduled": "Scheduled posts", "ov.stored.starboard": "Starboard entries",
+    "ov.feeds.title": "Feeds", "ov.feeds.failing": "failing", "ov.feeds.count": "failures", "ov.feeds.empty": "No feeds subscribed.",
+    "ov.channels.title": "Configured channels", "ov.channels.empty": "No special channels configured.",
+    "ov.channels.drop": "Drop", "ov.channels.dropDesc": "every {n} messages in {ch}",
+    "ov.channels.voice": "Temp voice", "ov.channels.voiceDesc": "hub {ch}, limit {limit}",
+    "ov.channels.voiceLimitFree": "open", "ov.channels.voiceTimeout": ", deletes when empty for {n}s",
+    "ov.channels.counting": "Counting", "ov.channels.countingDesc": "channel {ch}, record {n}",
+    "ov.channels.current": "{n} now",
+
+    "col.n": "#", "col.action": "Action", "col.target": "Target", "col.moderator": "Applied by",
+    "col.reason": "Reason", "col.when": "When", "reason.none": "no reason",
+    "action.warn": "Warning", "action.timeout": "Timeout", "action.untimeout": "Timeout lifted",
+    "action.kick": "Kick", "action.ban": "Ban", "action.unban": "Unban",
+
+    "unit.case1": "case", "unit.caseN": "cases",
+    "unit.report1": "open report", "unit.reportN": "open reports",
+    "unit.giveaway1": "running giveaway", "unit.giveawayN": "running giveaways",
+    "unit.memberXp1": "member with XP", "unit.memberXpN": "members with XP",
+    "unit.module1": "module", "unit.moduleN": "modules",
+    "unit.moduleData1": "module with data", "unit.moduleDataN": "modules with data",
+    "unit.command1": "command", "unit.commandN": "commands",
+    "unit.use1": "use", "unit.useN": "uses",
+    "unit.run1": "run", "unit.runN": "runs",
+    "unit.member1": "member", "unit.memberN": "members",
+    "unit.plugin1": "plugin loaded", "unit.pluginN": "plugins loaded",
+    "unit.published1": "command published", "unit.publishedN": "commands published",
+    "unit.host1": "host allowed", "unit.hostN": "hosts allowed",
+
+    "perm.kv": "store keys per server", "perm.xp.grant": "grant XP to a member",
+    "perm.http": "requests to allowed hosts", "perm.title": "Permissions the WASM asks for",
+    "perm.base": "base functions only", "perm.missing": "missing {list} — the plugin will not load",
+    "perm.hosts": "Allowed hosts", "perm.hostsHint": "comma separated; without them the http permission does nothing",
+
+    "ps.inactive": "inactive", "ps.nowasm": "no WASM", "ps.failed": "failed to load",
+    "ps.loaded": "loaded", "ps.notLoaded": "not loaded", "ps.builtin": "built-in",
+
+    "cmd.on": "turn on", "cmd.off": "turn off", "cmd.commands": "Commands",
+    "cmd.noneLoaded": "no commands — the plugin did not load", "cmd.noneInactive": "no commands — the plugin is inactive",
+    "cmd.usesTitle": "uses in the last 30 days",
+
+    "usage.title": "Command usage", "usage.line": "{runs} · {members} in the last 30 days", "usage.aria": "uses per day",
+    "usage.empty": "No commands have run yet. The chart fills up on first use.",
+
+    "plug.usesTitle": "uses in the last 30 days", "plug.off1": "{n} off", "plug.offN": "{n} off",
+    "plug.publish": "Publish", "plug.activate": "Enable", "plug.deactivate": "Disable",
+    "plug.notLoaded": "the plugin is not loaded", "plug.error": "error",
+    "plug.source": "source in {dir}", "plug.autocomplete": "autocomplete",
+
+    "pl.title": "Plugins",
+    "pl.lede": "What is in plugins/registry.json and on disk. Enable, disable and publish here; installing and building stay in the repo.",
+    "btn.reload": "Reload", "btn.publishAll": "Publish to Discord",
+    "pl.empty": "No plugins in the registry. Put a .wasm in plugins/dist and add the entry to plugins/registry.json.",
+    "pl.install.title": "How to install",
+    "pl.install.body": "The panel takes no uploads. Build with pnpm plugins:build, put the .wasm in plugins/dist and add the entry to plugins/registry.json, then click Reload. The format lives in docs/concepts/plugins.md.",
+    "pl.error": "cannot reach the plugin router: {m}",
+
+    "cm.title": "Built-in commands",
+    "cm.lede": "Grouped by the module that declares them. Turning one off blocks it and drops it from the next publish.",
+    "cm.metric.commands": "Commands", "cm.metric.in": "In {n}", "cm.metric.off": "Disabled",
+    "cm.metric.allOn": "All enabled", "cm.metric.leave": "Dropped on next publish",
+    "cm.empty": "No built-in commands loaded.",
+
+    "set.k.DISCORD_TOKEN": "Bot token", "set.h.DISCORD_TOKEN": "Developer Portal → Bot → Reset Token. The bot drops and comes back with the new token.",
+    "set.k.DISCORD_CLIENT_ID": "Application ID", "set.h.DISCORD_CLIENT_ID": "Developer Portal → General Information. Used to publish commands.",
+    "set.k.DISCORD_GUILD_ID": "Test server", "set.h.DISCORD_GUILD_ID": "With an ID here commands go to that server instantly. Empty publishes globally.",
+    "set.k.LOG_LEVEL": "Log level", "set.h.LOG_LEVEL": "fatal, error, warn, info, debug or trace.",
+    "set.k.GUILD_DATA_RETENTION_DAYS": "Data retention", "set.h.GUILD_DATA_RETENTION_DAYS": "Days a server's data is kept after the bot leaves it.",
+    "set.k.SENTRY_DSN": "Sentry DSN", "set.h.SENTRY_DSN": "Empty turns off error reporting.",
+    "set.title": "Settings",
+    "set.lede": "What the bot uses to talk to Discord. Saving writes panel/settings.json; values read at startup only apply after a restart.",
+    "set.empty": "empty", "set.active": "active", "set.saved": "saved, restart", "set.loading": "Loading…",
+    "set.notSet": "not set", "set.restartTitle": "read at startup",
+    "set.apply.title": "Apply",
+    "set.apply.hint": "Saving only writes the file. Token, Application ID, test server and log level are read at startup.",
+    "btn.save": "Save", "btn.restart": "Restart the bot",
+
+    "ab.title": "How it works",
+    "ab.lede": "The panel runs inside the bot process: same /health port, same Postgres, same environment variables.",
+    "ab.steps.title": "From the Discord event to this screen",
+    "ab.s1.t": "The bot wires modules at startup",
+    "ab.s1.d": "Each module brings commands, events and jobs. AppModule imports them all; PanelModule wires auth and settings.",
+    "ab.s2.t": "Sign-in is Google, behind an allowlist",
+    "ab.s2.d": "Better Auth stores user and session in the auth_* tables. Only PANEL_ALLOWED_EMAILS get in; the cookie lasts 24 hours.",
+    "ab.s3.t": "Commands go to Discord",
+    "ab.s3.d": "Publishing sends a PUT that replaces the server list. Built-ins and loaded plugins go in, minus the disabled ones.",
+    "ab.s4.t": "Data lands in Postgres",
+    "ab.s4.d": "Moderation, levels, tickets, giveaways, feeds, reminders: each module owns its table and Drizzle versions the schema.",
+    "ab.s5.t": "The panel reads that same database",
+    "ab.s5.d": "/api/panel routes only run SELECTs. With the bot down you see the last stored state, not a simulation.",
+    "ab.s6.t": "Plugins are files, not bot code",
+    "ab.s6.d": "A .wasm in plugins/dist with an entry in plugins/registry.json. Disabling only sets enabled: false. Installing and building stay in the repo.",
+    "ab.env.title": "This process", "ab.env.bot": "Bot", "ab.env.gateway": "Gateway",
+    "ab.env.guilds": "Servers", "ab.env.plugins": "Plugins", "ab.env.session": "Session",
+    "ab.env.sessionGoogle": "Google sign-in", "ab.env.sessionToken": "PANEL_TOKEN header",
+    "ab.write.title": "What this panel writes",
+    "ab.write.body": "Three files: panel/settings.json, panel/commands.json (disabled commands) and enabled/permissions in plugins/registry.json. The database is only written by commands inside Discord.",
+
+    "guild.none": "no server",
+    "nogs.title": "No servers", "nogs.lede": "The bot is up but has not joined any server yet.",
+
+    "login.title": "roboteco panel", "login.sub": "Sign in with your Google account.",
+    "login.google": "Sign in with Google", "login.enter": "Signing in…",
+    "login.unconfigured": "Sign-in unavailable: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are missing.",
+    "login.nosecret": "Sign-in unavailable: PANEL_SECRET needs 32 characters or more.",
+    "login.noallow": "Sign-in unavailable: PANEL_ALLOWED_EMAILS is empty.",
+    "login.off": "The panel is disabled in this process.",
+    "login.error": "cannot reach the bot: {m}", "login.expired": "session expired; sign in again",
+    "login.denied": "this email has no access to this panel.", "login.failed": "sign-in failed: {m}",
+    "login.leaving": "You signed out.", "login.bye": "Sign out",
+
+    "toast.reloaded": "{n}", "toast.published": "{n} in {guild}", "toast.pluginPublished": "{id}: {n}, the rest was kept",
+    "toast.cmdOn": "/{c} on", "toast.cmdOff": "/{c} off — dropped on next publish",
+    "toast.plugOn": "{id}: enabled", "toast.plugOff": "{id}: disabled — commands drop on next publish",
+    "toast.permOn": "{id}: gained {p}", "toast.permOff": "{id}: lost {p}",
+    "toast.hosts": "{n} for {id}", "toast.fail": "failed: {m}",
+    "toast.nothing": "Nothing changed.", "toast.saved": "Saved. Restart the bot to apply what is read at startup.",
+    "toast.restarting": "Restarting — back in a few seconds",
+    "toast.noRestart": "This environment does not let the panel restart the process",
+    "confirm.restart": "Restart the bot now? The panel session drops.",
+  },
+  zh: {
+    "brand.tag": "面板",
+    "nav.server": "服务器", "nav.overview": "控制面板", "nav.platform": "平台",
+    "nav.plugins": "插件", "nav.commands": "内置", "nav.settings": "设置", "nav.about": "工作原理",
+    "foot.gateway": "网关", "foot.guilds": "服务器", "foot.active": "活跃插件", "foot.logout": "退出",
+    "topbar.theme": "切换外观", "lang.label": "语言",
+
+    "ov.title": "控制面板",
+    "ov.lede": "机器人为该服务器保存的数据。每个数字都来自 Postgres 查询。",
+    "ov.m.cases": "管理案例", "ov.m.casesHint": "按服务器连续编号",
+    "ov.m.tickets": "开启的工单", "ov.m.suggestions": "待处理建议", "ov.m.feeds": "失败订阅",
+    "ov.m.of": "/", "ov.feedsOk": "全部正常", "ov.feedsFail": "上次检查失败", "ov.feedsNone": "尚未订阅",
+    "ov.cases.title": "最近案例", "ov.cases.empty": "该服务器暂无案例。",
+    "ov.leaders.title": "活跃成员",
+    "ov.leaders.empty": "还没有人获得经验。", "ov.leaders.level": "{n} 级",
+    "ov.split.title": "案例类型", "ov.split.empty": "暂无案例。",
+    "ov.stored.title": "已存数据", "ov.stored.empty": "目前只有管理和等级数据。",
+    "ov.stored.commands": "自定义命令", "ov.stored.selfRoles": "反应角色", "ov.stored.birthdays": "生日",
+    "ov.stored.invites": "追踪的邀请", "ov.stored.scheduled": "定时帖子", "ov.stored.starboard": "加精消息",
+    "ov.feeds.title": "订阅源", "ov.feeds.failing": "失败", "ov.feeds.count": "次失败", "ov.feeds.empty": "尚未订阅任何订阅源。",
+    "ov.channels.title": "已配置频道", "ov.channels.empty": "未配置特殊频道。",
+    "ov.channels.drop": "掉落", "ov.channels.dropDesc": "在 {ch} 每 {n} 条消息",
+    "ov.channels.voice": "临时语音", "ov.channels.voiceDesc": "中枢 {ch}，上限 {limit}",
+    "ov.channels.voiceLimitFree": "不限", "ov.channels.voiceTimeout": "，空置 {n} 秒后删除",
+    "ov.channels.counting": "计数", "ov.channels.countingDesc": "频道 {ch}，记录 {n}",
+    "ov.channels.current": "当前 {n}",
+
+    "col.n": "#", "col.action": "操作", "col.target": "对象", "col.moderator": "操作者",
+    "col.reason": "原因", "col.when": "时间", "reason.none": "无原因",
+    "action.warn": "警告", "action.timeout": "禁言", "action.untimeout": "解除禁言",
+    "action.kick": "踢出", "action.ban": "封禁", "action.unban": "解封",
+
+    "unit.case1": "个案例", "unit.caseN": "个案例",
+    "unit.report1": "个待处理举报", "unit.reportN": "个待处理举报",
+    "unit.giveaway1": "个进行中的抽奖", "unit.giveawayN": "个进行中的抽奖",
+    "unit.memberXp1": "位有经验的成员", "unit.memberXpN": "位有经验的成员",
+    "unit.module1": "个模块", "unit.moduleN": "个模块",
+    "unit.moduleData1": "个模块有数据", "unit.moduleDataN": "个模块有数据",
+    "unit.command1": "个命令", "unit.commandN": "个命令",
+    "unit.use1": "次使用", "unit.useN": "次使用",
+    "unit.run1": "次执行", "unit.runN": "次执行",
+    "unit.member1": "位成员", "unit.memberN": "位成员",
+    "unit.plugin1": "个插件已加载", "unit.pluginN": "个插件已加载",
+    "unit.published1": "个命令已发布", "unit.publishedN": "个命令已发布",
+    "unit.host1": "个允许的主机", "unit.hostN": "个允许的主机",
+
+    "perm.kv": "按服务器存储键值", "perm.xp.grant": "给成员发放经验",
+    "perm.http": "请求允许的主机", "perm.title": "WASM 申请的权限",
+    "perm.base": "仅基础函数", "perm.missing": "缺少 {list}，插件无法加载",
+    "perm.hosts": "允许的主机", "perm.hostsHint": "逗号分隔；缺失时 http 权限无效",
+
+    "ps.inactive": "未启用", "ps.nowasm": "缺少 WASM", "ps.failed": "加载失败",
+    "ps.loaded": "已加载", "ps.notLoaded": "未加载", "ps.builtin": "内置",
+
+    "cmd.on": "启用", "cmd.off": "停用", "cmd.commands": "命令",
+    "cmd.noneLoaded": "没有命令 —— 插件未加载", "cmd.noneInactive": "没有命令 —— 插件已停用",
+    "cmd.usesTitle": "最近 30 天的使用次数",
+
+    "usage.title": "命令使用", "usage.line": "最近 30 天 · {runs} · {members}", "usage.aria": "每日使用次数",
+    "usage.empty": "尚无命令运行记录。首次使用后图中会出现数据。",
+
+    "plug.usesTitle": "最近 30 天的使用次数", "plug.off1": "{n} 个已停用", "plug.offN": "{n} 个已停用",
+    "plug.publish": "发布", "plug.activate": "启用", "plug.deactivate": "停用",
+    "plug.notLoaded": "插件未加载", "plug.error": "错误",
+    "plug.source": "源码位于 {dir}", "plug.autocomplete": "自动补全",
+
+    "pl.title": "插件",
+    "pl.lede": "registry.json 和磁盘上的插件。在此启用、停用和发布；安装与编译在仓库中进行。",
+    "btn.reload": "重新加载", "btn.publishAll": "发布到 Discord",
+    "pl.empty": "registry 中没有插件。将 .wasm 放入 plugins/dist，并在 plugins/registry.json 中添加条目。",
+    "pl.install.title": "如何安装",
+    "pl.install.body": "面板不接受上传。用 pnpm plugins:build 编译，将 .wasm 放入 plugins/dist 并在 plugins/registry.json 中添加条目，然后点击重新加载。格式见 docs/concepts/plugins.md。",
+    "pl.error": "无法连接插件路由：{m}",
+
+    "cm.title": "内置命令",
+    "cm.lede": "按声明它们的模块分组。停用后无法使用，并在下次发布时移除。",
+    "cm.metric.commands": "命令", "cm.metric.in": "共 {n}", "cm.metric.off": "已停用",
+    "cm.metric.allOn": "全部启用", "cm.metric.leave": "下次发布时移除",
+    "cm.empty": "尚未加载内置命令。",
+
+    "set.k.DISCORD_TOKEN": "机器人 Token", "set.h.DISCORD_TOKEN": "Developer Portal → Bot → Reset Token。机器人会用新 token 重连。",
+    "set.k.DISCORD_CLIENT_ID": "Application ID", "set.h.DISCORD_CLIENT_ID": "Developer Portal → General Information。用于发布命令。",
+    "set.k.DISCORD_GUILD_ID": "测试服务器", "set.h.DISCORD_GUILD_ID": "填入 ID 后命令立即只发布到该服务器。留空则全局发布。",
+    "set.k.LOG_LEVEL": "日志级别", "set.h.LOG_LEVEL": "fatal、error、warn、info、debug 或 trace。",
+    "set.k.GUILD_DATA_RETENTION_DAYS": "数据保留", "set.h.GUILD_DATA_RETENTION_DAYS": "机器人离开后服务器数据的保留天数。",
+    "set.k.SENTRY_DSN": "Sentry DSN", "set.h.SENTRY_DSN": "留空则关闭错误上报。",
+    "set.title": "设置",
+    "set.lede": "机器人连接 Discord 所用的配置。保存会写入 panel/settings.json；启动时读取的项需重启后生效。",
+    "set.empty": "空", "set.active": "生效中", "set.saved": "已保存，需重启", "set.loading": "加载中…",
+    "set.notSet": "未设置", "set.restartTitle": "启动时读取",
+    "set.apply.title": "应用",
+    "set.apply.hint": "保存仅写入文件。Token、Application ID、测试服务器和日志级别在启动时读取。",
+    "btn.save": "保存", "btn.restart": "重启机器人",
+
+    "ab.title": "工作原理",
+    "ab.lede": "面板运行在机器人进程内：同一 /health 端口、同一 Postgres、同一环境变量。",
+    "ab.steps.title": "从 Discord 事件到这块屏幕",
+    "ab.s1.t": "启动时装配模块",
+    "ab.s1.d": "每个模块带来命令、事件和任务。AppModule 引入全部模块；PanelModule 负责登录和设置。",
+    "ab.s2.t": "登录使用 Google，并带白名单",
+    "ab.s2.d": "Better Auth 将用户和会话存入 auth_* 表。只有 PANEL_ALLOWED_EMAILS 中的邮箱可进入；Cookie 有效 24 小时。",
+    "ab.s3.t": "命令发布到 Discord",
+    "ab.s3.d": "发布会发送 PUT 替换服务器的命令列表。内置命令和已加载插件进入，已停用除外。",
+    "ab.s4.t": "数据写入 Postgres",
+    "ab.s4.d": "管理、等级、工单、抽奖、订阅源、提醒：每个模块有自己的表，Drizzle 管理 schema 版本。",
+    "ab.s5.t": "面板读取同一个数据库",
+    "ab.s5.d": "/api/panel 路由只执行 SELECT。机器人下线时你看到的是最后一次存储的状态，不是模拟。",
+    "ab.s6.t": "插件是文件，不是机器人代码",
+    "ab.s6.d": "plugins/dist 中的 .wasm 加 plugins/registry.json 条目。停用只写入 enabled: false。安装和编译在仓库中进行。",
+    "ab.env.title": "当前进程", "ab.env.bot": "机器人", "ab.env.gateway": "网关",
+    "ab.env.guilds": "服务器", "ab.env.plugins": "插件", "ab.env.session": "会话",
+    "ab.env.sessionGoogle": "Google 登录", "ab.env.sessionToken": "请求头 PANEL_TOKEN",
+    "ab.write.title": "面板会写入什么",
+    "ab.write.body": "三个文件：panel/settings.json、panel/commands.json（已停用命令）以及 plugins/registry.json 中的 enabled/permissions。数据库只由 Discord 内的命令写入。",
+
+    "guild.none": "无服务器",
+    "nogs.title": "没有服务器", "nogs.lede": "机器人已上线，但尚未加入任何服务器。",
+
+    "login.title": "roboteco 面板", "login.sub": "使用 Google 账号登录。",
+    "login.google": "使用 Google 登录", "login.enter": "登录中…",
+    "login.unconfigured": "无法登录：缺少 GOOGLE_CLIENT_ID 和 GOOGLE_CLIENT_SECRET。",
+    "login.nosecret": "无法登录：PANEL_SECRET 需要至少 32 个字符。",
+    "login.noallow": "无法登录：PANEL_ALLOWED_EMAILS 为空。",
+    "login.off": "此进程已关闭面板。",
+    "login.error": "无法连接机器人：{m}", "login.expired": "会话已过期，请重新登录",
+    "login.denied": "该邮箱无权访问此面板。", "login.failed": "登录失败：{m}",
+    "login.leaving": "已退出。", "login.bye": "退出",
+
+    "toast.reloaded": "{n}", "toast.published": "{n}，服务器 {guild}", "toast.pluginPublished": "{id}: {n}，其余保留",
+    "toast.cmdOn": "/{c} 已启用", "toast.cmdOff": "/{c} 已停用 —— 下次发布时移除",
+    "toast.plugOn": "{id}: 已启用", "toast.plugOff": "{id}: 已停用 —— 命令将在下次发布时移除",
+    "toast.permOn": "{id}: 获得 {p}", "toast.permOff": "{id}: 失去 {p}",
+    "toast.hosts": "{n}，{id}", "toast.fail": "失败：{m}",
+    "toast.nothing": "没有变化。", "toast.saved": "已保存。重启机器人后生效。",
+    "toast.restarting": "正在重启 —— 几秒后回来",
+    "toast.noRestart": "当前环境不允许面板重启进程",
+    "confirm.restart": "现在重启机器人？面板会话将中断。",
+  },
+};
+
+const LANGS = [["pt", "Português"], ["en", "English"], ["zh", "中文"]];
+const storedLang = (() => { try { return localStorage.getItem("lang") || ""; } catch { return ""; } })();
+const browserLang = () => {
+  const l = (navigator.language || "pt").toLowerCase();
+  if (l.startsWith("pt")) return "pt";
+  if (l.startsWith("zh")) return "zh";
+  return "en";
+};
+
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -54,19 +481,12 @@ const initials = (name) => {
   const words = (name || "?").trim().split(/[\s-]+/).filter(Boolean);
   return (words.length > 1 ? words.slice(0, 2).map((w) => w[0]) : [words[0]?.slice(0, 2) ?? "?"]).join("").toUpperCase();
 };
-const nf = (n) => Number(n ?? 0).toLocaleString("pt-BR");
-const plural = (n, one, many) => `${nf(n)} ${n === 1 ? one : many}`;
-// Discord's cache knows the name; the id is only a fallback for someone who left.
-const userCell = (name, id) => name
-  ? `${esc(name)}<span class="mono dim" style="margin-left:6px">${esc(id.slice(-4))}</span>`
-  : `<span class="mono dim">${esc(id)}</span>`;
-const when = (iso) => { const d = new Date(iso); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${d.toTimeString().slice(0, 5)}`; };
 
 const storedTheme = (() => { try { return localStorage.getItem("theme") || ""; } catch { return ""; } })();
 if (storedTheme) document.documentElement.dataset.theme = storedTheme;
 const isDark = () => (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
 
-let state = { view: "overview", guild: null, toastT: null, login: false, password: false, off: false };
+let state = { view: "overview", guild: null, toastT: null, off: false, auth: null, loginMessage: "", lang: storedLang || browserLang() };
 let meta = null;
 let data = null;
 let plugins = null;
@@ -75,12 +495,36 @@ let builtins = null;
 let usage = null;
 let settings = null;
 
+const t = (key, vars) => {
+  const raw = DICT[state.lang]?.[key] ?? DICT.pt[key] ?? key;
+  return vars ? raw.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? "")) : raw;
+};
+const locale = () => (state.lang === "pt" ? "pt-BR" : state.lang === "zh" ? "zh-CN" : "en-US");
+// Every panel read that returns translated text takes the locale, so names match the UI language.
+const guildQuery = () => `?guild=${encodeURIComponent(state.guild ?? "")}&locale=${state.lang}`;
+const nf = (n) => Number(n ?? 0).toLocaleString(locale());
+const pl = (n, one, many) => `${nf(n)} ${t(n === 1 ? one : many)}`;
+
+function setLang(next) {
+  if (next === state.lang) return;
+  state.lang = next;
+  document.documentElement.lang = next === "pt" ? "pt-BR" : next === "zh" ? "zh-CN" : "en";
+  try { localStorage.setItem("lang", next); } catch {}
+  // Command names and descriptions come translated from the server, so drop the caches.
+  builtins = null;
+  plugins = null;
+  paintChrome();
+  if (!meta) return showLogin(state.loginMessage);
+  $("#view").innerHTML = skeletonFor(state.view);
+  render();
+}
+
 function toast(msg, bad) {
-  const t = $("#toast");
-  t.innerHTML = `<span class="${bad ? "r" : "g"}">${icon(bad ? "about" : "check", 13)}</span>${esc(msg)}`;
-  t.className = `toast on${bad ? " bad" : ""}`;
+  const el = $("#toast");
+  el.innerHTML = `<span class="${bad ? "r" : "g"}">${icon(bad ? "about" : "check", 13)}</span>${esc(msg)}`;
+  el.className = `toast on${bad ? " bad" : ""}`;
   clearTimeout(state.toastT);
-  state.toastT = setTimeout(() => (t.className = "toast"), 3200);
+  state.toastT = setTimeout(() => (el.className = "toast"), 3200);
 }
 
 async function api(path, init) {
@@ -91,8 +535,8 @@ async function api(path, init) {
     ...(init?.body !== undefined && { body: JSON.stringify(init.body) }),
   });
   const payload = await res.json().catch(() => null);
-  if (res.status === 401) { showLogin(); throw new Error("sessão expirada; entre de novo"); }
-  if (!res.ok) throw new Error(payload?.error ?? (res.status === 503 ? "painel desligado" : `HTTP ${res.status}`));
+  if (res.status === 401) { showLogin(t("login.expired")); throw new Error(t("login.expired")); }
+  if (!res.ok) throw new Error(payload?.error ?? (res.status === 503 ? t("login.off") : `HTTP ${res.status}`));
   return payload;
 }
 
@@ -125,15 +569,20 @@ function skeletonFor(v) {
   return skHead() + `<div class="cols"><div class="stack">${skList(4)}</div><div class="stack">${skList(3)}</div></div>`;
 }
 
+const langSelect = () => `<label class="lang" title="${esc(t("lang.label"))}">
+  <select data-act="lang" aria-label="${esc(t("lang.label"))}">${LANGS.map(([code, name]) => `<option value="${code}"${code === state.lang ? " selected" : ""}>${name}</option>`).join("")}</select>
+</label>`;
+
 const shell = (head, body) => `<div class="topbar">${guildPicker()}<div class="sp"></div>
-  <button class="iconbtn" data-act="theme" title="Alternar aparência">${icon(isDark() ? "sun" : "moon", 15)}</button>
+  ${langSelect()}
+  <button class="iconbtn" data-act="theme" title="${esc(t("topbar.theme"))}">${icon(isDark() ? "sun" : "moon", 15)}</button>
   <div class="me"><div class="av">${meta?.bot?.avatar ? `<img src="${esc(meta.bot.avatar)}" alt="">` : ""}</div>${esc(meta?.bot?.tag ?? "—")}</div>
 </div><div class="fade">${head}${body}</div>`;
 
 function guildPicker() {
   const list = meta?.guilds ?? [];
   const g = list.find((x) => x.id === state.guild) ?? list[0];
-  if (!g) return `<div class="guild"><div class="av">?</div>sem servidor</div>`;
+  if (!g) return `<div class="guild"><div class="av">?</div>${esc(t("guild.none"))}</div>`;
   return `<div class="guild"><div class="av">${g.icon ? `<img src="${esc(g.icon)}" alt="">` : esc(initials(g.name))}</div>${esc(g.name)}<em>${nf(g.members)}</em></div>`;
 }
 
@@ -147,89 +596,97 @@ function pageHead(title, lede, actions, eyebrow) {
 
 const c = () => data?.counters ?? {};
 const emptyRow = (msg) => `<div class="empty">${esc(msg)}</div>`;
-const actionLabel = { warn: "Advertência", timeout: "Castigo", untimeout: "Fim do castigo", kick: "Expulsão", ban: "Banimento", unban: "Desbanimento" };
+const userCell = (name, id) => name
+  ? `${esc(name)}<span class="mono dim" style="margin-left:6px">${esc(id.slice(-4))}</span>`
+  : `<span class="mono dim">${esc(id)}</span>`;
+const when = (iso) => { const d = new Date(iso); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${d.toTimeString().slice(0, 5)}`; };
+
+const actionLabel = (a) => t(`action.${a}`);
 const actionCls = { warn: "warn", timeout: "warn", untimeout: "", kick: "err", ban: "err", unban: "" };
+
+const metric = (label, value, delta) => `<div class="metric"><div class="lbl">${esc(label)}</div><div class="val">${value}</div><div class="delta">${delta}</div></div>`;
 
 function viewOverview() {
   const k = c();
-  const head = pageHead("Visão geral", "O que o bot guardou neste servidor. Tudo aqui vem de um SELECT no Postgres — nada é estimado.");
+  const head = pageHead(t("ov.title"), esc(t("ov.lede")));
 
   const metrics = `<div class="metrics">
-    <div class="metric"><div class="lbl">Casos de moderação</div><div class="val">${nf(k.cases)}</div><div class="delta">Numeração contínua por servidor</div></div>
-    <div class="metric"><div class="lbl">Tickets abertos</div><div class="val">${nf(k.openTickets)}</div><div class="delta">${plural(k.openReports, "denúncia aberta", "denúncias abertas")}</div></div>
-    <div class="metric"><div class="lbl">Sugestões pendentes</div><div class="val">${nf(k.pendingSuggestions)}</div><div class="delta">${plural(k.liveGiveaways, "sorteio rolando", "sorteios rolando")}</div></div>
-    <div class="metric"><div class="lbl">Feeds com falha</div><div class="val">${nf(k.failingFeeds)}<small> de ${nf(k.feeds)}</small></div><div class="delta">${k.feeds ? (k.failingFeeds ? "Última checagem falhou" : "Todos respondendo") : "Nenhum feed assinado"}</div></div>
+    ${metric(t("ov.m.cases"), nf(k.cases), esc(t("ov.m.casesHint")))}
+    ${metric(t("ov.m.tickets"), nf(k.openTickets), pl(k.openReports, "unit.report1", "unit.reportN"))}
+    ${metric(t("ov.m.suggestions"), nf(k.pendingSuggestions), pl(k.liveGiveaways, "unit.giveaway1", "unit.giveawayN"))}
+    ${metric(t("ov.m.feeds"), `${nf(k.failingFeeds)}<small> ${esc(t("ov.m.of"))} ${nf(k.feeds)}</small>`, esc(k.feeds ? (k.failingFeeds ? t("ov.feedsFail") : t("ov.feedsOk")) : t("ov.feedsNone")))}
   </div>`;
 
   const cases = `<section class="card tblwrap">
-    <div class="card-h"><h2>Últimos casos</h2><span class="sub">${plural(k.cases, "caso", "casos")}</span></div>
+    <div class="card-h"><h2>${esc(t("ov.cases.title"))}</h2><span class="sub">${pl(k.cases, "unit.case1", "unit.caseN")}</span></div>
     ${caseTable(data?.cases ?? [], 6)}
   </section>`;
 
   const activity = `<section class="card">
-    <div class="card-h"><h2>Quem mais conversa</h2><span class="sub">${plural(k.leveledMembers, "membro com XP", "membros com XP")}</span></div>
+    <div class="card-h"><h2>${esc(t("ov.leaders.title"))}</h2><span class="sub">${pl(k.leveledMembers, "unit.memberXp1", "unit.memberXpN")}</span></div>
     <div class="rows">${(data?.leaders ?? []).map((l, i) => `<div class="row-item">
       <div class="tile">${i + 1}</div>
-      <div class="row-main"><div class="name">${esc(l.name ?? l.userId)}</div><div class="meta">nível ${nf(l.level)}</div></div>
+      <div class="row-main"><div class="name">${esc(l.name ?? l.userId)}</div><div class="meta">${esc(t("ov.leaders.level", { n: nf(l.level) }))}</div></div>
       <div class="row-end"><span class="num">${nf(l.xp)}<span> XP</span></span></div>
-    </div>`).join("") || emptyRow("Ninguém ganhou XP ainda.")}</div>
+    </div>`).join("") || emptyRow(t("ov.leaders.empty"))}</div>
   </section>`;
 
   const by = (data?.byAction ?? []).map((r) => ({ action: r.action, total: Number(r.total) }));
   const byMax = Math.max(1, ...by.map((r) => r.total));
   const split = `<section class="card pad">
-    <div class="sec-title">Casos por tipo</div>
+    <div class="sec-title">${esc(t("ov.split.title"))}</div>
     <div class="bars-list">${by.length ? by.map((r) => `<div class="b">
-      <span class="nm">${esc(actionLabel[r.action] ?? r.action)}</span><span class="v">${nf(r.total)}</span>
+      <span class="nm">${esc(actionLabel(r.action))}</span><span class="v">${nf(r.total)}</span>
       <div class="track"><i style="width:${((r.total / byMax) * 100).toFixed(1)}%"></i></div>
-    </div>`).join("") : `<div class="hint">Nenhum caso aplicado ainda.</div>`}</div>
+    </div>`).join("") : `<div class="hint">${esc(t("ov.split.empty"))}</div>`}</div>
   </section>`;
 
   const stored = [
-    ["Comandos próprios", k.commands],
-    ["Cargos por reação", k.selfRoles],
-    ["Aniversários", k.birthdays],
-    ["Convites rastreados", k.invites],
-    ["Posts agendados", k.scheduledPosts],
-    ["Mensagens no starboard", k.starboardEntries],
+    ["ov.stored.commands", k.commands],
+    ["ov.stored.selfRoles", k.selfRoles],
+    ["ov.stored.birthdays", k.birthdays],
+    ["ov.stored.invites", k.invites],
+    ["ov.stored.scheduled", k.scheduledPosts],
+    ["ov.stored.starboard", k.starboardEntries],
   ].filter(([, v]) => Number(v) > 0);
   const modules = `<section class="card">
-    <div class="card-h"><h2>O que está guardado</h2><span class="sub">${plural(stored.length, "módulo com dados", "módulos com dados")}</span></div>
-    <div class="rows">${stored.map(([nm, v]) => `<div class="row-item">
-      <div class="row-main"><div class="name">${esc(nm)}</div></div>
+    <div class="card-h"><h2>${esc(t("ov.stored.title"))}</h2><span class="sub">${pl(stored.length, "unit.moduleData1", "unit.moduleDataN")}</span></div>
+    <div class="rows">${stored.map(([key, v]) => `<div class="row-item">
+      <div class="row-main"><div class="name">${esc(t(key))}</div></div>
       <div class="row-end"><span class="num">${nf(v)}</span></div>
-    </div>`).join("") || emptyRow("Nada além de moderação e níveis por enquanto.")}</div>
+    </div>`).join("") || emptyRow(t("ov.stored.empty"))}</div>
   </section>`;
 
   const feeds = `<section class="card">
-    <div class="card-h"><h2>Feeds</h2><span class="sub">${plural(k.failingFeeds, "falhando", "falhando")}</span></div>
+    <div class="card-h"><h2>${esc(t("ov.feeds.title"))}</h2><span class="sub">${esc(t("ov.feeds.failing"))}</span></div>
     <div class="rows">${(data?.feeds ?? []).map((f) => `<div class="row-item">
       <div class="row-main"><div class="name">${esc(f.title)}</div><div class="meta cell-clip" title="${esc(f.url)}">${esc(f.url)}</div></div>
-      <div class="row-end"><span class="num" style="color:${f.failures ? "var(--red)" : "var(--text-3)"}">${nf(f.failures)}<span> falhas</span></span></div>
-    </div>`).join("") || emptyRow("Nenhum feed assinado.")}</div>
+      <div class="row-end"><span class="num" style="color:${f.failures ? "var(--red)" : "var(--text-3)"}">${nf(f.failures)}<span> ${esc(t("ov.feeds.count"))}</span></span></div>
+    </div>`).join("") || emptyRow(t("ov.feeds.empty"))}</div>
   </section>`;
 
   const channels = [
     ...(data?.drops ?? []).map((d) => ({
-      k: "Drop",
-      name: `a cada ${nf(d.every)} mensagens no <span class="mono">${esc(d.channelId)}</span>`,
+      k: t("ov.channels.drop"),
+      name: esc(t("ov.channels.dropDesc", { n: nf(d.every), ch: d.channelId })),
       v: `${nf(d.xp)} XP`,
     })),
     ...(data?.hubs ?? []).map((h) => ({
-      k: "Voz temporária",
-      name: `hub <span class="mono">${esc(h.channelId)}</span>, limite ${h.userLimit || "livre"}${h.emptyTimeoutSeconds ? `, fecha vazio em ${h.emptyTimeoutSeconds}s` : ""}`,
+      k: t("ov.channels.voice"),
+      name: esc(t("ov.channels.voiceDesc", { ch: h.channelId, limit: h.userLimit || t("ov.channels.voiceLimitFree") })) +
+        (h.emptyTimeoutSeconds ? esc(t("ov.channels.voiceTimeout", { n: h.emptyTimeoutSeconds })) : ""),
       v: "",
     })),
     ...(data?.counting
-      ? [{ k: "Contador", name: `canal <span class="mono">${esc(data.counting.channelId)}</span>, recorde ${nf(data.counting.record)}`, v: `${nf(data.counting.current)} atual` }]
+      ? [{ k: t("ov.channels.counting"), name: esc(t("ov.channels.countingDesc", { ch: data.counting.channelId, n: nf(data.counting.record) })), v: esc(t("ov.channels.current", { n: nf(data.counting.current) })) }]
       : []),
   ];
   const special = `<section class="card">
-    <div class="card-h"><h2>Canais configurados</h2></div>
+    <div class="card-h"><h2>${esc(t("ov.channels.title"))}</h2></div>
     <div class="rows">${channels.map((ch) => `<div class="row-item">
-      <div class="row-main"><div class="name">${ch.k}</div><div class="meta">${ch.name}</div></div>
+      <div class="row-main"><div class="name">${esc(ch.k)}</div><div class="meta">${ch.name}</div></div>
       ${ch.v ? `<div class="row-end"><span class="num">${ch.v}</span></div>` : ""}
-    </div>`).join("") || emptyRow("Nenhum canal especial configurado.")}</div>
+    </div>`).join("") || emptyRow(t("ov.channels.empty"))}</div>
   </section>`;
 
   const left = `<div class="stack">${cases}${split}</div>`;
@@ -239,42 +696,38 @@ function viewOverview() {
 
 function caseTable(cases, limit) {
   const rows = limit ? cases.slice(0, limit) : cases;
-  if (!rows.length) return emptyRow("Nenhum caso registrado neste servidor.");
+  if (!rows.length) return emptyRow(t("ov.cases.empty"));
   return `<div class="tblwrap"><table>
-    <thead><tr><th>#</th><th>Ação</th><th>Alvo</th><th>Quem aplicou</th><th>Motivo</th><th class="r">Quando</th></tr></thead>
+    <thead><tr><th>${esc(t("col.n"))}</th><th>${esc(t("col.action"))}</th><th>${esc(t("col.target"))}</th><th>${esc(t("col.moderator"))}</th><th>${esc(t("col.reason"))}</th><th class="r">${esc(t("col.when"))}</th></tr></thead>
     <tbody>${rows.map((r) => `<tr>
       <td class="mono dim">${r.number}</td>
-      <td><span class="tag ${actionCls[r.action] ?? ""}">${esc(actionLabel[r.action] ?? r.action)}</span></td>
+      <td><span class="tag ${actionCls[r.action] ?? ""}">${esc(actionLabel(r.action))}</span></td>
       <td>${userCell(r.targetName, r.targetId)}</td>
       <td class="dim">${userCell(r.moderatorName, r.moderatorId)}</td>
-      <td class="muted cell-clip" title="${esc(r.reason ?? "")}">${esc(r.reason ?? "sem motivo")}</td>
+      <td class="muted cell-clip" title="${esc(r.reason ?? "")}">${esc(r.reason ?? t("reason.none"))}</td>
       <td class="r dim num">${when(r.createdAt)}</td>
     </tr>`).join("")}</tbody>
   </table></div>`;
 }
 
-const PERMISSIONS = [
-  ["kv", "guardar chaves por servidor"],
-  ["xp.grant", "dar XP a um membro"],
-  ["http", "fazer requisições para hosts liberados"],
-];
+const PERMISSIONS = [["kv", "perm.kv"], ["xp.grant", "perm.xp.grant"], ["http", "perm.http"]];
 
-const permTag = (p) => `<span class="tag code" title="${PERMISSIONS.find(([n]) => n === p)?.[1] ?? ""}">${esc(p)}</span>`;
+const permTag = (p) => `<span class="tag code" title="${esc(t(PERMISSIONS.find(([name]) => name === p)?.[1] ?? ""))}">${esc(p)}</span>`;
 
 function pluginStatus(p) {
-  if (!p.enabled) return `<span class="stat"><i class="dot"></i>inativo</span>`;
-  if (!p.present) return `<span class="stat warn"><i class="dot"></i>sem WASM</span>`;
-  if (p.failure) return `<span class="stat err"><i class="dot"></i>falhou ao carregar</span>`;
-  if (p.loaded) return `<span class="stat ok"><i class="dot"></i>carregado</span>`;
-  return `<span class="stat warn"><i class="dot"></i>não carregado</span>`;
+  if (!p.enabled) return `<span class="stat"><i class="dot"></i>${esc(t("ps.inactive"))}</span>`;
+  if (!p.present) return `<span class="stat warn"><i class="dot"></i>${esc(t("ps.nowasm"))}</span>`;
+  if (p.failure) return `<span class="stat err"><i class="dot"></i>${esc(t("ps.failed"))}</span>`;
+  if (p.loaded) return `<span class="stat ok"><i class="dot"></i>${esc(t("ps.loaded"))}</span>`;
+  return `<span class="stat warn"><i class="dot"></i>${esc(t("ps.notLoaded"))}</span>`;
 }
 
-const cmdToggle = (cmd, scope) => `<button class="sw${cmd.disabled ? "" : " on"}" role="switch" aria-checked="${cmd.disabled ? "false" : "true"}" data-act="cmd-toggle" data-scope="${esc(scope)}" data-cmd="${esc(cmd.code)}" data-next="${cmd.disabled ? "1" : "0"}" title="${cmd.disabled ? "ligar" : "desligar"}"><i></i></button>`;
+const cmdToggle = (cmd, scope) => `<button class="sw${cmd.disabled ? "" : " on"}" role="switch" aria-checked="${cmd.disabled ? "false" : "true"}" data-act="cmd-toggle" data-scope="${esc(scope)}" data-cmd="${esc(cmd.code)}" data-next="${cmd.disabled ? "1" : "0"}" title="${esc(cmd.disabled ? t("cmd.on") : t("cmd.off"))}"><i></i></button>`;
 
 const cmdRow = (cmd, scope) => `<li class="${cmd.disabled ? "off" : ""}">
   <span class="mono name">/${esc(cmd.name)}</span>
   <span class="desc" title="${esc(cmd.description)}">${esc(cmd.description)}</span>
-  <span class="uses" title="${plural(cmd.uses, "uso nos últimos 30 dias", "usos nos últimos 30 dias")}">${nf(cmd.uses)}</span>
+  <span class="uses" title="${esc(t("cmd.usesTitle"))}">${nf(cmd.uses)}</span>
   ${cmdToggle(cmd, scope)}
 </li>`;
 
@@ -282,7 +735,7 @@ function sparkline(series, height = 44) {
   if (!series.length) return "";
   const max = Math.max(1, ...series.map((d) => d.total));
   const w = 100 / series.length;
-  return `<div class="spark" style="height:${height}px" role="img" aria-label="usos por dia">${series
+  return `<div class="spark" style="height:${height}px" role="img" aria-label="${esc(t("usage.aria"))}">${series
     .map((d, i) => `<i style="left:${(i * w).toFixed(3)}%;width:${w.toFixed(3)}%;height:${Math.max(2, (d.total / max) * 100).toFixed(1)}%" title="${esc(d.day)}: ${nf(d.total)}"><span>${nf(d.total)}</span></i>`)
     .join("")}</div>`;
 }
@@ -294,15 +747,15 @@ function usageCard(usage) {
   return `<section class="card pad" style="margin-bottom:12px">
     <div class="usage-head">
       <div>
-        <div class="sec-title" style="margin-bottom:2px">Uso de comandos</div>
-        <div class="hint" style="margin:0">${plural(usage.total, "execução", "execuções")} por ${plural(usage.members, "membro", "membros")} nos últimos 30 dias</div>
+        <div class="sec-title" style="margin-bottom:2px">${esc(t("usage.title"))}</div>
+        <div class="hint" style="margin:0">${esc(t("usage.line", { runs: pl(usage.total, "unit.run1", "unit.runN"), members: pl(usage.members, "unit.member1", "unit.memberN") }))}</div>
       </div>
       ${sparkline(usage.series)}
     </div>
     ${top.length ? `<div class="bars-list" style="margin-top:14px">${top.map((r) => `<div class="b">
       <span class="nm mono">/${esc(r.command)}</span><span class="v">${nf(r.total)}</span>
       <div class="track"><i style="width:${((r.total / max) * 100).toFixed(1)}%"></i></div>
-    </div>`).join("")}</div>` : `<div class="hint" style="margin-top:10px">Nenhum comando rodou ainda. O gráfico começa a encher no primeiro uso.</div>`}
+    </div>`).join("")}</div>` : `<div class="hint" style="margin-top:10px">${esc(t("usage.empty"))}</div>`}
   </section>`;
 }
 
@@ -314,69 +767,75 @@ function pluginCard(p) {
     <div class="tile">${esc(initials(p.id.replace(/-/g, " ")))}</div>
     <div class="plug-title">
       <div class="nm">${esc(p.id)}${p.version ? `<span class="ver">${esc(p.version)}</span>` : ""}</div>
-      <div class="path mono">${esc(p.wasm)}${p.source ? ` · fonte em ${esc(p.source.dir)}` : ""}</div>
+      <div class="path mono">${esc(p.wasm)}${p.source ? ` · ${esc(t("plug.source", { dir: p.source.dir }))}` : ""}</div>
     </div>
     ${pluginStatus(p)}
     <div class="plug-actions">
-      <span class="tag code" title="usos nos últimos 30 dias">${nf(p.uses)} usos</span>
-      ${off ? `<span class="tag">${off} desligado${off > 1 ? "s" : ""}</span>` : ""}
-      <button class="btn sm" data-act="plugin-deploy" data-id="${esc(p.id)}" ${p.loaded ? "" : `disabled title="o plugin não está carregado"`}>Publicar</button>
-      <button class="btn sm" data-act="plugin-toggle" data-id="${esc(p.id)}" data-next="${p.enabled ? "0" : "1"}">${p.enabled ? "Inativar" : "Ativar"}</button>
+      <span class="tag code" title="${esc(t("plug.usesTitle"))}">${pl(p.uses, "unit.use1", "unit.useN")}</span>
+      ${off ? `<span class="tag">${esc(t("plug.offN", { n: off }))}</span>` : ""}
+      <button class="btn sm" data-act="plugin-deploy" data-id="${esc(p.id)}" ${p.loaded ? "" : `disabled title="${esc(t("plug.notLoaded"))}"`}>${esc(t("plug.publish"))}</button>
+      <button class="btn sm" data-act="plugin-toggle" data-id="${esc(p.id)}" data-next="${p.enabled ? "0" : "1"}">${esc(p.enabled ? t("plug.deactivate") : t("plug.activate"))}</button>
     </div>
   </div>
-  ${p.failure && p.enabled ? `<div class="attn"><span class="stat err">erro</span><div class="txt mono">${esc(p.failure)}</div></div>` : ""}
+  ${p.failure && p.enabled ? `<div class="attn"><span class="stat err">${esc(t("plug.error"))}</span><div class="txt mono">${esc(p.failure)}</div></div>` : ""}
   <div class="plug-sec">
-    <div class="sec">Comandos${p.autocompletes ? ' <span class="tag">autocomplete</span>' : ""}</div>
-    ${p.commands.length ? `<ul class="cmds">${p.commands.map((cmd) => cmdRow(cmd, p.id)).join("")}</ul>` : `<div class="hint">nenhum comando — ${p.enabled ? "o plugin não carregou, então nada foi publicado" : "o plugin está inativo"}</div>`}
+    <div class="sec">${esc(t("cmd.commands"))}${p.autocompletes ? ` <span class="tag">${esc(t("plug.autocomplete"))}</span>` : ""}</div>
+    ${p.commands.length ? `<ul class="cmds">${p.commands.map((cmd) => cmdRow(cmd, p.id)).join("")}</ul>` : `<div class="hint">${esc(p.enabled ? t("cmd.noneLoaded") : t("cmd.noneInactive"))}</div>`}
   </div>
   <div class="plug-sec">
-    <div class="sec">Permissões que o WASM pede</div>
-    <div class="chips">${p.required.length ? p.required.map(permTag).join("") : `<span class="hint">só as funções base</span>`}</div>
-    ${missing.length ? `<div class="callout amber">faltam ${missing.map(permTag).join(" ")} — o plugin não carrega assim</div>` : ""}
-    <div class="perms">${PERMISSIONS.map(([name, description]) => `<label class="cap-row">
+    <div class="sec">${esc(t("perm.title"))}</div>
+    <div class="chips">${p.required.length ? p.required.map(permTag).join("") : `<span class="hint">${esc(t("perm.base"))}</span>`}</div>
+    ${missing.length ? `<div class="callout amber">${t("perm.missing", { list: missing.map(permTag).join(" ") })}</div>` : ""}
+    <div class="perms">${PERMISSIONS.map(([name, key]) => `<label class="cap-row">
       <input type="checkbox" data-act="plugin-perm" data-id="${esc(p.id)}" data-perm="${name}" ${p.permissions.includes(name) ? "checked" : ""}>
       <span class="nm mono">${name}</span>
-      <span class="ds">${description}</span>
+      <span class="ds">${esc(t(key))}</span>
     </label>`).join("")}</div>
     ${p.permissions.includes("http") ? `<label class="field">
-      <span class="sec">Hosts liberados</span>
+      <span class="sec">${esc(t("perm.hosts"))}</span>
       <input data-act="plugin-hosts" data-id="${esc(p.id)}" value="${esc((p.allowedHosts ?? []).join(", "))}" placeholder="api.exemplo.com, outro.com">
-      <span class="hint">separados por vírgula — sem eles a permissão http não faz nada</span>
+      <span class="hint">${esc(t("perm.hostsHint"))}</span>
     </label>` : ""}
   </div>
 </section>`;
 }
 
+/* Rótulo e resumo de cada módulo embutido, nos três idiomas. */
 const MODULE_LABEL = {
-  ModerationModule: ["Moderação", "advertências, banimentos, castigos e histórico"],
-  LevelsModule: ["Níveis", "XP, ranking e quadro de líderes"],
-  RemindersModule: ["Lembretes", "avisos agendados"],
-  SuggestionsModule: ["Sugestões", "caixa de sugestões do servidor"],
-  TempVoiceModule: ["Voz temporária", "canais que nascem e morrem sozinhos"],
-  AntiraidModule: ["Antiraid", "freia entrada em massa"],
-  AutomodModule: ["Automod", "filtra spam e palavras proibidas"],
-  BirthdaysModule: ["Aniversários", "aniversário de cada membro"],
-  CountingModule: ["Contagem", "canal de contar em ordem"],
-  CustomCommandsModule: ["Comandos próprios", "comandos que você cria"],
-  DropsModule: ["Drops", "sorteios rápidos de itens"],
-  FeedsModule: ["Feeds", "avisos de RSS no canal"],
-  GiveawaysModule: ["Sorteios", "sorteios com entrada por botão"],
-  HoneypotModule: ["Honeypot", "canal armadilha para punir bot"],
-  InvitesModule: ["Convites", "rastreia quem convidou quem"],
-  PingModule: ["Ping", "latência do bot"],
-  PluginsModule: ["Plugins", "comandos para instalar e listar plugins"],
-  PrivacyModule: ["Privacidade", "apagar e exportar seus dados"],
-  ReportsModule: ["Denúncias", "membros denunciam para a equipe"],
-  RolesModule: ["Cargos", "cargos por reação e por menu"],
-  ScheduledPostsModule: ["Posts agendados", "mensagens com hora marcada"],
-  StarboardModule: ["Starboard", "destaques por estrelas"],
-  TagsModule: ["Tags", "textos salvos por atalho"],
-  TicketsModule: ["Tickets", "atendimento por ticket"],
-  VerificationModule: ["Verificação", "portão de entrada do servidor"],
-  WelcomeModule: ["Boas-vindas", "mensagem de entrada e saída"],
+  ModerationModule: ["Moderação", "Moderation", "管理", "advertências, banimentos, castigos e histórico", "warnings, bans, timeouts and history", "警告、封禁、禁言和历史"],
+  LevelsModule: ["Níveis", "Levels", "等级", "XP, ranking e quadro de líderes", "XP, ranking and leaderboard", "经验、排名和排行榜"],
+  RemindersModule: ["Lembretes", "Reminders", "提醒", "avisos agendados", "scheduled reminders", "定时提醒"],
+  SuggestionsModule: ["Sugestões", "Suggestions", "建议", "caixa de sugestões do servidor", "server suggestion box", "服务器建议箱"],
+  TempVoiceModule: ["Voz temporária", "Temp voice", "临时语音", "canais que nascem e morrem sozinhos", "channels that create and delete themselves", "自动创建和删除的频道"],
+  AntiraidModule: ["Antiraid", "Antiraid", "反突袭", "freia entrada em massa", "slows mass joins", "阻止大量加入"],
+  AutomodModule: ["Automod", "Automod", "自动管理", "filtra spam e palavras proibidas", "filters spam and banned words", "过滤垃圾信息和违禁词"],
+  BirthdaysModule: ["Aniversários", "Birthdays", "生日", "aniversário de cada membro", "each member's birthday", "每位成员的生日"],
+  CountingModule: ["Contagem", "Counting", "计数", "canal de contar em ordem", "count-in-order channel", "按顺序计数频道"],
+  CustomCommandsModule: ["Comandos próprios", "Custom commands", "自定义命令", "comandos que você cria", "commands you write", "自建命令"],
+  DropsModule: ["Drops", "Drops", "掉落", "sorteios rápidos de itens", "quick item drops", "快速掉落"],
+  FeedsModule: ["Feeds", "Feeds", "订阅源", "avisos de RSS no canal", "RSS posts in a channel", "频道内的 RSS 推送"],
+  GiveawaysModule: ["Sorteios", "Giveaways", "抽奖", "sorteios com entrada por botão", "giveaways with button entry", "按钮参与的抽奖"],
+  HoneypotModule: ["Honeypot", "Honeypot", "蜜罐", "canal armadilha contra bots", "trap channel for bots", "捕获机器人的陷阱频道"],
+  InvitesModule: ["Convites", "Invites", "邀请", "quem convidou quem", "who invited whom", "谁邀请了谁"],
+  PingModule: ["Ping", "Ping", "延迟", "latência do bot", "bot latency", "机器人延迟"],
+  PluginsModule: ["Plugins", "Plugins", "插件", "comandos para instalar e listar", "install and list plugins", "安装与列出插件"],
+  PrivacyModule: ["Privacidade", "Privacy", "隐私", "apagar e exportar seus dados", "erase and export data", "删除与导出数据"],
+  ReportsModule: ["Denúncias", "Reports", "举报", "membros denunciam para a equipe", "members report to staff", "成员向管理员举报"],
+  RolesModule: ["Cargos", "Roles", "角色", "cargos por reação e por menu", "reaction and menu roles", "反应与菜单角色"],
+  ScheduledPostsModule: ["Posts agendados", "Scheduled posts", "定时帖子", "mensagens com hora marcada", "messages on a timer", "定时发布的消息"],
+  StarboardModule: ["Starboard", "Starboard", "加精", "destaques por estrelas", "star-based highlights", "星标精选"],
+  TagsModule: ["Tags", "Tags", "标签", "textos salvos por atalho", "saved text snippets", "快捷保存的文本"],
+  TicketsModule: ["Tickets", "Tickets", "工单", "atendimento por ticket", "ticket support", "工单支持"],
+  VerificationModule: ["Verificação", "Verification", "验证", "portão de entrada do servidor", "server entry gate", "服务器入口验证"],
+  WelcomeModule: ["Boas-vindas", "Welcome", "欢迎", "mensagem de entrada e saída", "join and leave messages", "进出入消息"],
 };
 
-const moduleLabel = (name) => MODULE_LABEL[name] ?? [name.replace(/Module$/, ""), "comandos embutidos no bot"];
+const moduleLabel = (name) => {
+  const row = MODULE_LABEL[name];
+  const i = state.lang === "pt" ? 0 : state.lang === "zh" ? 2 : 1;
+  if (!row) return [name.replace(/Module$/, ""), ""];
+  return [row[i], row[i + 3]];
+};
 
 function builtinCard(group) {
   const [label, hint] = moduleLabel(group.module);
@@ -388,14 +847,14 @@ function builtinCard(group) {
       <div class="nm">${esc(label)}</div>
       <div class="path">${esc(hint)}</div>
     </div>
-    <span class="stat"><i class="dot"></i>embutido</span>
+    <span class="stat"><i class="dot"></i>${esc(t("ps.builtin"))}</span>
     <div class="plug-actions">
-      <span class="tag code" title="usos nos últimos 30 dias">${nf(group.uses)} usos</span>
-      ${off ? `<span class="tag">${off} desligado${off > 1 ? "s" : ""}</span>` : ""}
+      <span class="tag code" title="${esc(t("plug.usesTitle"))}">${pl(group.uses, "unit.use1", "unit.useN")}</span>
+      ${off ? `<span class="tag">${esc(t("plug.offN", { n: off }))}</span>` : ""}
     </div>
   </div>
   <div class="plug-sec">
-    <div class="sec">Comandos</div>
+    <div class="sec">${esc(t("cmd.commands"))}</div>
     <ul class="cmds">${group.commands.map((cmd) => cmdRow(cmd, "builtin")).join("")}</ul>
   </div>
 </section>`;
@@ -403,7 +862,7 @@ function builtinCard(group) {
 
 function builtinsBody() {
   if (builtins === null) return `<div class="plug-list">${skCardH("220px")}${skCardH("180px")}</div>`;
-  if (!builtins.length) return `<section class="card">${emptyRow("Nenhum comando embutido carregado.")}</section>`;
+  if (!builtins.length) return `<section class="card">${emptyRow(t("cm.empty"))}</section>`;
   return `<div class="plug-list">${builtins.map(builtinCard).join("")}</div>`;
 }
 
@@ -411,13 +870,13 @@ function viewCommands() {
   const total = (builtins ?? []).reduce((n, g) => n + g.commands.length, 0);
   const off = (builtins ?? []).reduce((n, g) => n + g.commands.filter((c) => c.disabled).length, 0);
   const head = pageHead(
-    "Comandos embutidos",
-    "Os comandos que vêm no bot, agrupados pelo módulo que os declara. Desligar um comando impede o uso e o remove da próxima publicação.",
-    `<button class="btn" data-act="commands-refresh">Recarregar</button><button class="btn" data-act="plugins-deploy-all">Publicar no Discord</button>`,
+    t("cm.title"),
+    esc(t("cm.lede")),
+    `<button class="btn" data-act="commands-refresh">${esc(t("btn.reload"))}</button><button class="btn" data-act="plugins-deploy-all">${esc(t("btn.publishAll"))}</button>`,
   );
   const meta = `<div class="metrics" style="margin-bottom:12px">
-    <div class="metric"><div class="lbl">Comandos</div><div class="val">${nf(total)}</div><div class="delta">Em ${plural((builtins ?? []).length, "módulo", "módulos")}</div></div>
-    <div class="metric"><div class="lbl">Desligados</div><div class="val">${nf(off)}</div><div class="delta">${off ? "Saem na próxima publicação" : "Todos ligados"}</div></div>
+    ${metric(t("cm.metric.commands"), nf(total), esc(t("cm.metric.in", { n: pl((builtins ?? []).length, "unit.module1", "unit.moduleN") })))}
+    ${metric(t("cm.metric.off"), nf(off), esc(off ? t("cm.metric.leave") : t("cm.metric.allOn")))}
   </div>`;
   return shell(head, meta + usageCard(usage) + builtinsBody());
 }
@@ -425,38 +884,37 @@ function viewCommands() {
 function viewPlugins() {
   const list = plugins ?? [];
   const head = pageHead(
-    "Plugins",
-    "O que está em <span class=\"mono\">plugins/registry.json</span> e no disco. Ligar, desligar e publicar é por aqui; instalar e compilar é no repositório.",
-    `<button class="btn" data-act="plugins-refresh">Recarregar</button><button class="btn" data-act="plugins-deploy-all">Publicar no Discord</button>`,
+    t("pl.title"),
+    esc(t("pl.lede")),
+    `<button class="btn" data-act="plugins-refresh">${esc(t("btn.reload"))}</button><button class="btn" data-act="plugins-deploy-all">${esc(t("btn.publishAll"))}</button>`,
   );
   if (pluginError) return shell(head, `<section class="card pad"><div class="stat err"><i class="dot"></i>${esc(pluginError)}</div></section>`);
   const body = `${usageCard(usage)}
-  ${list.length ? `<div class="plug-list">${list.map(pluginCard).join("")}</div>` : `<section class="card">${emptyRow("Nenhum plugin no registry. Adicione um .wasm em plugins/dist e a entrada em plugins/registry.json.")}</section>`}
+  ${list.length ? `<div class="plug-list">${list.map(pluginCard).join("")}</div>` : `<section class="card">${emptyRow(t("pl.empty"))}</section>`}
   <section class="card pad" style="margin-top:12px">
-    <div class="sec-title">Como instalar</div>
-    <div class="hint" style="margin:0">O painel não recebe arquivos. Compile com <span class="mono">pnpm plugins:build</span>, ponha o <span class="mono">.wasm</span> em <span class="mono">plugins/dist</span> e a entrada em <span class="mono">plugins/registry.json</span>; depois clique em Recarregar. O formato está em <span class="mono">docs/concepts/plugins.md</span>.</div>
+    <div class="sec-title">${esc(t("pl.install.title"))}</div>
+    <div class="hint" style="margin:0">${esc(t("pl.install.body"))}</div>
   </section>`;
   return shell(head, body);
 }
 
 async function loadPlugins() {
   try {
-    const payload = await api(`/api/panel/plugins?guild=${encodeURIComponent(state.guild ?? "")}`);
+    const payload = await api(`/api/panel/plugins${guildQuery()}`);
     plugins = payload.plugins;
     usage = payload.usage;
     pluginError = null;
   } catch (err) {
-    pluginError = `não consegui falar com o roteador de plugins: ${err.message}`;
+    pluginError = t("pl.error", { m: err.message });
   }
 }
 
 async function loadBuiltins() {
   try {
-    const payload = await api(`/api/panel/commands?guild=${encodeURIComponent(state.guild ?? "")}`);
+    const payload = await api(`/api/panel/commands${guildQuery()}`);
     builtins = payload.modules ?? [];
-    usage = usage ?? null;
     if (!usage) {
-      const report = await api(`/api/panel/usage?guild=${encodeURIComponent(state.guild ?? "")}`).catch(() => null);
+      const report = await api(`/api/panel/usage${guildQuery()}`).catch(() => null);
       usage = report ?? null;
     }
   } catch {
@@ -473,38 +931,29 @@ function applyPlugins(payload) {
 }
 
 function viewSettings() {
-  const head = pageHead("Configurações", "O que o bot usa para falar com o Discord. Salvar grava em <span class=\"mono\">panel/settings.json</span>; algumas coisas só valem depois de reiniciar.", "");
-  if (!settings) return shell(head, `<section class="card">${emptyRow("Carregando…")}</section>`);
+  const head = pageHead(t("set.title"), esc(t("set.lede")), "");
+  if (!settings) return shell(head, `<section class="card">${emptyRow(t("set.loading"))}</section>`);
   const rows = settings.fields.map((f) => {
-    const state = f.value === null ? "vazio" : f.active ? "ativo" : "salvo, reinicie";
+    const label = f.value === null ? t("set.empty") : f.active ? t("set.active") : t("set.saved");
     const cls = f.value === null ? "" : f.active ? "ok" : "warn";
     return `<div class="set-row">
     <div class="set-label">
-      <div class="nm">${esc(f.label)}</div>
-      <div class="hint">${esc(f.hint)}</div>
+      <div class="nm">${esc(t("set.k." + f.key))}</div>
+      <div class="hint">${esc(t("set.h." + f.key))}</div>
     </div>
     <div class="set-input">
       <input data-setting="${esc(f.key)}" type="${f.secret ? "password" : "text"}" autocomplete="off" spellcheck="false"
-        value="${esc(f.value ?? "")}" placeholder="${f.secret ? "não definido" : ""}">
-      <span class="stat ${cls}" ${f.restart && f.value !== null ? `title="lido na inicialização"` : ""}><i class="dot"></i>${state}</span>
+        value="${esc(f.value ?? "")}" placeholder="${f.secret ? esc(t("set.notSet")) : ""}">
+      <span class="stat ${cls}" ${f.restart && f.value !== null ? `title="${esc(t("set.restartTitle"))}"` : ""}><i class="dot"></i>${esc(label)}</span>
     </div>
   </div>`;
   }).join("");
   const actions = `<section class="card pad" style="margin-top:12px">
-    <div class="sec-title">Aplicar</div>
-    <div class="hint" style="margin-bottom:10px">Salvar só escreve o arquivo. Token, Application ID, servidor de testes e nível de log são lidos na inicialização — depois de salvar, reinicie o bot.</div>
-    <div class="actions"><button class="btn pri" data-act="settings-save">Salvar</button><button class="btn" data-act="settings-restart">Reiniciar o bot</button></div>
+    <div class="sec-title">${esc(t("set.apply.title"))}</div>
+    <div class="hint" style="margin-bottom:10px">${esc(t("set.apply.hint"))}</div>
+    <div class="actions"><button class="btn pri" data-act="settings-save">${esc(t("btn.save"))}</button><button class="btn" data-act="settings-restart">${esc(t("btn.restart"))}</button></div>
   </section>`;
-  const password = `<section class="card pad" style="margin-top:12px">
-    <div class="sec-title">Senha do painel</div>
-    <div class="hint" style="margin-bottom:10px">${state.password ? "Trocar a senha encerra todas as sessões abertas." : "O primeiro acesso usa o PANEL_TOKEN como senha. Depois de entrar, troque aqui — o token deixa de valer como senha."}</div>
-    <div class="pw">
-      <label class="field"><span class="sec">senha atual</span><input id="pw-current" type="password" autocomplete="current-password"></label>
-      <label class="field"><span class="sec">senha nova (8+)</span><input id="pw-next" type="password" autocomplete="new-password"></label>
-      <button class="btn" data-act="password-save">Trocar senha</button>
-    </div>
-  </section>`;
-  return shell(head, `<section class="card">${rows}</section>${actions}${password}`);
+  return shell(head, `<section class="card">${rows}</section>${actions}`);
 }
 
 async function loadSettings() {
@@ -516,39 +965,46 @@ async function loadSettings() {
 }
 
 function viewAbout() {
-  const head = pageHead("Como funciona", "O painel fala com o mesmo processo do bot: mesma porta do /health, mesmo Postgres, mesmas variáveis de ambiente.");
-  const steps = [
-    ["O bot monta os módulos na inicialização", "Cada módulo liga comandos, eventos e tarefas. O <span class='mono'>AppModule</span> é o único lugar que importa todos; o <span class='mono'>PanelModule</span> liga login e configurações."],
-    ["O login guarda uma senha, não um token", "A primeira senha é o <span class='mono'>PANEL_TOKEN</span>. O que fica em <span class='mono'>panel/auth.json</span> é um hash scrypt em arquivo 0600, e a sessão é um cookie HttpOnly com 12 horas de validade."],
-    ["Os comandos vão para o Discord", "Publicar manda um PUT que substitui a lista inteira do servidor. Cada publicação reenvia os embutidos e todos os plugins carregados, menos os que estão desligados — por isso desligar um comando também o tira do Discord."],
-    ["Os dados caem no Postgres", "Moderação, níveis, tickets, sorteios, feeds, lembretes — cada módulo tem sua tabela e o Drizzle mantém o schema versionado."],
-    ["O painel lê esse mesmo banco", "As rotas <span class='mono'>/api/panel</span> rodam SELECT. Se o bot estiver fora do ar, você vê o último estado gravado, não uma simulação."],
-    ["Plugins são arquivos, não código no bot", "Um <span class='mono'>.wasm</span> em <span class='mono'>plugins/dist</span> com entrada em <span class='mono'>plugins/registry.json</span>. Inativar só marca <span class='mono'>enabled: false</span>. Instalar, compilar e remover é no repositório: o painel não recebe arquivo nenhum."],
-  ];
+  const head = pageHead(t("ab.title"), esc(t("ab.lede")));
+  const steps = [1, 2, 3, 4, 5, 6].map((n) => [t(`ab.s${n}.t`), t(`ab.s${n}.d`)]);
   const list = `<section class="card">
-    <div class="card-h"><h2>Do evento do Discord até esta tela</h2></div>
-    <div class="rows">${steps.map(([t, d], i) => `<div class="row-item" style="align-items:flex-start">
+    <div class="card-h"><h2>${esc(t("ab.steps.title"))}</h2></div>
+    <div class="rows">${steps.map(([title, desc], i) => `<div class="row-item" style="align-items:flex-start">
       <div class="tile">${i + 1}</div>
-      <div class="row-main"><div class="name">${t}</div><div class="desc wrap">${d}</div></div>
+      <div class="row-main"><div class="name">${esc(title)}</div><div class="desc wrap">${esc(desc)}</div></div>
     </div>`).join("")}</div>
   </section>`;
   const env = `<section class="card pad">
-    <div class="sec-title">Este processo</div>
+    <div class="sec-title">${esc(t("ab.env.title"))}</div>
     <dl class="dl">
-      <dt>Bot</dt><dd>${esc(meta?.bot?.tag ?? "—")}</dd>
-      <dt>Gateway</dt><dd>${meta?.ping == null ? "—" : `${meta.ping} ms`}</dd>
-      <dt>Servidores</dt><dd>${nf(meta?.guilds?.length ?? 0)}</dd>
-      <dt>Plugins</dt><dd>${nf((plugins ?? []).filter((p) => p.loaded).length)} ativos de ${nf(plugins?.length ?? meta?.plugins?.length ?? 0)}</dd>
-      <dt>Sessão</dt><dd>${state.login ? "senha do painel" : "PANEL_TOKEN no header"}</dd>
+      <dt>${esc(t("ab.env.bot"))}</dt><dd>${esc(meta?.bot?.tag ?? "—")}</dd>
+      <dt>${esc(t("ab.env.gateway"))}</dt><dd>${meta?.ping == null ? "—" : `${meta.ping} ms`}</dd>
+      <dt>${esc(t("ab.env.guilds"))}</dt><dd>${nf(meta?.guilds?.length ?? 0)}</dd>
+      <dt>${esc(t("ab.env.plugins"))}</dt><dd>${nf((plugins ?? []).filter((p) => p.loaded).length)} / ${nf(plugins?.length ?? meta?.plugins?.length ?? 0)}</dd>
+      <dt>${esc(t("ab.env.session"))}</dt><dd>${esc(meta?.session === "google" ? t("ab.env.sessionGoogle") : t("ab.env.sessionToken"))}</dd>
     </dl>
   </section>`;
   const caveat = `<section class="card pad">
-    <div class="sec-title">O que este painel escreve</div>
-    <div class="callout">
-      Quatro arquivos: <span class="mono">panel/settings.json</span>, <span class="mono">panel/auth.json</span>, <span class="mono">panel/commands.json</span> (os comandos desligados) e o <span class="mono">enabled</span>/<span class="mono">permissions</span> de <span class="mono">plugins/registry.json</span>. O banco continua sendo escrito só pelos comandos dentro do Discord.
-    </div>
+    <div class="sec-title">${esc(t("ab.write.title"))}</div>
+    <div class="callout">${esc(t("ab.write.body"))}</div>
   </section>`;
   return shell(head, `<div class="cols"><div class="stack">${list}</div><div class="stack">${env}${caveat}</div></div>`);
+}
+
+/* Rótulos fixos do chrome: nav, rodapé, marca. */
+function paintChrome() {
+  $("#brand-tag").textContent = t("brand.tag");
+  $("#nav-g1").textContent = t("nav.server");
+  $("#nav-overview").textContent = t("nav.overview");
+  $("#nav-g2").textContent = t("nav.platform");
+  $("#nav-plugins-lbl").textContent = t("nav.plugins");
+  $("#nav-commands-lbl").textContent = t("nav.commands");
+  $("#nav-settings").textContent = t("nav.settings");
+  $("#nav-about").textContent = t("nav.about");
+  $("#foot-gateway").textContent = t("foot.gateway");
+  $("#foot-guilds-lbl").textContent = t("foot.guilds");
+  $("#foot-active-lbl").textContent = t("foot.active");
+  $("#foot-out-lbl").textContent = t("foot.logout");
 }
 
 function paintHead() {
@@ -592,43 +1048,71 @@ function navigate(next) {
   setTimeout(() => { if (tokenId === navToken) render(); }, 320);
 }
 
+/* Sem senha: o botão manda o navegador para o Google pelo Better Auth. */
 function showLogin(message) {
+  state.loginMessage = message;
   meta = null; data = null; plugins = null; builtins = null; settings = null;
-  const first = !state.login;
-  $("#view").innerHTML = `<div class="auth"><form id="auth-form" class="auth-card">
+  const ready = Boolean(state.auth?.ready);
+  const hint = !state.auth ? "" : !state.auth.secret ? t("login.nosecret") : !state.auth.google ? t("login.unconfigured") : !state.auth.allowlist ? t("login.noallow") : "";
+  $("#view").innerHTML = `<div class="auth"><div class="auth-card">
     <div class="auth-mark">${icon("brand", 16)}</div>
-    <h1>Painel do roboteco</h1>
-    <p>${esc(message || (first ? "Primeiro acesso: a senha é o PANEL_TOKEN do ambiente do bot." : "Entre com a senha do painel."))}</p>
-    <input type="text" autocomplete="username" value="painel" hidden>
-    <input id="auth-password" type="password" autocomplete="current-password" placeholder="senha" autofocus required>
-    <button class="btn pri" type="submit">Entrar</button>
-    <p class="hint">${state.off ? "Sem <span class='mono'>PANEL_TOKEN</span> (16+ caracteres) no ambiente do bot o painel não abre." : state.password ? "A senha fica em <span class='mono'>panel/auth.json</span> como hash scrypt, e a sessão dura 12 horas." : "Depois de entrar, troque a senha em Configurações: o PANEL_TOKEN deixa de servir como senha."}</p>
-  </form></div>`;
+    <h1>${esc(t("login.title"))}</h1>
+    <p>${esc(message || t("login.sub"))}${hint ? ` ${esc(hint)}` : ""}</p>
+    <button class="btn pri lg" data-act="google"${ready ? "" : " disabled"}>${esc(t("login.google"))}</button>
+    ${langSelect()}
+  </div></div>`;
   document.body.classList.add("auth-mode");
+  paintChrome();
 }
 
 const clearAuthMode = () => document.body.classList.remove("auth-mode");
 
+async function signIn(button) {
+  button.disabled = true;
+  const label = button.textContent;
+  button.textContent = t("login.enter");
+  try {
+    const res = await fetch("/api/auth/sign-in/social", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: "google", callbackURL: location.origin + "/", disableRedirect: true }),
+    });
+    const payload = await res.json().catch(() => null);
+    if (payload?.url) return void (location.href = payload.url);
+    throw new Error(payload?.message ?? payload?.error ?? `HTTP ${res.status}`);
+  } catch (err) {
+    button.disabled = false;
+    button.textContent = label;
+    toast(t("login.failed", { m: err.message }), true);
+  }
+}
+
 async function boot() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("error")) history.replaceState(null, "", "/");
   let status = null;
   try {
     status = await api("/api/panel/auth/status");
   } catch (err) {
-    state.off = err.message === "painel desligado";
-    return showLogin(state.off ? "O painel está desligado neste processo." : `Não consegui falar com o bot: ${err.message}`);
+    state.off = err.message === t("login.off");
+    return showLogin(t("login.error", { m: err.message }));
   }
-  state.login = Boolean(status.password);
-  state.password = Boolean(status.password);
-  if (!status.authenticated) return showLogin();
+  state.auth = status;
+  if (!status.authenticated) {
+    return showLogin(params.get("error") ? t("login.denied") : "");
+  }
   try {
     meta = await api("/api/panel/guilds");
   } catch (err) {
-    return showLogin(`Não consegui falar com o bot: ${err.message}`);
+    return showLogin(t("login.error", { m: err.message }));
   }
+  meta.session = status.user ? "google" : "token";
   state.guild = meta.guilds[0]?.id ?? null;
   if (!state.guild) {
-    $("#view").innerHTML = shell(pageHead("Sem servidores", "O bot está no ar mas não entrou em nenhum servidor ainda."), "");
+    $("#view").innerHTML = shell(pageHead(t("nogs.title"), esc(t("nogs.lede"))), "");
     clearAuthMode();
+    paintChrome();
     paintHead();
     return;
   }
@@ -647,53 +1131,54 @@ async function pluginAction(act) {
   const busy = (label) => { button.disabled = true; button.textContent = label; };
   try {
     if (act.dataset.act === "plugins-refresh" || act.dataset.act === "commands-refresh") {
-      busy("Recarregando…");
-      const payload = await api("/api/panel/plugins/refresh", { method: "POST", body: {} });
+      busy("…");
+      const payload = await api(`/api/panel/plugins/refresh${guildQuery()}`, { method: "POST", body: {} });
       plugins = payload.plugins;
       usage = payload.usage ?? usage;
-      builtins = builtins === null ? null : (await api(`/api/panel/commands?guild=${encodeURIComponent(state.guild ?? "")}`)).modules ?? builtins;
-      toast(plural(payload.plugins.filter((p) => p.loaded).length, "plugin carregado", "plugins carregados"));
+      builtins = builtins === null ? null : (await api(`/api/panel/commands${guildQuery()}`)).modules ?? builtins;
+      toast(t("toast.reloaded", { n: pl(payload.plugins.filter((p) => p.loaded).length, "unit.plugin1", "unit.pluginN") }));
       render();
     } else if (act.dataset.act === "plugins-deploy-all" || act.dataset.act === "plugins-deploy") {
-      busy("Publicando…");
-      const payload = await api("/api/panel/plugins/deploy/all", { method: "POST", body: {} });
+      busy("…");
+      const payload = await api(`/api/panel/plugins/deploy/all${guildQuery()}`, { method: "POST", body: {} });
       plugins = payload.plugins;
       usage = payload.usage ?? usage;
-      toast(`${plural(payload.commands, "comando publicado", "comandos publicados")} em ${payload.guild}`);
+      toast(t("toast.published", { n: pl(payload.commands, "unit.published1", "unit.publishedN"), guild: payload.guild }));
       render();
     } else if (act.dataset.act === "plugin-deploy") {
-      busy("Publicando…");
-      const payload = await api(`/api/panel/plugins/${encodeURIComponent(id)}/deploy`, { method: "POST", body: {} });
+      busy("…");
+      const payload = await api(`/api/panel/plugins/${encodeURIComponent(id)}/deploy${guildQuery()}`, { method: "POST", body: {} });
       plugins = payload.plugins;
-      toast(`${id}: ${plural(payload.plugin ?? 0, "comando publicado", "comandos publicados")}, o resto foi mantido`);
+      toast(t("toast.pluginPublished", { id, n: pl(payload.plugin ?? 0, "unit.published1", "unit.publishedN") }));
       render();
     } else if (act.dataset.act === "cmd-toggle") {
       const cmd = act.dataset.cmd;
       const on = act.dataset.next === "1";
       act.disabled = true;
       const scope = act.dataset.scope;
-      const query = `?guild=${encodeURIComponent(state.guild ?? "")}`;
+      const query = guildQuery();
       const path = scope === "builtin" ? `/api/panel/commands${query}` : `/api/panel/plugins/${encodeURIComponent(scope)}/commands${query}`;
       const payload = await api(path, { method: "PUT", body: { commands: [cmd], enabled: on } });
       if (payload.modules) builtins = payload.modules;
       if (payload.plugins) plugins = payload.plugins;
       if (payload.usage !== undefined) usage = payload.usage;
-      toast(`/${cmd} ${on ? "ligado" : "desligado"}${on ? "" : " — sai da próxima publicação"}`);
+      toast(on ? t("toast.cmdOn", { c: cmd }) : t("toast.cmdOff", { c: cmd }));
       render();
     } else if (act.dataset.act === "plugin-toggle") {
       const next = act.dataset.next === "1";
-      busy(next ? "Ativando…" : "Inativando…");
-      applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { enabled: next } }));
-      toast(`${id}: ${next ? "ativado" : "inativado"}${next ? "" : " — os comandos saem na próxima publicação"}`);
+      busy("…");
+      applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}${guildQuery()}`, { method: "PUT", body: { enabled: next } }));
+      toast(next ? t("toast.plugOn", { id }) : t("toast.plugOff", { id }));
     } else if (act.dataset.act === "plugin-perm") {
       const plugin = (plugins ?? []).find((p) => p.id === id);
       if (!plugin) return;
+      const perm = act.dataset.perm;
       const on = act.checked;
-      const next = on ? [...new Set([...plugin.permissions, act.dataset.perm])] : plugin.permissions.filter((p) => p !== act.dataset.perm);
-      applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { permissions: next } }));
-      toast(`${id}: ${on ? "ganhou" : "perdeu"} ${act.dataset.perm}`);
+      const next = on ? [...new Set([...plugin.permissions, perm])] : plugin.permissions.filter((p) => p !== perm);
+      applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}${guildQuery()}`, { method: "PUT", body: { permissions: next } }));
+      toast(on ? t("toast.permOn", { id, p: perm }) : t("toast.permOff", { id, p: perm }));
     } else if (act.dataset.act === "settings-save") {
-      busy("Salvando…");
+      busy("…");
       // Only send what changed: a masked secret left untouched must not be erased with "".
       const body = {};
       for (const input of $$("[data-setting]")) {
@@ -701,28 +1186,20 @@ async function pluginAction(act) {
         if (field && input.value === (field.value ?? "")) continue;
         body[input.dataset.setting] = input.value.trim();
       }
-      if (!Object.keys(body).length) { render(); return toast("Nada mudou."); }
+      if (!Object.keys(body).length) { render(); return toast(t("toast.nothing")); }
       settings = await api("/api/panel/settings", { method: "PUT", body });
       render();
-      toast("Salvo. Reinicie o bot para aplicar o que é lido na inicialização.", true);
+      toast(t("toast.saved"), true);
     } else if (act.dataset.act === "settings-restart") {
-      if (!confirm("Reiniciar o bot agora? A sessão do painel cai.")) return;
-      busy("Reiniciando…");
+      if (!confirm(t("confirm.restart"))) return;
+      busy("…");
       const payload = await api("/api/panel/settings", { method: "POST", body: { action: "restart" } });
-      toast(payload.restarted ? "Reiniciando — volte em alguns segundos" : "Este ambiente não deixa o painel reiniciar o processo", !payload.restarted);
+      toast(payload.restarted ? t("toast.restarting") : t("toast.noRestart"), !payload.restarted);
       button.disabled = false;
-      button.textContent = "Reiniciar o bot";
-    } else if (act.dataset.act === "password-save") {
-      const current = $("#pw-current").value;
-      const password = $("#pw-next").value;
-      if (password.length < 8) return toast("A senha nova precisa de 8 caracteres ou mais", true);
-      busy("Trocando…");
-      await api("/api/panel/auth/password", { method: "POST", body: { current, password } });
-      toast("Senha trocada. Entre de novo com a senha nova.");
-      showLogin("Senha trocada. Entre de novo com a senha nova.");
+      button.textContent = t("btn.restart");
     }
   } catch (err) {
-    toast(`Falhou: ${err.message}`, true);
+    toast(t("toast.fail", { m: err.message }), true);
     if (button.isConnected) { button.disabled = false; render(); }
   }
 }
@@ -737,51 +1214,43 @@ document.addEventListener("click", (e) => {
     try { localStorage.setItem("theme", document.documentElement.dataset.theme); } catch {}
     return render();
   }
+  if (act.dataset.act === "google") {
+    e.preventDefault();
+    return signIn(act);
+  }
   if (act.dataset.act === "logout") {
     return api("/api/panel/auth/logout", { method: "POST", body: {} })
       .catch(() => null)
-      .then(() => showLogin("Você saiu."));
+      .then(() => showLogin(t("login.leaving")));
   }
-  if (/^plugin|^plugins|^cmd-toggle|^commands-|^settings|^password/.test(act.dataset.act ?? "")) {
+  if (/^plugin|^plugins|^cmd-toggle|^commands-|^settings/.test(act.dataset.act ?? "")) {
     e.preventDefault();
     return pluginAction(act);
   }
 });
 
 document.addEventListener("change", async (e) => {
+  const lang = e.target.closest('[data-act="lang"]');
+  if (lang) return setLang(lang.value);
   const input = e.target.closest('[data-act="plugin-hosts"]');
   if (!input) return;
   const id = input.dataset.id;
   const hosts = input.value.split(",").map((h) => h.trim()).filter(Boolean);
   try {
-    applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}`, { method: "PUT", body: { allowedHosts: hosts } }));
-    toast(`${id}: ${plural(hosts.length, "host liberado", "hosts liberados")}`);
+    applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}${guildQuery()}`, { method: "PUT", body: { allowedHosts: hosts } }));
+    toast(t("toast.hosts", { n: pl(hosts.length, "unit.host1", "unit.hostN"), id }));
   } catch (err) {
-    toast(`Falhou: ${err.message}`, true);
+    toast(t("toast.fail", { m: err.message }), true);
   }
 });
 
-document.addEventListener("submit", async (e) => {
-  if (e.target.id !== "auth-form") return;
-  e.preventDefault();
-  const button = e.target.querySelector("button");
-  const password = $("#auth-password").value;
-  button.disabled = true;
-  button.textContent = "Entrando…";
-  try {
-    await api("/api/panel/auth/login", { method: "POST", body: { password } });
-    await boot();
-  } catch (err) {
-    state.login = false;
-    showLogin(`Não entrou: ${err.message}`);
-  }
-});
-
+paintChrome();
 boot();
 setInterval(async () => {
   if (!meta || !state.guild || state.view === "settings") return;
   try {
     meta = await api("/api/panel/guilds");
+    meta.session = meta.session ?? (state.auth?.user ? "google" : "token");
     await loadGuild();
     paintHead();
   } catch { /* mantém a última leitura */ }

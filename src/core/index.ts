@@ -57,9 +57,11 @@ export {
 } from './module';
 export {
   cookie,
+  handlePanelAuthRequest,
   isPublicPanelSegment,
   panelSessionValid,
   registerPanelAuth,
+  registerPanelAuthHandler,
   registerPublicPanelSegment,
 } from './panel-auth';
 export { type PanelReply, type PanelRequest, registerPanelRoute } from './panel-routes';

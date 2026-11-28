@@ -1,4 +1,25 @@
-import type { IncomingMessage } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+
+/** Better Auth answers `/api/auth/*` itself; core only forwards. */
+export type PanelAuthHandler = (
+  request: IncomingMessage,
+  response: ServerResponse,
+) => Promise<void>;
+
+let handler: PanelAuthHandler | undefined;
+
+export function registerPanelAuthHandler(next: PanelAuthHandler): void {
+  handler = next;
+}
+
+export async function handlePanelAuthRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<boolean> {
+  if (!handler) return false;
+  await handler(request, response);
+  return true;
+}
 
 /**
  * The panel lives in core but sessions live in a feature module, so core only knows these hooks.

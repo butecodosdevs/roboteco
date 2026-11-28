@@ -32,10 +32,8 @@ const json = (response: ServerResponse, status: number, body: unknown, headers =
     .end(JSON.stringify(body));
 };
 
-/**
- * A cookie is what the browser sends; the header is what the scripts send. Both are checked, but
- * only the header path is allowed while no password has been set yet.
- */
+/** Cookies come from Better Auth; the header is what scripts and CI send. */
+
 async function authorized(request: IncomingMessage, token?: string): Promise<boolean> {
   if (request.headers['x-panel-token'] === token && token) return true;
   return panelSessionValid(request);
@@ -60,8 +58,16 @@ async function pluginFiles() {
   );
 }
 
+/**
+ * Discord locale for a panel language. Command localizations only carry pt-BR (the default is
+ * English), so zh falls back to the base name instead of inventing a translation.
+ */
+const discordLocale = (locale: string | null): string =>
+  locale === 'pt' ? 'pt-BR' : locale === 'zh' ? 'zh-CN' : 'en-US';
+
 /** Built-in commands grouped by the module that declared them, with the panel's toggles. */
-async function builtInModules(guildId: string | undefined) {
+async function builtInModules(guildId: string | undefined, locale: string | null) {
+  const want = discordLocale(locale);
   const owners = commandOwners();
   const disabled = new Set(disabledCommands());
   const usage = guildId ? await usageReport(guildId, 30) : null;
@@ -79,10 +85,10 @@ async function builtInModules(guildId: string | undefined) {
       .description_localizations;
     const group = groups.get(owner) ?? [];
     group.push({
-      name: localized?.['pt-BR'] ?? command.name,
+      name: localized?.[want] ?? command.name,
       code: command.name,
       description:
-        descriptions?.['pt-BR'] ?? ('description' in command ? (command.description ?? '') : ''),
+        descriptions?.[want] ?? ('description' in command ? (command.description ?? '') : ''),
       disabled: disabled.has(command.name),
       uses: used.get(command.name) ?? 0,
     });
@@ -345,7 +351,10 @@ export async function handlePanel(
       else setCommandsEnabled(commands, enabled);
       if (unknown.length > 0) return;
     }
-    json(response, 200, { modules: await builtInModules(guildId), disabled: disabledCommands() });
+    json(response, 200, {
+      modules: await builtInModules(guildId, url.searchParams.get('locale')),
+      disabled: disabledCommands(),
+    });
     return;
   }
 

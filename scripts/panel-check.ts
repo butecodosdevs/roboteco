@@ -11,6 +11,11 @@ process.env.S3_BUCKET ??= 'roboteco';
 process.env.DISCORD_TOKEN ??= 'x';
 process.env.DISCORD_CLIENT_ID ??= 'x';
 process.env.PANEL_TOKEN ??= 'panel-check-token-123456';
+process.env.PANEL_URL = 'http://127.0.0.1:4399';
+process.env.PANEL_SECRET ??= 'panel-check-secret-0123456789abcdef';
+process.env.PANEL_ALLOWED_EMAILS ??= 'eu@exemplo.com';
+process.env.GOOGLE_CLIENT_ID ??= 'check-client-id';
+process.env.GOOGLE_CLIENT_SECRET ??= 'check-client-secret';
 
 const { startHttpServer } = await import('@/core/http');
 const { inject, registerCommandCatalog, registerCommandOwners } = await import('@/core');
@@ -107,11 +112,23 @@ const restored = (await (
 assert.deepEqual(restored.disabled, [], 'enabling it again clears the toggle');
 assert.equal((await fetch(`${base}/api/panel/settings`)).status, 401, 'settings needs a session');
 assert.equal((await fetch(`${base}/api/panel/settings`, { headers: auth })).status, 200);
+// No password path exists any more: the only way in is the Google redirect.
 assert.equal(
-  (await fetch(`${base}/api/panel/auth/login`, { method: 'POST', body: '{"password":"errada"}' }))
+  (await fetch(`${base}/api/panel/auth/login`, { method: 'POST', body: '{"password":"x"}' }))
     .status,
-  400,
-  'a wrong password is rejected, not silently accepted',
+  405,
+  'the password route is gone',
+);
+const social = await fetch(`${base}/api/auth/sign-in/social`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: '{"provider":"google","callbackURL":"http://127.0.0.1:4399/","disableRedirect":true}',
+});
+assert.equal(social.status, 200, 'better-auth answers on /api/auth');
+const socialBody = (await social.json()) as { url?: string };
+assert.ok(
+  socialBody.url?.startsWith('https://accounts.google.com/'),
+  'sign-in hands back the Google redirect url',
 );
 assert.equal((await fetch(`${base}/../package.json`)).status, 404, 'no path traversal');
 assert.equal((await fetch(`${base}/server.js`)).status, 404, 'only known extensions');
@@ -126,4 +143,7 @@ bare.close();
 
 server.close();
 await client.destroy();
+// The Postgres pool keeps the event loop alive; close it so the check exits on its own.
+const { closeDb } = await import('@/db');
+await closeDb();
 console.log('panel check ok');

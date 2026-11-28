@@ -5,9 +5,8 @@ import { Injectable, inject, registerPanelRoute } from '@/core';
 import { readSettings, settingsKeys, writeSettings } from '@/core/settings';
 
 export interface SettingField {
+  /** The panel translates each key; the server only reports state. */
   key: string;
-  label: string;
-  hint: string;
   restart: boolean;
   secret: boolean;
   /** Masked for secrets, `null` when unset. */
@@ -51,8 +50,6 @@ export class PanelSettingsService {
       const active = running(item.key);
       return {
         key: item.key,
-        label: item.label,
-        hint: item.hint,
         restart: item.restart,
         secret: item.secret ?? false,
         value: stored && item.secret ? redact(stored) : stored,

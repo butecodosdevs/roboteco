@@ -5,6 +5,7 @@ import type { Client } from 'discord.js';
 import { isCacheReady } from '@/cache';
 import { reportError } from '@/logger';
 import { handlePanel, isPanelPath } from './panel';
+import { handlePanelAuthRequest } from './panel-auth';
 
 const types: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -63,6 +64,12 @@ export function startHttpServer(
             cache: isCacheReady() ? 'ok' : 'unavailable',
           }),
         );
+        return;
+      }
+      if (
+        url.pathname.startsWith('/api/auth') &&
+        (await handlePanelAuthRequest(request, response))
+      ) {
         return;
       }
       if (isPanelPath(url.pathname)) {

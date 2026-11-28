@@ -55,14 +55,17 @@ Migrations must stay backwards-compatible for one release. The old bot keeps run
 
 The same port serves the panel at `/` with `web/`. It needs `PANEL_TOKEN` (16+ characters); without it every `/api/panel` call answers `503` and the page says the panel is off. The panel reads the same Postgres as the bot, so it shows real numbers even while the gateway is reconnecting.
 
+Sign-in is Google only. Create an OAuth client in Google Cloud Console, add `${PANEL_URL}/api/auth/callback/google` as an authorized redirect URI, and set `PANEL_URL`, `PANEL_SECRET` (`openssl rand -hex 32`), `PANEL_ALLOWED_EMAILS`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Only the listed emails can sign in: the allowlist is checked before a user row exists, through a Better Auth `databaseHooks.user.create.before` hook that throws `FORBIDDEN`.
+
 ```sh
-PANEL_TOKEN=$(openssl rand -hex 24) pnpm dev
-# http://127.0.0.1:3000 → a senha do primeiro acesso é esse PANEL_TOKEN
+PANEL_TOKEN=$(openssl rand -hex 24) PANEL_SECRET=$(openssl rand -hex 32) \
+PANEL_ALLOWED_EMAILS=you@example.com pnpm dev
+# http://127.0.0.1:3000 → "Entrar com Google"
 ```
 
-The first login takes `PANEL_TOKEN` as the password and stores a scrypt hash of it in `panel/auth.json` (mode `0600`); from then on the token is no longer a password. A login creates a `panel_session` cookie (HttpOnly, SameSite=Strict, 12 h), and the session lives in memory, so a restart logs everyone out. Change the password in Configurações. Scripts and CI still use the `x-panel-token` header — the query string is ignored on purpose so tokens never land in access logs.
+Sessions live in `auth_session` (Postgres), so a restart no longer logs anyone out. The cookie lasts 24 hours and is refreshed at most hourly. Scripts and CI keep using the `x-panel-token` header — the query string is ignored on purpose so tokens never land in access logs.
 
-Two files are written by the panel and both belong on a volume: `panel/auth.json` (password hash) and `panel/settings.json` (token, application id, log level). Settings are applied to `process.env` before `config` is parsed, so a change needs a restart; `ROBOTECO_RESTART=docker` lets the panel restart the container itself, otherwise the button says so.
+One file is written by the panel and belongs on a volume: `panel/settings.json` (token, application id, log level). Settings are applied to `process.env` before `config` is parsed, so a change needs a restart; `ROBOTECO_RESTART=docker` lets the panel restart the container itself, otherwise the button says so.
 
 ### Backups
 

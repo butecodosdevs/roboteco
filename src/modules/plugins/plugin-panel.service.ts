@@ -65,12 +65,15 @@ export class PluginPanelService {
   private readonly deployer = inject(PluginDeployService);
   private readonly builder = inject(PluginBuildService);
 
-  async list(guildId?: string): Promise<{ plugins: PanelPlugin[]; usage: PanelUsage | null }> {
+  async list(
+    guildId?: string,
+    locale?: string | null,
+  ): Promise<{ plugins: PanelPlugin[]; usage: PanelUsage | null }> {
     const usage = guildId ? await usageReport(guildId, 30) : null;
     const used = new Map((usage?.commands ?? []).map((row) => [row.command, row.total]));
     const definitions = await this.registry.definitions();
     const plugins = await Promise.all(
-      definitions.map((definition) => this.describe(definition, used)),
+      definitions.map((definition) => this.describe(definition, used, locale)),
     );
     return { plugins, usage };
   }
@@ -78,6 +81,7 @@ export class PluginPanelService {
   private async describe(
     definition: PluginDefinitionEntry,
     used: Map<string, number>,
+    locale?: string | null,
   ): Promise<PanelPlugin> {
     const loaded: LoadedPlugin | undefined = this.registry.get(definition.id);
     const path = resolve(registryPath, '../..', definition.wasm);
@@ -94,13 +98,15 @@ export class PluginPanelService {
         required = [];
       }
     }
+    // Manifests ship pt-BR translations; English is the base name, so only pt asks for a key.
+    const want = locale === 'pt' ? 'pt-BR' : 'en-US';
     const commands: PanelCommand[] = loaded
       ? loaded.commands.map((spec) => {
           const json = this.manifests.toCommandJSON(spec);
           return {
             code: json.name,
-            name: json.name_localizations?.['pt-BR'] ?? json.name,
-            description: json.description_localizations?.['pt-BR'] ?? json.description,
+            name: json.name_localizations?.[want] ?? json.name,
+            description: json.description_localizations?.[want] ?? json.description,
             options: (json.options ?? []).flatMap((option) =>
               'options' in option && option.options
                 ? option.options.map((nested) => `${option.name} ${nested.name}`)
@@ -163,9 +169,9 @@ export class PluginPanelService {
     return disabledCommands();
   }
 
-  async refresh(guildId?: string) {
+  async refresh(guildId?: string, locale?: string | null) {
     await this.registry.reload();
-    return this.list(guildId);
+    return this.list(guildId, locale);
   }
 
   /**
@@ -204,14 +210,15 @@ export function registerPluginPanel(): void {
 
   registerPanelRoute('plugins', async ({ segments: [first, second], query, method, body }) => {
     const guildId = query.get('guild') ?? undefined;
+    const locale = query.get('locale');
     const action = second ?? undefined;
     if (action === 'refresh' && method === 'POST') {
-      return { body: await panel.refresh(guildId) };
+      return { body: await panel.refresh(guildId, locale) };
     }
     if (action === 'deploy' && method === 'POST') {
       // `all` republishes everything; an id only reports how many came from that plugin.
       const result = await panel.deploy(first === 'all' ? undefined : first);
-      return { body: { ...result, ...(await panel.list(guildId)) } };
+      return { body: { ...result, ...(await panel.list(guildId, locale)) } };
     }
     if (action === 'commands' && (method === 'PUT' || method === 'POST')) {
       if (!first)
@@ -226,11 +233,11 @@ export function registerPluginPanel(): void {
         };
       }
       await panel.toggle(commands, enabled);
-      return { body: await panel.list(guildId) };
+      return { body: await panel.list(guildId, locale) };
     }
     if (!second && first && (method === 'PUT' || method === 'PATCH')) {
       await panel.update(first, pluginSchema.parse(body ?? {}));
-      return { body: await panel.list(guildId) };
+      return { body: await panel.list(guildId, locale) };
     }
     if (!second && first && method === 'DELETE') {
       return {
@@ -239,7 +246,9 @@ export function registerPluginPanel(): void {
       };
     }
     if (method === 'GET') {
-      return { body: { ...(await panel.list(guildId)), registry: await registry.definitions() } };
+      return {
+        body: { ...(await panel.list(guildId, locale)), registry: await registry.definitions() },
+      };
     }
     return {
       status: 405,

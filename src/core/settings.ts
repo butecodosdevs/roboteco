@@ -8,52 +8,18 @@ import { dirname, resolve } from 'node:path';
  */
 export interface SettingsKey {
   key: string;
-  label: string;
-  hint: string;
   secret?: boolean;
   /** Read once at boot: changing it needs a restart to take effect. */
   restart: boolean;
 }
 
 export const settingsKeys: SettingsKey[] = [
-  {
-    key: 'DISCORD_TOKEN',
-    label: 'Token do bot',
-    hint: 'Developer Portal → Bot → Reset Token. O bot cai e volta com o token novo.',
-    secret: true,
-    restart: true,
-  },
-  {
-    key: 'DISCORD_CLIENT_ID',
-    label: 'Application ID',
-    hint: 'Developer Portal → General Information. Usado para publicar comandos.',
-    restart: true,
-  },
-  {
-    key: 'DISCORD_GUILD_ID',
-    label: 'Servidor de testes',
-    hint: 'Com um ID aqui os comandos vão só para esse servidor, na hora. Vazio publica global.',
-    restart: true,
-  },
-  {
-    key: 'LOG_LEVEL',
-    label: 'Nível de log',
-    hint: 'fatal, error, warn, info, debug ou trace.',
-    restart: true,
-  },
-  {
-    key: 'GUILD_DATA_RETENTION_DAYS',
-    label: 'Retenção de dados',
-    hint: 'Dias que os dados de um servidor ficam guardados depois que o bot sai.',
-    restart: true,
-  },
-  {
-    key: 'SENTRY_DSN',
-    label: 'Sentry DSN',
-    hint: 'Vazio desliga o envio de erros.',
-    secret: true,
-    restart: true,
-  },
+  { key: 'DISCORD_TOKEN', secret: true, restart: true },
+  { key: 'DISCORD_CLIENT_ID', restart: true },
+  { key: 'DISCORD_GUILD_ID', restart: true },
+  { key: 'LOG_LEVEL', restart: true },
+  { key: 'GUILD_DATA_RETENTION_DAYS', restart: true },
+  { key: 'SENTRY_DSN', secret: true, restart: true },
 ];
 
 export const settingsPath = resolve('panel/settings.json');
