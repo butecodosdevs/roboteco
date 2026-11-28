@@ -102,7 +102,14 @@ async function builtInModules(guildId: string | undefined) {
     );
 }
 
-async function summary(guildId: string) {
+/** Display names come from the cache when Discord has them; the raw id is the fallback. */
+function nameResolver(client: Client, guildId: string) {
+  const guild = client.guilds.cache.get(guildId);
+  return (id: string): string | null =>
+    guild?.members.cache.get(id)?.displayName ?? client.users.cache.get(id)?.username ?? null;
+}
+
+async function summary(client: Client, guildId: string) {
   const s = schema;
   const now = new Date();
   const caseColumns = {
@@ -225,6 +232,7 @@ async function summary(guildId: string) {
     starboardEntries,
   ] = counters;
 
+  const nameOf = nameResolver(client, guildId);
   return {
     guild: guildId,
     counters: {
@@ -245,10 +253,14 @@ async function summary(guildId: string) {
       drops: drops.length,
       hubs: hubs.length,
     },
-    cases,
+    cases: cases.map((row) => ({
+      ...row,
+      targetName: nameOf(row.targetId),
+      moderatorName: nameOf(row.moderatorId),
+    })),
     byAction,
     feeds,
-    leaders,
+    leaders: leaders.map((row) => ({ ...row, name: nameOf(row.userId) })),
     counting: counting[0] ?? null,
     drops,
     hubs,
@@ -353,5 +365,5 @@ export async function handlePanel(
     json(response, 400, { error: 'no guild' });
     return;
   }
-  json(response, 200, await summary(guildId));
+  json(response, 200, await summary(client, guildId));
 }
