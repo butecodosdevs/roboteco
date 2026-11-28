@@ -2,7 +2,6 @@ import { MessageFlags, SlashCommandSubcommandBuilder } from 'discord.js';
 import { type GuildInteraction, Subcommand } from '@/core';
 import { updateGuildSettings } from '@/db';
 import { localize, translator } from '@/i18n';
-import { refuseWithoutManageGuild } from './require-manage-guild';
 
 // Discord caps timeouts at 28 days.
 const maxMinutes = 28 * 24 * 60;
@@ -17,7 +16,6 @@ const maxMinutes = 28 * 24 * 60;
 )
 export class TimeoutSubcommand {
   async execute(interaction: GuildInteraction) {
-    if (await refuseWithoutManageGuild(interaction)) return;
     const tr = translator(interaction.locale);
     const minutes = interaction.options.getInteger('minutes', true);
     await updateGuildSettings(interaction.guildId, interaction.guild.preferredLocale, {

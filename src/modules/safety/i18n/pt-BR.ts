@@ -41,7 +41,6 @@ export const safetyPtBR: Messages['safety'] = {
     '{user}, removi sua mensagem porque uma verificação de segurança ({sources}) confirmou que ela tem algo malicioso. Se você não quis enviar isso, sua conta pode estar comprometida: troque sua senha.',
   dm: 'Sua mensagem em **{server}** foi removida porque uma verificação de segurança confirmou que ela é maliciosa:\n{findings}\nSe você não quis enviar isso, sua conta ou seu dispositivo podem estar comprometidos: troque sua senha e verifique seu dispositivo com um antivírus.',
   replies: {
-    noPermission: 'Você precisa da permissão Gerenciar Servidor para usar /seguranca.',
     enabled:
       'A verificação está ligada. Mensagens só são removidas quando uma verificação confirma uma ameaça; o que for desconhecido continua no ar. As remoções aparecem no log de moderação (/moderacao log).',
     disabled: 'A verificação está desligada.',

@@ -1,7 +1,6 @@
 import {
   ChannelType,
   MessageFlags,
-  PermissionFlagsBits,
   type SlashCommandSubcommandBuilder,
   type VoiceBasedChannel,
 } from 'discord.js';
@@ -97,9 +96,6 @@ export async function emitScenario(interaction: GuildInteraction, audit: AuditSe
   const tr = translator(interaction.locale);
   const reply = (content: string) =>
     interaction.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
-  if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-    return reply(tr('dev.replies.adminOnly'));
-  }
   const { guild, client, options } = interaction;
   const scenario = options.getString('scenario', true) as Scenario;
 

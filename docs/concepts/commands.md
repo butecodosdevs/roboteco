@@ -19,7 +19,7 @@ Use a command when a member starts an action. Use an [event](events.md) when the
 | `subcommands` | Sends each call to a [subcommand](subcommands.md) class instead of `execute` |
 
 - **Options are read by their en-US name.** `interaction.options.getString('message')` works whatever the user's language, because Discord always sends the en-US name. Those `name` keys are identifiers, so don't change them casually.
-- **Permissions.** `.setDefaultMemberPermissions(PermissionFlagsBits.X)` hides the command from members without that permission. Server admins can override this per role.
+- **Permissions.** `.setDefaultMemberPermissions(PermissionFlagsBits.X)` hides the command from members without that permission. Server admins can open a command to other roles in Server Settings → Integrations, so the framework also checks the permission before `execute` or `autocomplete` runs, for commands and context menus alike. A member without it gets a private reply naming what's missing, and autocomplete gets no suggestions. An override can still hide a command from members who have the permission; it can't open it to members who don't. Checks about something else, like letting authors delete their own tags, stay in the handler.
 - **Replies.** Every interaction must be answered within 3 seconds:
   - `reply` for quick answers;
   - `deferReply` then `editReply` for anything slower;

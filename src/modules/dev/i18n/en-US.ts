@@ -75,7 +75,6 @@ export const devEnUS = {
     noOtherVoiceChannel: 'A move needs a second voice channel in this server.',
     noTextChannel: 'Pick a channel with messages in the channel option.',
     unused: 'Not used by this scenario, ignored: {options}.',
-    adminOnly: 'Only administrators can use /dev.',
     received: 'Received.',
     recordingOn:
       'Recording this server into tests/fixtures/discord. Use /dev fidelity, its panel and the Fidelity menus, then do the events you want covered.',
