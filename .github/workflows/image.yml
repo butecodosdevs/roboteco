@@ -15,12 +15,19 @@ name: image
 # público e sem porta aberta. Só de dentro do cluster se empurra imagem para
 # lá — um runner do GitHub não consegue, independente de credencial.
 #
-# A garantia de que a imagem é de um commit testado vem do `needs`: o job de
-# deploy só existe depois que o `ci` passou. Sem `skip-tests` nem teste
-# duplicado aqui, porque o runner do cluster não tem Node 26 nem compose.
+# A garantia de que a imagem é de um commit testado vem de `workflow_run`: este
+# workflow não escuta `push`, escuta o `ci` TERMINAR, e o job só roda quando o
+# resultado é `success`. Sem isso, `push` na `main` dispararia os dois em
+# paralelo e a imagem poderia ser publicada antes do teste falhar —
+# `needs` não serve aqui, ele só liga jobs dentro do MESMO workflow.
+#
+# `workflow_dispatch` continua para republicar sem commit novo. Nesse caminho
+# não há teste: é uma escolha explícita de quem dispara, não um furo.
 
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -37,14 +44,28 @@ env:
   APP: roboteco
   REGISTRY: registry.support.svc.cluster.local:5000
   INFRA_REPO: giomartinsdev/gio-random-projects
+  # O sha que o CI aprovou. Em `workflow_run` o `github.sha` não é o commit que
+  # disparou o evento; em `workflow_dispatch` é o HEAD do branch escolhido. Uma
+  # variável só, usada na tag, no push e na mensagem do commit, para os três
+  # apontarem para a mesma coisa.
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   build:
+    # `workflow_run` dispara em sucesso E em falha; o `if` é o que transforma
+    # isso em "só depois do teste passar". `workflow_dispatch` não tem
+    # `conclusion`, então a condição testa os dois casos.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     # arm64 NATIVO: o nó é Oracle ARM e o runner é um pod nele. Nada de QEMU.
     runs-on: vps-arm64
     timeout-minutes: 40
     steps:
+      # `workflow_run` não herda o commit do evento: sem `ref` explícito o
+      # checkout pega o default branch no HEAD de agora, que pode já ser outro
+      # commit. O build tem que ser do commit que o CI aprovou.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
 
       # O `config.json` do pod só conhece `registry.giomartins.dev:5000` (nome
       # público). O push sai pelo nome do Service, que para o Docker é outro
@@ -76,7 +97,7 @@ jobs:
           set -euo pipefail
           docker build --platform linux/arm64 \
             --tag "$REGISTRY/$APP:latest" \
-            --tag "$REGISTRY/$APP:${{ github.sha }}" \
+            --tag "$REGISTRY/$APP:$SHA" \
             --file Dockerfile .
 
       - name: Push and read the digest
@@ -86,7 +107,7 @@ jobs:
           # Os dois nomes vão para o registry: `:latest` é o que um `docker pull`
           # manual usa, o sha é o que fica auditável. O manifesto fixa o DIGEST,
           # que é o mesmo blob para os dois.
-          out=$(docker push "$REGISTRY/$APP:${{ github.sha }}")
+          out=$(docker push "$REGISTRY/$APP:$SHA")
           printf '%s\n' "$out" | tail -3
           docker push "$REGISTRY/$APP:latest" >/dev/null
           # `docker push` não tem saída estruturada: o digest sai na linha
@@ -125,7 +146,7 @@ jobs:
             echo "digest igual ao do manifesto; nada a commitar"
             exit 0
           fi
-          git commit -m "deploy: imagem arm64 do roboteco (${{ github.sha }})"
+          git commit -m "deploy: imagem arm64 do roboteco ($SHA)"
 
           # O repo de infra recebe commits de outros workflows: rebase e repete.
           for i in 1 2 3 4; do
