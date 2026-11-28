@@ -263,7 +263,7 @@ Limits: 2 s per call, 64 MB of memory, no filesystem, and calls to each plugin a
 
 ### Prerequisites
 
-- [mise](https://mise.jdx.dev), which installs the pinned Node.js and pnpm (or Node.js ≥ 22.12 and pnpm yourself)
+- [mise](https://mise.jdx.dev), which installs the pinned Node.js, pnpm, Rust and Go (or install Node.js ≥ 22.12, pnpm, [Rust](https://rustup.rs) and [Go](https://go.dev) ≥ 1.24 yourself)
 - Docker with Compose, to run Postgres, Valkey and Garage
 - A Discord application and bot token from the [Developer Portal](https://discord.com/developers/applications)
 
@@ -273,6 +273,7 @@ Limits: 2 s per call, 64 MB of memory, no filesystem, and calls to each plugin a
 mise install
 cp .env.example .env   # fill in DISCORD_TOKEN and DISCORD_CLIENT_ID
 pnpm install
+pnpm plugins:build     # WASM plugins and test fixtures; needed by pnpm test
 pnpm services:up && pnpm storage:init && pnpm db:migrate
 pnpm deploy-commands
 pnpm dev

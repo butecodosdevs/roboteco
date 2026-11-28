@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { z } from 'zod';
 import { config } from '@/config';
 import { Injectable, inject, isBuiltInCommand } from '@/core';
-import { reportError } from '@/logger';
+import { logger, reportError } from '@/logger';
 import { type LoadedPlugin, PluginEngineService } from './plugin-engine.service';
 import type {
   PluginCommandSpec,
@@ -48,13 +48,32 @@ export class PluginRegistryService {
     reserved: (name: string) => boolean = isBuiltInCommand,
   ): Promise<void> {
     const raw = await readFile(path, 'utf8').catch(() => null);
-    if (!raw) return;
+    if (raw === null) {
+      logger.warn({ registry: path }, 'Plugin registry not found; check PLUGIN_REGISTRY');
+      return;
+    }
     const { plugins } = registrySchema.parse(JSON.parse(raw));
+    // An empty registry is the default, so say so: otherwise plugin commands just never appear.
+    if (plugins.length === 0) {
+      logger.info(
+        { registry: path },
+        'No plugins installed. To try the example, set PLUGIN_REGISTRY=plugins/registry.example.json and run pnpm plugins:build',
+      );
+      return;
+    }
     for (const definition of plugins) {
+      const wasm = resolve(path, '../..', definition.wasm);
       try {
-        const wasm = resolve(path, '../..', definition.wasm);
         this.add(await this.engine.load({ ...definition, wasm }), reserved);
       } catch (error) {
+        // A missing build is a setup step, not a bug: point at the fix instead of reporting a stack.
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          logger.warn(
+            { plugin: definition.id, wasm },
+            'Plugin not built yet; run pnpm plugins:build',
+          );
+          continue;
+        }
         reportError(error, { plugin: definition.id }, 'Plugin failed to load');
       }
     }
