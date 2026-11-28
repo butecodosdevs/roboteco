@@ -100,6 +100,14 @@ jobs:
       # plugins:build first". The image build compiles the same sources, so
       # this step is also what catches a plugin that stops compiling, before
       # it reaches a registry the bot reads.
+      #
+      # `rustup target add` is not redundant with rust-toolchain.toml: mise
+      # exports RUSTUP_TOOLCHAIN, which takes precedence over that file, so
+      # rustup never sees `targets = ["wasm32-unknown-unknown"]` and the build
+      # dies with "can't find crate for `std`".
       - name: Tests
-        run: pnpm plugins:build && pnpm test
+        run: |
+          rustup target add wasm32-unknown-unknown
+          pnpm plugins:build
+          pnpm test
 
