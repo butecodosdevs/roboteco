@@ -8,3 +8,5 @@ backups
 !.env.example
 docs
 *.md
+plugins/dist
+plugins/**/target

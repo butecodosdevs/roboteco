@@ -74,4 +74,4 @@ Garage data (uploaded files) lives in the `garage-data` volume. Back that up wit
 
 ### Plugins
 
-The image doesn't include `plugins/` yet, so WASM plugins only run in development. To ship them, build them with `pnpm plugins:build` and copy `plugins/registry.json` and `plugins/dist/` into the image (see [plugins](../concepts/plugins.md)).
+No plugins are installed in releases: the image ships the empty `plugins/registry.json`, and the plugins in `plugins/` are examples. Installing one in production means adding it to the registry and building its WASM into the image (see [plugins](../concepts/plugins.md)).

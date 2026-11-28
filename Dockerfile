@@ -19,6 +19,7 @@ COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json ./
 COPY --chown=node:node drizzle ./drizzle
+COPY --chown=node:node plugins/registry.json ./plugins/registry.json
 USER node
 EXPOSE 3000
 ENV HEALTH_PORT=3000

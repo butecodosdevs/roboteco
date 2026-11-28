@@ -24,7 +24,7 @@ Each concept page has the same shape: **what it is**, **what it's for**, **how i
 | [Components](concepts/components.md) | a vote button; a report modal |
 | [Context menus](concepts/context-menus.md) | right-click → Report message |
 | [Scheduled jobs](concepts/jobs.md) | reminders |
-| [Plugins (WASM, POC)](concepts/plugins.md) | Rust and Go plugins that declare their own slash commands; sandbox limits |
+| [Plugins (WASM)](concepts/plugins.md) | Community plugins in Rust or Go: commands, menus, buttons, forms, events and scheduled runs, acting through permission-checked capabilities in a sandbox |
 | [Structure rules](concepts/structure-rules.md) | fixing a failing lint |
 
 ## Examples from this repository

@@ -31,6 +31,7 @@ Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
 | `SENTRY_DSN` | no | error reporting, off when empty |
 | `HEALTH_PORT` | no | serves `GET /health` when set |
 | `GUILD_DATA_RETENTION_DAYS` | no | days to keep a server's data after the bot leaves (default 30) |
+| `PLUGIN_REGISTRY` | no | plugin registry to load (default `plugins/registry.json`, empty; `plugins/registry.example.json` loads the examples) |
 | `DISCORD_GUILD_ID` | no | your test server ID. When set, `deploy-commands` registers commands on that server instantly instead of globally |
 | `DATABASE_URL` | yes | `postgres://roboteco:roboteco@localhost:5432/roboteco` |
 | `VALKEY_URL` | no | `redis://localhost:6379` (default) |
@@ -74,7 +75,8 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm dev` | Run with reload on change |
 | `pnpm build` / `pnpm start` | Bundle to `dist/` with esbuild and run it (with source maps) |
 | `pnpm deploy-commands` | Register slash commands with Discord. Run after changing command names, descriptions or options |
-| `pnpm typecheck` | TypeScript, including `scripts/` |
+| `pnpm typecheck` | TypeScript, including `scripts/` and `tests/` |
+| `pnpm test` | Behaviour tests in `tests/`, against the Postgres and Valkey in `.env` (run `pnpm db:migrate` first) |
 | `pnpm lint` | Biome plus [structure rules](concepts/structure-rules.md) |
 | `pnpm lint:structure` | Structure rules only |
 | `pnpm format` | Format and apply safe Biome fixes |
@@ -84,4 +86,5 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm db:migrate:runtime` | Apply migrations the way production does (no drizzle-kit) |
 | `pnpm prod:up` / `prod:logs` | Build and start `compose.prod.yaml` / follow the bot's logs |
 | `pnpm plugins:build` | Build the example WASM plugins into `plugins/dist/` |
+| `pnpm plugin check\|run\|click\|submit\|event\|job\|schema` | Validate a plugin; run its commands, buttons, forms, events and jobs without Discord; export the contract's JSON Schema ([plugins](concepts/plugins.md#quick-start)) |
 | `pnpm db:push` / `db:studio` | Sync the schema without a migration (local only) / browse data |

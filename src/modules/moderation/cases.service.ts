@@ -1,7 +1,10 @@
+import { PermissionFlagsBits } from 'discord.js';
 import { and, count, desc, eq, gt, sql } from 'drizzle-orm';
-import { Injectable } from '@/core';
+import { z } from 'zod';
+import { Expose, Injectable, inject, type PluginScope, snowflake } from '@/core';
 import { db, schema } from '@/db';
 import { t } from '@/i18n';
+import { DomainEventsService } from '@/modules/domain-events/domain-events.service';
 
 export type CaseAction = (typeof schema.moderationActions)[number];
 export type ModerationCase = typeof schema.moderationCases.$inferSelect;
@@ -55,8 +58,10 @@ export function formatDuration(locale: string, seconds: number): string {
 
 @Injectable()
 export class CasesService {
+  private readonly events = inject(DomainEventsService);
+
   async create(input: NewCase, locale: string): Promise<ModerationCase> {
-    return db.transaction(async (tx) => {
+    const entry = await db.transaction(async (tx) => {
       const [counter] = await tx
         .insert(schema.guilds)
         .values({ id: input.guildId, locale, moderationCaseCount: 1 })
@@ -74,6 +79,16 @@ export class CasesService {
       if (!created) throw new Error(`Could not create case for guild ${input.guildId}`);
       return created;
     });
+    this.events.emit('moderation.caseCreated', {
+      guildId: entry.guildId,
+      number: entry.number,
+      action: entry.action,
+      targetId: entry.targetId,
+      moderatorId: entry.moderatorId,
+      reason: entry.reason,
+      durationSeconds: entry.durationSeconds,
+    });
+    return entry;
   }
 
   async get(guildId: string, number: number): Promise<ModerationCase | undefined> {
@@ -146,5 +161,32 @@ export class CasesService {
         ),
       );
     return row?.total ?? 0;
+  }
+
+  @Expose('moderation.history', {
+    permission: 'moderation.read',
+    caller: PermissionFlagsBits.ModerateMembers,
+    description: "A member's moderation cases in this server, newest first",
+    input: z.object({ userId: snowflake, limit: z.number().int().min(1).max(25).default(10) }),
+    output: z.object({
+      total: z.number(),
+      cases: z.array(
+        z.object({
+          number: z.number(),
+          action: z.string(),
+          reason: z.string().nullable(),
+          moderatorId: z.string(),
+          durationSeconds: z.number().nullable(),
+          createdAt: z.string(),
+        }),
+      ),
+    }),
+  })
+  async historyOf(scope: PluginScope, { userId, limit }: { userId: string; limit: number }) {
+    const { cases, total } = await this.forUser(scope.guildId, userId, limit);
+    return {
+      total,
+      cases: cases.map((entry) => ({ ...entry, createdAt: entry.createdAt.toISOString() })),
+    };
   }
 }

@@ -65,6 +65,14 @@ const handledKey = (guildId: string, action: ExpectedAction, userId: string) =>
 
 const notifyBeforeAction = new Set<CaseAction>(['kick', 'ban']);
 
+export interface ModerationOutcome {
+  entry: ModerationCase;
+  notified: boolean;
+  /** A line `onApplied` returned, e.g. when a temporary ban ends. */
+  extra?: string;
+  escalated?: ModerationCase;
+}
+
 @Injectable()
 export class ModerationService {
   private readonly cases = inject(CasesService);
@@ -74,30 +82,74 @@ export class ModerationService {
   async apply(interaction: ModeratorInteraction, request: ModerationRequest) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const tr = translator(interaction.locale);
-    const { guild, user: moderator } = interaction;
+    const result = await this.perform(
+      interaction.guild,
+      interaction.member,
+      request,
+      interaction.locale,
+    );
+    if ('refusal' in result)
+      return interaction.editReply(tr(result.refusal.key, result.refusal.vars));
+
+    const { entry, notified, extra, escalated } = result;
+    const lines = [
+      tr('moderation.replies.done', {
+        action: tr(`moderation.actions.${request.action}`),
+        user: request.target.toString(),
+        case: entry.number,
+      }),
+    ];
+    if (!notified) lines.push(tr('moderation.replies.dmFailed'));
+    if (extra) lines.push(extra);
+    if (escalated) {
+      lines.push(
+        tr('moderation.escalation.applied', {
+          action: tr(`moderation.actions.${escalated.action}`),
+          case: escalated.number,
+        }),
+      );
+    }
+    return interaction.editReply(lines.join('\n'));
+  }
+
+  /**
+   * Applies an action without an interaction: checks, DM, the action itself, the case and the
+   * mod log, and warning escalation. `moderator` is the member acting, or null for the bot.
+   * Refusal messages are translated into `locale`.
+   */
+  async perform(
+    guild: Guild,
+    moderator: GuildMember | null,
+    request: ModerationRequest,
+    locale: string,
+  ): Promise<{ refusal: Refusal } | ModerationOutcome> {
     const { action, target } = request;
+    const actor = moderator?.user ?? guild.client.user;
 
     const permission = requiredPermission[action];
     if (!guild.members.me?.permissions.has(permission.flag)) {
-      return interaction.editReply(
-        tr('moderation.errors.botPermission', { permission: tr(permission.name) }),
-      );
+      return {
+        refusal: {
+          key: 'moderation.errors.botPermission',
+          vars: { permission: t(locale, permission.name) },
+        },
+      };
     }
 
     const member = await guild.members.fetch(target.id).catch(() => null);
     const refusal =
-      this.checkTarget(interaction, target, member, request.requireMember ?? false) ??
+      this.checkTarget(guild, moderator, target, member, request.requireMember ?? false) ??
       (await request.check?.(member));
-    if (refusal) return interaction.editReply(tr(refusal.key, refusal.vars));
+    if (refusal) return { refusal };
 
     const reasonText = request.reason ?? t(guild.preferredLocale, 'moderation.log.noReason');
-    const auditReason = `${moderator.tag}: ${reasonText}`.slice(0, 512);
+    const auditReason = `${actor.tag}: ${reasonText}`.slice(0, 512);
     const { dmUsers } = await this.settings.get(guild.id);
     const notify = dmUsers && action !== 'unban';
 
     let notified = !notify;
     if (notify && notifyBeforeAction.has(action)) notified = await this.notify(guild, request);
-    await this.expect(guild.id, action, target.id, moderator.id);
+    await this.expect(guild.id, action, target.id, actor.id);
     await request.run({ member, auditReason });
     if (notify && !notifyBeforeAction.has(action)) notified = await this.notify(guild, request);
 
@@ -105,33 +157,13 @@ export class ModerationService {
       guildId: guild.id,
       action,
       targetId: target.id,
-      moderatorId: moderator.id,
+      moderatorId: actor.id,
       reason: request.reason,
       durationSeconds: request.durationSeconds ?? null,
     });
-
-    const lines = [
-      tr('moderation.replies.done', {
-        action: tr(`moderation.actions.${action}`),
-        user: target.toString(),
-        case: entry.number,
-      }),
-    ];
-    if (!notified) lines.push(tr('moderation.replies.dmFailed'));
     const extra = await request.onApplied?.(entry);
-    if (extra) lines.push(extra);
-    if (action === 'warn') {
-      const escalated = await this.escalate(guild, target, member);
-      if (escalated) {
-        lines.push(
-          tr('moderation.escalation.applied', {
-            action: tr(`moderation.actions.${escalated.action}`),
-            case: escalated.number,
-          }),
-        );
-      }
-    }
-    return interaction.editReply(lines.join('\n'));
+    const escalated = action === 'warn' ? await this.escalate(guild, target, member) : undefined;
+    return { entry, notified, extra, escalated };
   }
 
   recordAutomatic(
@@ -218,22 +250,23 @@ export class ModerationService {
   }
 
   private checkTarget(
-    interaction: ModeratorInteraction,
+    guild: Guild,
+    moderator: GuildMember | null,
     target: User,
     member: GuildMember | null,
     requireMember: boolean,
   ): Refusal | undefined {
-    const { guild } = interaction;
     const user = target.toString();
-    if (target.id === interaction.user.id) return { key: 'moderation.errors.self' };
-    if (target.id === interaction.client.user.id) return { key: 'moderation.errors.bot' };
+    if (moderator && target.id === moderator.id) return { key: 'moderation.errors.self' };
+    if (target.id === guild.client.user.id) return { key: 'moderation.errors.bot' };
     if (target.id === guild.ownerId) return { key: 'moderation.errors.owner' };
     if (!member)
       return requireMember ? { key: 'moderation.errors.notMember', vars: { user } } : undefined;
 
     const outranks =
-      interaction.user.id === guild.ownerId ||
-      interaction.member.roles.highest.comparePositionTo(member.roles.highest) > 0;
+      !moderator ||
+      moderator.id === guild.ownerId ||
+      moderator.roles.highest.comparePositionTo(member.roles.highest) > 0;
     if (!outranks) return { key: 'moderation.errors.hierarchy', vars: { user } };
 
     const me = guild.members.me;

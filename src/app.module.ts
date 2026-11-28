@@ -6,6 +6,7 @@ import { BirthdaysModule } from '@/modules/birthdays/birthdays.module';
 import { CountingModule } from '@/modules/counting/counting.module';
 import { CustomCommandsModule } from '@/modules/custom-commands/custom-commands.module';
 import { DevModule } from '@/modules/dev/dev.module';
+import { DomainEventsModule } from '@/modules/domain-events/domain-events.module';
 import { DropsModule } from '@/modules/drops/drops.module';
 import { EmbedsModule } from '@/modules/embeds/embeds.module';
 import { FeedsModule } from '@/modules/feeds/feeds.module';
@@ -34,6 +35,7 @@ import { WelcomeModule } from '@/modules/welcome/welcome.module';
 
 @Module({
   imports: [
+    DomainEventsModule,
     GuildsModule,
     PingModule,
     ModerationModule,
