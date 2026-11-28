@@ -417,3 +417,19 @@ export const pluginMessages = pgTable(
   },
   (table) => [index('plugin_messages_guild_idx').on(table.guildId)],
 );
+
+export const reactionRoles = pgTable(
+  'reaction_roles',
+  {
+    messageId: text('message_id').notNull(),
+    emoji: text('emoji').notNull(),
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    roleId: text('role_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.messageId, table.emoji] }),
+    index('reaction_roles_guild_idx').on(table.guildId),
+  ],
+);

@@ -75,7 +75,7 @@ export class RolesSelect {
     }
     const offered = (await this.roles.list(guild.id))
       .map((r) => guild.roles.cache.get(r.roleId))
-      .filter((role): role is Role => role !== undefined && this.roles.canAssign(guild, role));
+      .filter((role): role is Role => role !== undefined && this.roles.canHandOut(guild, role));
     const selected = new Set(interaction.values);
 
     const add = offered.filter((role) => selected.has(role.id) && !member.roles.cache.has(role.id));

@@ -21,9 +21,8 @@ export class AddSubcommand {
     if (!interaction.guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
       return reply(tr('roles.replies.botPermission'));
     }
-    if (!this.roles.canAssign(interaction.guild, role)) {
-      return reply(tr('roles.replies.unassignable', { role: role.toString() }));
-    }
+    const refusal = this.roles.grantRefusal(interaction.member, role);
+    if (refusal) return reply(tr(`roles.replies.${refusal}`, { role: role.toString() }));
     const current = await this.roles.list(interaction.guildId);
     if (current.length >= maxSelfRoles && !current.some((r) => r.roleId === role.id)) {
       return reply(tr('roles.replies.tooMany'));
