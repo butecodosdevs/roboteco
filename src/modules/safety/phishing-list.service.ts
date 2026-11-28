@@ -63,21 +63,23 @@ export class PhishingListService implements ThreatCheck<string> {
 
   /** Downloads every list again. Keeps the previous domains if every download fails. */
   async refresh(): Promise<void> {
-    const next = new Set<string>();
-    let loaded = 0;
+    const texts: string[] = [];
     for (const url of config.safety.phishingListUrls) {
       try {
-        for (const domain of parseDomains(await safeFetchText(url, { maxBytes: maxListBytes }))) {
-          next.add(domain);
-        }
-        loaded++;
+        texts.push(await safeFetchText(url, { maxBytes: maxListBytes }));
       } catch (error) {
         logger.warn({ err: error, url }, 'Safety: phishing list download failed');
       }
     }
-    if (loaded === 0) return;
-    this.domains = next;
-    logger.info({ domains: next.size, lists: loaded }, 'Safety: phishing lists loaded');
+    if (texts.length === 0) return;
+
+    this.load(texts);
+    logger.info({ domains: this.size, lists: texts.length }, 'Safety: phishing lists loaded');
+  }
+
+  /** Replaces the domains with those of the given lists: JSON arrays, `{ domains }` or plain lines. */
+  load(texts: string[]): void {
+    this.domains = new Set(texts.flatMap(parseDomains));
   }
 
   /** The listed domain that the URL's host is, or is a subdomain of. */

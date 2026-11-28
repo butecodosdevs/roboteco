@@ -73,7 +73,7 @@ Every source implements one contract, `ThreatCheck<S>`: `confirm(subject)` retur
 
 **Phishing lists** are kept in memory. They are downloaded on start, then every hour by `RefreshPhishingListsJob` (every 5 minutes until a first download works). If every download fails, the previous list is kept.
 
-**Data.** Settings are two columns on `guilds` (`safety_enabled`, `safety_timeout_minutes`, migration `drizzle/0013_safety.sql`). The module stores no user data. `onGuildRemove` drops the server's pending rechecks.
+**Data.** Settings are two columns on `guilds` (`safety_enabled`, `safety_timeout_minutes`, migration `drizzle/0014_safety.sql`). The module stores no user data. `onGuildRemove` drops the server's pending rechecks.
 
 ## Running ClamAV
 
@@ -84,6 +84,16 @@ COMPOSE_PROFILES=clamav pnpm services:up   # locally; then CLAMAV_HOST=localhost
 ```
 
 In production, set `COMPOSE_PROFILES=clamav` and `CLAMAV_HOST=clamav` in `.env`. The first start downloads the signatures, which takes a few minutes; `freshclam` keeps them current after that.
+
+## Tests
+
+`tests/safety/safety.test.ts` (`pnpm test`) runs against the real Postgres and Valkey, with Discord faked and the phishing list loaded from text:
+- a listed domain's subdomain is deleted and reported defanged; a whole shared platform on the list flags nothing, a listed site on it does;
+- clean content stays up and is queued for the 1 h recheck; the 24 h recheck deletes a link listed since, and nothing is queued after it;
+- scanning off does nothing; three racing scans of one message act once;
+- a configured timeout is applied and recorded with its length, except for members with Manage Server;
+- a check that can't answer gives an unknown verdict that isn't remembered; a recheck ignores remembered clean verdicts but not threats;
+- with `CLAMAV_HOST` set, an EICAR attachment is deleted and a harmless one stays.
 
 ## Limits
 
