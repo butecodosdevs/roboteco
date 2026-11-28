@@ -83,7 +83,10 @@ function post(s: Server, author: any, content: string, attachments: string[] = [
     channelId: chatChannelId,
     guild: s.guild,
     client: s.guild.client,
-    channel: { toString: () => `<#${chatChannelId}>` },
+    channel: {
+      toString: () => `<#${chatChannelId}>`,
+      send: async (payload: any) => s.sent.push({ channelId: chatChannelId, payload }),
+    },
     content,
     embeds: [],
     messageSnapshots: new Collection(),
@@ -100,6 +103,7 @@ function post(s: Server, author: any, content: string, attachments: string[] = [
 }
 
 const modLogPosts = (s: Server) => s.sent.filter((sent) => sent.channelId === logChannelId);
+const channelNotices = (s: Server) => s.sent.filter((sent) => sent.channelId === chatChannelId);
 
 async function pendingRechecks(s: Server): Promise<string[]> {
   const entries = await cache.zrange('safety:rechecks', 0, -1);
@@ -195,6 +199,30 @@ test('a configured timeout is applied and recorded as a case with its length', a
   assert.equal(entry?.action, 'timeout');
   assert.equal(entry?.targetId, '200000000000000100');
   assert.equal(entry?.durationSeconds, 15 * 60);
+});
+
+test('the author is told in the channel, pinged alone, without the link being repeated', async () => {
+  const s = await server();
+  const author = s.member('200000000000000100');
+
+  await inject(SafetyService).process(post(s, author, `https://login.${evil}/claim`));
+
+  const [notice] = channelNotices(s);
+  assert.equal(channelNotices(s).length, 1);
+  assert.ok(notice?.payload.content.includes('<@200000000000000100>'));
+  assert.ok(!notice?.payload.content.includes(evil));
+  assert.deepEqual(notice?.payload.allowedMentions, { users: ['200000000000000100'] });
+});
+
+test("a bot's malicious message is deleted, but no notice is posted for it", async () => {
+  const s = await server();
+  const bot = s.member('200000000000000102');
+  bot.user.bot = true;
+
+  await inject(SafetyService).process(post(s, bot, `https://${evil}/`));
+
+  assert.equal(s.deleted.length, 1);
+  assert.deepEqual(channelNotices(s), []);
 });
 
 test('a member with Manage Server has the message deleted but is not timed out', async () => {

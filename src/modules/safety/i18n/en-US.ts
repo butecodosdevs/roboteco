@@ -34,6 +34,8 @@ export const safetyEnUS = {
     notDeleted: '⚠️ I could not delete the message. Give me Manage Messages in that channel.',
     timedOut: 'The author was timed out for {minutes} minutes.',
   },
+  notice:
+    '{user}, I removed your message because a security check ({sources}) confirmed it contains something malicious. If you did not mean to send it, your account may be compromised: change your password.',
   dm: 'Your message in **{server}** was removed because a security check confirmed it is malicious:\n{findings}\nIf you did not mean to send it, your account or device may be compromised: change your password and scan your device.',
   replies: {
     noPermission: 'You need the Manage Server permission to use /safety.',

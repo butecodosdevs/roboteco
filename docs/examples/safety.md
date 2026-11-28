@@ -16,7 +16,10 @@ When something is found, the bot:
 - deletes the message, with the reason in the audit log;
 - posts the author, the channel and each finding (links defanged, `hxxps://evil[.]com`) to the moderation log channel;
 - times out the author, if `/safety timeout` is set. Members with Manage Server, bots and webhooks are never timed out. The timeout is recorded as a moderation case;
-- DMs the author why, when moderation DMs are on (`/moderation dm`).
+- posts a notice in the channel that mentions the author and names the sources that confirmed the threat. It pings only the author and doesn't repeat the link;
+- DMs the author the details, when moderation DMs are on (`/moderation dm`).
+
+Bots and webhooks get no notice, DM or timeout.
 
 The bot needs the Message Content intent (`DISCORD_PRIVILEGED_INTENTS=true`) and Manage Messages, plus Moderate Members for timeouts.
 
@@ -92,6 +95,7 @@ In production, set `COMPOSE_PROFILES=clamav` and `CLAMAV_HOST=clamav` in `.env`.
 - clean content stays up and is queued for the 1 h recheck; the 24 h recheck deletes a link listed since, and nothing is queued after it;
 - scanning off does nothing; three racing scans of one message act once;
 - a configured timeout is applied and recorded with its length, except for members with Manage Server;
+- the author is told in the channel, pinged alone and without the link; a bot's message gets no notice;
 - a check that can't answer gives an unknown verdict that isn't remembered; a recheck ignores remembered clean verdicts but not threats;
 - with `CLAMAV_HOST` set, an EICAR attachment is deleted and a harmless one stays.
 

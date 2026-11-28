@@ -24,6 +24,9 @@ const defang = (link: string) => link.replace(/^http/i, 'hxxp').replace(/\./g, '
 // Findings are shown inside inline code, which a backtick or a newline would break.
 const inlineCode = (text: string) => text.replace(/[`\n]/g, '').slice(0, 200);
 
+/** Bots and webhooks can't be timed out or told anything. */
+const hasPersonAuthor = (message: Message<true>) => !message.webhookId && !message.author.bot;
+
 /** Acts on a message with confirmed threats: delete, time out, report, tell the author. */
 @Injectable()
 export class RemovalService {
@@ -47,7 +50,11 @@ export class RemovalService {
     const deleted = await this.delete(message, reason);
     const timedOutMinutes = await this.timeOut(message, settings, reason);
     await this.report(message, lines, { deleted, timedOutMinutes, foundOnRecheck });
-    if (deleted && settings.moderationDmUsers) await this.tellAuthor(message, lines);
+
+    if (deleted && hasPersonAuthor(message)) {
+      await this.notifyInChannel(message, sources);
+      if (settings.moderationDmUsers) await this.notifyByDm(message, lines);
+    }
 
     logger.info(
       { guild: message.guildId, user: message.author.id, message: message.id, deleted, findings },
@@ -92,7 +99,7 @@ export class RemovalService {
   ): Promise<number | null> {
     const minutes = settings.safetyTimeoutMinutes;
     const { guild, author } = message;
-    if (!minutes || message.webhookId || author.bot) return null;
+    if (!minutes || !hasPersonAuthor(message)) return null;
 
     const member = message.member ?? (await guild.members.fetch(author.id).catch(() => null));
     if (!member?.moderatable || member.permissions.has(PermissionFlagsBits.ManageGuild))
@@ -131,9 +138,24 @@ export class RemovalService {
     );
   }
 
-  /** Best effort: the author may have DMs closed, and a webhook or bot has no one to tell. */
-  private async tellAuthor(message: Message<true>, lines: string[]): Promise<void> {
-    if (message.webhookId || message.author.bot) return;
+  /**
+   * Tells the author in the channel, where they are looking, which sources confirmed the threat.
+   * It names no link, so the notice can't spread it, and it pings only the author.
+   */
+  private async notifyInChannel(message: Message<true>, sources: string[]): Promise<void> {
+    const tr = translator(message.guild.preferredLocale);
+    const content = tr('safety.notice', {
+      user: message.author.toString(),
+      sources: sources.join(', '),
+    });
+
+    await message.channel
+      .send({ content, allowedMentions: { users: [message.author.id] } })
+      .catch(() => undefined);
+  }
+
+  /** The details, in private. Best effort: the author may have DMs closed. */
+  private async notifyByDm(message: Message<true>, lines: string[]): Promise<void> {
     const tr = translator(message.guild.preferredLocale);
     const content = tr('safety.dm', { server: message.guild.name, findings: lines.join('\n') });
 
