@@ -55,15 +55,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Mesma ordem do `ci.yml`: `cache: pnpm` precisa do pnpm já no PATH.
+      - name: Install pnpm
+        if: inputs.skip-tests != true
+        run: |
+          npm install --global pnpm@12.5.1
+          pnpm --version
+
       - uses: actions/setup-node@v4
         if: inputs.skip-tests != true
         with:
           node-version: "26"
           cache: pnpm
-
-      - name: Install pnpm
-        if: inputs.skip-tests != true
-        run: npm install --global pnpm@12.5.1
 
       # Os mesmos passos do `ci.yml`, repetidos porque um push na `main` não
       # herda o resultado do PR: o merge pode trazer um commit novo.

@@ -61,14 +61,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `npm i -g` e não `corepack`: o Node 26 removeu o corepack da
+      # distribuição, e o passo falha com "corepack: command not found".
+      #
+      # ANTES do `setup-node`: o `cache: pnpm` lê o caminho do pnpm para achar
+      # o store, e com o pnpm ainda ausente o passo morre em "Unable to locate
+      # executable file: pnpm".
+      - run: |
+          npm install --global pnpm@12.5.1
+          pnpm --version
+
       - uses: actions/setup-node@v4
         with:
           node-version: "26"
           cache: pnpm
-
-      # `npm i -g` e não `corepack`: o Node 26 removeu o corepack da
-      # distribuição, e o passo falha com "corepack: command not found".
-      - run: npm install --global pnpm@12.5.1
 
       - run: pnpm install --frozen-lockfile
 
