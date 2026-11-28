@@ -54,6 +54,8 @@ export const guilds = pgTable('guilds', {
   antiraidPreviousLevel: integer('antiraid_previous_level'),
   birthdayChannelId: text('birthday_channel_id'),
   birthdayRoleId: text('birthday_role_id'),
+  safetyEnabled: boolean('safety_enabled').notNull().default(false),
+  safetyTimeoutMinutes: integer('safety_timeout_minutes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
