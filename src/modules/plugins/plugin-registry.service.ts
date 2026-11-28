@@ -4,13 +4,23 @@ import { z } from 'zod';
 import { Injectable, inject, isBuiltInCommand } from '@/core';
 import { reportError } from '@/logger';
 import { type LoadedPlugin, PluginEngineService } from './plugin-engine.service';
-import { PluginHostService } from './plugin-host.service';
-import type { PluginCommandSpec } from './plugin-manifest.service';
+import type {
+  PluginCommandSpec,
+  PluginContextMenuSpec,
+  PluginEvent,
+} from './plugin-manifest.service';
 
 export interface PluginCommandEntry {
   plugin: LoadedPlugin;
   spec: PluginCommandSpec;
 }
+
+export interface PluginMenuEntry {
+  plugin: LoadedPlugin;
+  spec: PluginContextMenuSpec;
+}
+
+const menuKey = (type: 'user' | 'message', name: string) => `${type}:${name}`;
 
 const registrySchema = z.object({
   plugins: z.array(
@@ -30,6 +40,7 @@ export class PluginRegistryService {
   private readonly engine = inject(PluginEngineService);
   private readonly loaded = new Map<string, LoadedPlugin>();
   private readonly commands = new Map<string, PluginCommandEntry>();
+  private readonly menus = new Map<string, PluginMenuEntry>();
 
   async loadAll(
     path = registryPath,
@@ -49,17 +60,32 @@ export class PluginRegistryService {
   }
 
   add(plugin: LoadedPlugin, reserved: (name: string) => boolean = isBuiltInCommand): void {
-    const taken = plugin.commands
-      .map((spec) => spec.name)
-      .filter((name) => reserved(name) || this.commands.has(name));
+    const taken = [
+      ...plugin.commands
+        .map((spec) => spec.name)
+        .filter((name) => reserved(name) || this.commands.has(name))
+        .map((name) => `/${name}`),
+      ...plugin.contextMenus
+        .filter((m) => reserved(m.name) || this.menus.has(menuKey(m.type, m.name)))
+        .map((m) => `${m.type} menu "${m.name}"`),
+    ];
     if (taken.length > 0) {
       void plugin.instance.close().catch(() => undefined);
-      throw new Error(
-        `Plugin ${plugin.id} declares commands that already exist: /${taken.join(', /')}`,
-      );
+      throw new Error(`Plugin ${plugin.id} declares names that already exist: ${taken.join(', ')}`);
     }
     this.loaded.set(plugin.id, plugin);
     for (const spec of plugin.commands) this.commands.set(spec.name, { plugin, spec });
+    for (const spec of plugin.contextMenus)
+      this.menus.set(menuKey(spec.type, spec.name), { plugin, spec });
+  }
+
+  menu(type: 'user' | 'message', name: string): PluginMenuEntry | undefined {
+    return this.menus.get(menuKey(type, name));
+  }
+
+  /** Plugins subscribed to `event`. */
+  subscribers(event: PluginEvent): LoadedPlugin[] {
+    return this.all().filter((plugin) => plugin.events.includes(event));
   }
 
   command(name: string): PluginCommandEntry | undefined {
@@ -78,9 +104,6 @@ export class PluginRegistryService {
     for (const plugin of this.loaded.values()) await plugin.instance.close().catch(() => undefined);
     this.loaded.clear();
     this.commands.clear();
-  }
-
-  async purgeGuild(guildId: string): Promise<void> {
-    await inject(PluginHostService).purge([...this.loaded.keys()], guildId);
+    this.menus.clear();
   }
 }

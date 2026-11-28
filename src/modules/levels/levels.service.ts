@@ -2,9 +2,10 @@ import type { GuildMember, Message, SendableChannels } from 'discord.js';
 import { and, asc, count, desc, eq, gt, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { cache } from '@/cache';
-import { Expose, Injectable, type PluginScope, snowflake } from '@/core';
+import { CapabilityError, Expose, Injectable, inject, type PluginScope, snowflake } from '@/core';
 import { db, getGuildSettings, schema, userScope } from '@/db';
 import { t } from '@/i18n';
+import { DomainEventsService } from '@/modules/domain-events/domain-events.service';
 
 export type MemberLevel = typeof schema.memberLevels.$inferSelect;
 
@@ -26,8 +27,13 @@ export function levelFor(xp: number): { level: number; current: number; needed: 
   return { level, current: remaining, needed: xpToNext(level) };
 }
 
+/** XP a plugin may give one member, per window. */
+const pluginXpBudget = { amount: 100, windowSeconds: 600 };
+
 @Injectable()
 export class LevelsService {
+  private readonly events = inject(DomainEventsService);
+
   async award(message: Message<true>): Promise<void> {
     const key = `levels:cooldown:${message.guildId}:${message.author.id}`;
     const fresh = await cache.set(key, '1', 'PX', cooldownMs, 'NX');
@@ -63,6 +69,7 @@ export class LevelsService {
       .set({ level })
       .where(and(eq(levels.guildId, row.guildId), eq(levels.userId, row.userId)));
 
+    this.events.emit('levels.levelUp', { guildId, userId, level, xp: row.xp });
     if (member) await this.applyRewards(member, level);
     const settings = await getGuildSettings(guildId);
     if (announce && (settings?.levelUpAnnounce ?? true)) {
@@ -173,13 +180,33 @@ export class LevelsService {
 
   @Expose('xp.grant', {
     permission: 'xp.grant',
-    description: 'Give XP to the member who ran the command (1 to 100 per call)',
-    input: z.object({ amount: z.number().int().min(1).max(100) }),
-    output: z.object({ xp: z.number(), level: z.number() }),
+    description: `Give XP to a member (default: who ran the command). Each plugin can give a member at most ${pluginXpBudget.amount} XP every ${pluginXpBudget.windowSeconds / 60} minutes`,
+    input: z.object({
+      userId: snowflake.optional(),
+      amount: z.number().int().min(1).max(pluginXpBudget.amount),
+    }),
+    output: z.object({ xp: z.number(), level: z.number(), remaining: z.number() }),
   })
-  async grantFromPlugin(scope: PluginScope, { amount }: { amount: number }) {
-    await this.grant(null, scope.guildId, scope.userId, amount);
-    const xp = (await this.get(scope.guildId, scope.userId))?.xp ?? amount;
-    return { xp, level: levelFor(xp).level };
+  async grantFromPlugin(scope: PluginScope, input: { userId?: string; amount: number }) {
+    const userId = input.userId ?? scope.caller?.userId;
+    if (!userId) throw new CapabilityError('no_member', 'pass userId: nobody ran a command here');
+    // A plugin can call this in a loop, so the cap is per member over time, not per call.
+    const key = `plugins:xp:${scope.pluginId}:${scope.guildId}:${userId}`;
+    const [[, used]] = (await cache
+      .multi()
+      .incrby(key, input.amount)
+      .expire(key, pluginXpBudget.windowSeconds, 'NX')
+      .exec()) as [[null, number]];
+    if (used > pluginXpBudget.amount) {
+      await cache.decrby(key, input.amount);
+      const left = Math.max(0, pluginXpBudget.amount - (used - input.amount));
+      throw new CapabilityError(
+        'xp_limit',
+        `this plugin can give this member ${left} more XP for now (${pluginXpBudget.amount} every ${pluginXpBudget.windowSeconds / 60} minutes)`,
+      );
+    }
+    await this.grant(null, scope.guildId, userId, input.amount);
+    const xp = (await this.get(scope.guildId, userId))?.xp ?? input.amount;
+    return { xp, level: levelFor(xp).level, remaining: pluginXpBudget.amount - used };
   }
 }

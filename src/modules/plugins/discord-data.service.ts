@@ -1,6 +1,14 @@
-import type { APIRole, Channel, Client, Guild, GuildMember, Role } from 'discord.js';
+import {
+  type APIRole,
+  type Channel,
+  type Client,
+  type Guild,
+  type GuildMember,
+  PermissionFlagsBits,
+  type Role,
+} from 'discord.js';
 import { z } from 'zod';
-import { Expose, Injectable, type PluginScope, snowflake } from '@/core';
+import { CapabilityError, Expose, Injectable, type PluginScope, snowflake } from '@/core';
 
 export const memberSchema = z.object({
   id: z.string(),
@@ -61,12 +69,41 @@ export const roleData = (role: Role | APIRole) => ({
   position: role.position,
 });
 
+/** Permissions that make a role a staff role. Plugins hand these out only for staff. */
+export const elevatedPermissions = [
+  PermissionFlagsBits.Administrator,
+  PermissionFlagsBits.ManageGuild,
+  PermissionFlagsBits.ManageRoles,
+  PermissionFlagsBits.ManageChannels,
+  PermissionFlagsBits.ManageMessages,
+  PermissionFlagsBits.ManageThreads,
+  PermissionFlagsBits.ManageWebhooks,
+  PermissionFlagsBits.ManageNicknames,
+  PermissionFlagsBits.ManageGuildExpressions,
+  PermissionFlagsBits.ManageEvents,
+  PermissionFlagsBits.KickMembers,
+  PermissionFlagsBits.BanMembers,
+  PermissionFlagsBits.ModerateMembers,
+  PermissionFlagsBits.MentionEveryone,
+  PermissionFlagsBits.ViewAuditLog,
+  PermissionFlagsBits.MuteMembers,
+  PermissionFlagsBits.DeafenMembers,
+  PermissionFlagsBits.MoveMembers,
+];
+
 @Injectable()
 export class DiscordDataService {
   private client: Client<true> | undefined;
 
   attach(client: Client<true>): void {
     this.client = client;
+  }
+
+  /** The server a plugin call is about; plugins never reach another one. */
+  guild(scope: PluginScope): Guild {
+    const guild = this.client?.guilds.cache.get(scope.guildId);
+    if (!guild) throw new CapabilityError('no_server', 'this only works inside a server');
+    return guild;
   }
 
   @Expose('discord.member.get', {
@@ -76,9 +113,40 @@ export class DiscordDataService {
     output: z.object({ member: memberSchema.nullable() }),
   })
   async member(scope: PluginScope, { userId }: { userId: string }) {
-    const guild = this.client?.guilds.cache.get(scope.guildId);
+    const guild = this.guild(scope);
     // fetch() serves from the gateway cache first, so most calls never reach Discord's API.
-    const member = await guild?.members.fetch(userId).catch(() => null);
+    const member = await guild.members.fetch(userId).catch(() => null);
     return { member: member ? memberData(member) : null };
+  }
+
+  @Expose('discord.roles.list', {
+    permission: 'discord.read',
+    description: "This server's roles, highest first, with whether each grants staff permissions",
+    input: z.object({}),
+    output: z.object({
+      roles: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          color: z.number(),
+          position: z.number(),
+          managed: z.boolean(),
+          elevated: z.boolean(),
+        }),
+      ),
+    }),
+  })
+  roles(scope: PluginScope) {
+    const guild = this.guild(scope);
+    return {
+      roles: [...guild.roles.cache.values()]
+        .filter((role) => role.id !== guild.id)
+        .sort((a, b) => b.position - a.position)
+        .map((role) => ({
+          ...roleData(role),
+          managed: role.managed,
+          elevated: role.permissions.any(elevatedPermissions),
+        })),
+    };
   }
 }

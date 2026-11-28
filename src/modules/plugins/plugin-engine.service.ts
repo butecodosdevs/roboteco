@@ -11,29 +11,39 @@ import {
   Injectable,
   inject,
   invokeCapability,
+  type PluginCaller,
   type PluginScope,
 } from '@/core';
 import { capMemory, wasmExports, wasmImports } from '@/lib/wasm';
 import { logger } from '@/logger';
 import type { ContextKind } from './discord-data.service';
 import {
-  type CommandInput,
   choicesSchema,
-  commandOutputSchema,
+  type EventInput,
+  type Invocation,
+  type JobInput,
   type PluginAction,
   type PluginChoice,
   type PluginCommandSpec,
+  type PluginContextMenuSpec,
+  type PluginEvent,
   PluginManifestService,
+  pluginEvents,
+  responseSchema,
 } from './plugin-manifest.service';
 
-export type { CommandInput, PluginAction, PluginChoice } from './plugin-manifest.service';
+export type { Invocation, PluginAction, PluginChoice } from './plugin-manifest.service';
 export type Permission = string;
 
-/** Permissions an admin can grant: `http` for Extism's own HTTP, plus every exposed capability's. */
+/**
+ * Permissions an admin can grant: `http` for Extism's own HTTP, every exposed capability's, and
+ * one per family of events.
+ */
 export const knownPermissions = (): Set<string> =>
   new Set<string>([
     'http',
     ...allCapabilities().flatMap((c) => (c.permission ? [c.permission] : [])),
+    ...Object.values(pluginEvents),
   ]);
 
 export interface PluginDefinition {
@@ -52,6 +62,9 @@ export interface LoadedPlugin {
   id: string;
   version: string;
   commands: PluginCommandSpec[];
+  contextMenus: PluginContextMenuSpec[];
+  events: PluginEvent[];
+  exports: Set<string>;
   autocompletes: boolean;
   permissions: Permission[];
   instance: Plugin;
@@ -71,7 +84,15 @@ export class PluginCallError extends Error {
   }
 }
 
-const limits = { timeoutMs: 2000, maxMemoryPages: 1024, callsPerWindow: 200, callWindowMs: 10_000 };
+const limits = {
+  timeoutMs: 2000,
+  maxMemoryPages: 1024,
+  callsPerWindow: 200,
+  callWindowMs: 10_000,
+  // Events queue behind commands for the same plugin; past this many, new events are dropped so
+  // a busy server can't make the plugin's commands wait.
+  queuedEvents: 20,
+};
 
 // Everything goes through `call`; Extism's built-in HTTP functions need the `http` permission.
 const hostImports: Record<string, Record<string, Permission | null>> = {
@@ -86,6 +107,7 @@ const callRequest = z.object({ name: z.string(), input: z.unknown() });
 export class PluginEngineService {
   private readonly manifests = inject(PluginManifestService);
   private readonly queues = new Map<string, Promise<unknown>>();
+  private readonly queuedEvents = new Map<string, number>();
 
   private importedPermissions(wasm: Uint8Array): Permission[] {
     const required = new Set<Permission>();
@@ -133,6 +155,23 @@ export class PluginEngineService {
       access.uses.add(name);
       if (cap.permission) needed.set(cap.permission, [...(needed.get(cap.permission) ?? []), name]);
     }
+    for (const event of manifest.events) {
+      const permission = pluginEvents[event];
+      needed.set(permission, [...(needed.get(permission) ?? []), `the ${event} event`]);
+    }
+    const exports = new Set(wasmExports(wasm));
+    const exportsNeeded: [boolean, string, string][] = [
+      [manifest.commands.length + manifest.contextMenus.length > 0, 'handle_command', 'commands'],
+      [manifest.events.length > 0, 'handle_event', 'events'],
+      [access.uses.has('schedule.create'), 'handle_job', 'schedule.create'],
+    ];
+    const missingExport = exportsNeeded.find(([needs, name]) => needs && !exports.has(name));
+    if (missingExport) {
+      void instance.close();
+      throw new PluginLoadError(
+        `declares ${missingExport[2]} but does not export "${missingExport[1]}"`,
+      );
+    }
     const missing = [...needed].filter(
       ([permission]) => !definition.permissions.includes(permission),
     );
@@ -155,7 +194,10 @@ export class PluginEngineService {
       id: definition.id,
       version: manifest.version,
       commands: manifest.commands,
-      autocompletes: wasmExports(wasm).includes('autocomplete'),
+      contextMenus: manifest.contextMenus,
+      events: manifest.events,
+      exports,
+      autocompletes: exports.has('autocomplete'),
       permissions: [...access.granted],
       instance,
       access,
@@ -194,35 +236,83 @@ export class PluginEngineService {
     void Promise.race([old.close(), sleep(1000)]).catch(() => undefined);
   }
 
-  async run(plugin: LoadedPlugin, input: CommandInput): Promise<PluginAction[]> {
-    const parsed = commandOutputSchema.safeParse(
-      await this.enqueue(plugin, 'handle_command', input),
-    );
+  /** Runs a command, context menu, button, select or form, and returns what to answer with. */
+  async interact(
+    plugin: LoadedPlugin,
+    input: Invocation,
+    caller: PluginCaller | null,
+  ): Promise<PluginAction[]> {
+    const component = input.kind === 'button' || input.kind === 'select' || input.kind === 'modal';
+    const fn = component ? 'handle_component' : 'handle_command';
+    if (!plugin.exports.has(fn)) {
+      throw new PluginCallError('invalid', `the plugin does not export "${fn}"`);
+    }
+    const scope = this.scope(plugin, input.guildId, input.channelId, caller);
+    const parsed = responseSchema.safeParse(await this.enqueue(plugin, fn, input, scope));
     if (!parsed.success) throw new PluginCallError('invalid', z.prettifyError(parsed.error));
     return parsed.data.actions;
   }
 
-  async autocomplete(plugin: LoadedPlugin, input: CommandInput): Promise<PluginChoice[]> {
+  async autocomplete(
+    plugin: LoadedPlugin,
+    input: Invocation,
+    caller: PluginCaller | null,
+  ): Promise<PluginChoice[]> {
     if (!plugin.autocompletes) return [];
-    const parsed = choicesSchema.safeParse(await this.enqueue(plugin, 'autocomplete', input));
+    const scope = this.scope(plugin, input.guildId, input.channelId, caller);
+    const parsed = choicesSchema.safeParse(
+      await this.enqueue(plugin, 'autocomplete', input, scope),
+    );
     if (!parsed.success) throw new PluginCallError('invalid', z.prettifyError(parsed.error));
     return parsed.data.choices;
   }
 
-  private enqueue(plugin: LoadedPlugin, fn: string, input: CommandInput): Promise<unknown> {
+  /** Delivers an event. Returns false when the plugin's backlog is full and the event was dropped. */
+  async event(plugin: LoadedPlugin, input: EventInput): Promise<boolean> {
+    const queued = this.queuedEvents.get(plugin.id) ?? 0;
+    if (queued >= limits.queuedEvents) return false;
+    this.queuedEvents.set(plugin.id, queued + 1);
+    try {
+      const scope = this.scope(plugin, input.guildId, input.channelId, null);
+      await this.enqueue(plugin, 'handle_event', input, scope);
+      return true;
+    } finally {
+      this.queuedEvents.set(plugin.id, (this.queuedEvents.get(plugin.id) ?? 1) - 1);
+    }
+  }
+
+  async job(plugin: LoadedPlugin, input: JobInput): Promise<void> {
+    const scope = this.scope(plugin, input.guildId, input.channelId, null);
+    await this.enqueue(plugin, 'handle_job', input, scope);
+  }
+
+  private scope(
+    plugin: LoadedPlugin,
+    guildId: string,
+    channelId: string | null,
+    caller: PluginCaller | null,
+  ): PluginScope {
+    return { pluginId: plugin.id, guildId, channelId, caller };
+  }
+
+  private enqueue(
+    plugin: LoadedPlugin,
+    fn: string,
+    input: object,
+    scope: PluginScope,
+  ): Promise<unknown> {
     const previous = this.queues.get(plugin.id) ?? Promise.resolve();
-    const next = previous.catch(() => undefined).then(() => this.invoke(plugin, fn, input));
+    const next = previous.catch(() => undefined).then(() => this.invoke(plugin, fn, input, scope));
     this.queues.set(plugin.id, next);
     return next;
   }
 
-  private async invoke(plugin: LoadedPlugin, fn: string, input: CommandInput): Promise<unknown> {
-    const scope: PluginScope = {
-      pluginId: plugin.id,
-      guildId: input.guildId,
-      userId: input.userId,
-      channelId: input.channelId,
-    };
+  private async invoke(
+    plugin: LoadedPlugin,
+    fn: string,
+    input: object,
+    scope: PluginScope,
+  ): Promise<unknown> {
     try {
       const call = plugin.instance.call(fn, JSON.stringify(input), scope);
       const deadline = sleep(limits.timeoutMs + 1000).then(() => {
@@ -235,10 +325,7 @@ export class PluginEngineService {
       await this.recycle(plugin).catch((cause) =>
         logger.error({ plugin: plugin.id, err: cause }, 'Plugin could not be restarted'),
       );
-      logger.warn(
-        { plugin: plugin.id, command: input.command, reason, error: message },
-        'Plugin call failed',
-      );
+      logger.warn({ plugin: plugin.id, fn, reason, error: message }, 'Plugin call failed');
       throw new PluginCallError(reason, message);
     }
   }

@@ -14,6 +14,7 @@
     "start": "node --enable-source-maps --env-file-if-exists=.env dist/index.js",
     "deploy-commands": "tsx --env-file-if-exists=.env src/deploy-commands.ts",
     "typecheck": "tsc --noEmit",
+    "test": "node --env-file-if-exists=.env --import tsx --test --test-concurrency=1 \"tests/**/*.test.ts\"",
     "lint": "biome check . && pnpm lint:structure",
     "lint:structure": "tsx scripts/lint-structure.ts",
     "format": "biome check --write .",

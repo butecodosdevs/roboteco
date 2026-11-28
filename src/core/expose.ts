@@ -1,19 +1,41 @@
+import { PermissionsBitField } from 'discord.js';
 import { z } from 'zod';
 import type { Type } from './types';
 
 export const snowflake = z.string().regex(/^\d{15,21}$/, 'must be a Discord ID');
 
-/** Who is asking: always set by the bot from the interaction, never by the plugin. */
+/** The member whose command, click or form triggered a plugin call. */
+export interface PluginCaller {
+  userId: string;
+  /** Their permissions in the channel, as Discord computed them for the interaction. */
+  permissions: bigint;
+}
+
+/** Where a plugin call comes from: always set by the bot, never by the plugin. */
 export interface PluginScope {
   pluginId: string;
   guildId: string;
-  userId: string;
-  channelId: string;
+  channelId: string | null;
+  /**
+   * Null for events and scheduled runs: nobody is asking, so the plugin acts with what the
+   * server granted it.
+   */
+  caller: PluginCaller | null;
+}
+
+/** True when there is no caller (the server's grant applies) or the caller has `flag`. */
+export function callerMay(scope: PluginScope, flag: bigint): boolean {
+  return !scope.caller || new PermissionsBitField(scope.caller.permissions).has(flag);
 }
 
 export interface ExposeOptions<I extends z.ZodType, O extends z.ZodType> {
   /** Omit for harmless capabilities (logging) that every plugin may call without declaring them. */
   permission?: string;
+  /**
+   * A Discord permission the calling member must have, so a plugin can't do for a member what
+   * the member couldn't do themselves. Events and scheduled runs have no caller and skip it.
+   */
+  caller?: bigint;
   description: string;
   input: I;
   output: O;
@@ -22,6 +44,7 @@ export interface ExposeOptions<I extends z.ZodType, O extends z.ZodType> {
 export interface Capability {
   name: string;
   permission?: string;
+  caller?: bigint;
   description: string;
   input: z.ZodType;
   output: z.ZodType;
@@ -86,6 +109,10 @@ export async function invokeCapability(
   resolve: (target: Type) => object,
 ): Promise<unknown> {
   if (!cap.target) throw new Error(`Capability "${cap.name}" is not on an @Injectable() class`);
+  if (cap.caller !== undefined && !callerMay(scope, cap.caller)) {
+    const names = new PermissionsBitField(cap.caller).toArray().join(', ');
+    throw new CapabilityError('caller_forbidden', `the member who ran this needs ${names}`);
+  }
   const parsed = cap.input.safeParse(input ?? {});
   if (!parsed.success) throw new CapabilityInputError(z.prettifyError(parsed.error));
   const result = await cap.method.call(resolve(cap.target), scope, parsed.data);

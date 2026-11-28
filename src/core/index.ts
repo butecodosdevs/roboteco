@@ -9,6 +9,7 @@ export {
 export {
   Button,
   customId,
+  delegateComponents,
   type GuildButtonInteraction,
   type GuildModalInteraction,
   type GuildSelectInteraction,
@@ -27,9 +28,11 @@ export {
   type Capability,
   CapabilityError,
   CapabilityInputError,
+  callerMay,
   capability,
   Expose,
   invokeCapability,
+  type PluginCaller,
   type PluginScope,
   snowflake,
 } from './expose';
