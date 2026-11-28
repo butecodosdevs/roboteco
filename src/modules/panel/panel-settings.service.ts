@@ -23,7 +23,7 @@ const defaults: Record<string, string> = { LOG_LEVEL: 'info', GUILD_DATA_RETENTI
 /** A save that names a read-only key, answered as 400 instead of a silent partial write. */
 export class BadSettingKey extends Error {}
 
-/** What the running process parsed, so the panel can show "salvo" versus "ativo". */
+/** What the running process parsed, so the panel can tell "saved" from "in effect". */
 function running(key: string): string | null {
   switch (key) {
     case 'DISCORD_TOKEN':
@@ -80,7 +80,7 @@ export class PanelSettingsService {
       (key) => settingsKeys.find((item) => item.key === key && !item.writable) !== undefined,
     );
     if (readOnly.length > 0) {
-      throw new BadSettingKey(`read-only setting: ${readOnly.join(', ')}`);
+      throw new BadSettingKey(`read_only_setting: ${readOnly.join(', ')}`);
     }
     writeSettings(input);
     return this.list();

@@ -109,6 +109,7 @@ const DICT = {
     "err.notLoaded": "Esse plugin não está carregado.", "err.notOwned": "Esses comandos são de outro plugin",
     "err.missingPlugin": "Informe o plugin no endereço.", "err.removeInRepo": "Remover plugin é edição no registry.json.",
     "err.readOnlySetting": "Essa configuração é somente leitura aqui.",
+    "err.internal": "O bot falhou ao responder; veja o log.",
 
     "ps.inactive": "inativo", "ps.nowasm": "sem WASM", "ps.failed": "falhou ao carregar",
     "ps.loaded": "carregado", "ps.notLoaded": "não carregado", "ps.builtin": "embutido",
@@ -262,6 +263,7 @@ const DICT = {
     "err.notLoaded": "That plugin is not loaded.", "err.notOwned": "Those commands belong to another plugin",
     "err.missingPlugin": "Name the plugin in the address.", "err.removeInRepo": "Removing a plugin is a registry.json edit.",
     "err.readOnlySetting": "That setting is read-only here.",
+    "err.internal": "The bot failed to answer; check the log.",
 
     "ps.inactive": "inactive", "ps.nowasm": "no WASM", "ps.failed": "failed to load",
     "ps.loaded": "loaded", "ps.notLoaded": "not loaded", "ps.builtin": "built-in",
@@ -415,6 +417,7 @@ const DICT = {
     "err.notLoaded": "该插件未加载。", "err.notOwned": "这些命令属于另一个插件",
     "err.missingPlugin": "请在地址中指明插件。", "err.removeInRepo": "移除插件需修改 registry.json。",
     "err.readOnlySetting": "该配置在此为只读。",
+    "err.internal": "机器人处理失败，请查看日志。",
 
     "ps.inactive": "未启用", "ps.nowasm": "缺少 WASM", "ps.failed": "加载失败",
     "ps.loaded": "已加载", "ps.notLoaded": "未加载", "ps.builtin": "内置",
@@ -548,7 +551,8 @@ const ERR = {
   body_too_large: "err.tooLarge", wasm_missing: "err.wasmMissing",
   unknown_command: "err.unknownCommand", not_in_registry: "err.notInRegistry",
   not_loaded: "err.notLoaded", not_owned_by: "err.notOwned", missing_plugin: "err.missingPlugin",
-  plugin_removal_is_a_repository_edit: "err.removeInRepo", "read-only setting": "err.readOnlySetting",
+  plugin_removal_is_a_repository_edit: "err.removeInRepo",
+  internal: "err.internal", read_only_setting: "err.readOnlySetting",
 };
 const describeError = (raw) => {
   const text = String(raw ?? "");

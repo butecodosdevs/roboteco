@@ -293,6 +293,17 @@ test('the panel cannot replace the bot token or the Sentry DSN', async () => {
   );
   assert.equal(fields.fields.find((field) => field.key === 'LOG_LEVEL')?.writable, true);
 
+  const refusal = await fetch(`${base}/api/panel/settings`, {
+    method: 'PUT',
+    headers: { ...auth, 'content-type': 'application/json' },
+    body: '{"DISCORD_TOKEN":"hijacked"}',
+  });
+  assert.match(
+    ((await refusal.json()) as { error: string }).error,
+    /^read_only_setting: DISCORD_TOKEN$/,
+    'the refusal names the code and the key, so the browser can translate one and show the other',
+  );
+
   const ok = await fetch(`${base}/api/panel/settings`, {
     method: 'PUT',
     headers: { ...auth, 'content-type': 'application/json' },
