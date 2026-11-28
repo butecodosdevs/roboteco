@@ -85,11 +85,10 @@ function deletedMessage(guild: any, over: Record<string, unknown> = {}) {
 }
 
 test('a deleted message is logged only when a channel is configured', async () => {
-  const unset = await guildWith({ serverLogChannelId: null });
-  const { sent: s0, channel } = logChannel();
-  void channel;
+  const idle = logChannel();
+  const unset = await guildWith({ serverLogChannelId: null }, 'en-US', idle.channel);
   await service.messageDeleted(deletedMessage(unset));
-  assert.equal(s0.length, 0);
+  assert.equal(idle.sent.length, 0);
 
   const { sent, channel: ch } = logChannel();
   const guild = await guildWith({ serverLogChannelId: LOG }, 'en-US', ch);
@@ -111,7 +110,11 @@ test('bots, system messages, ignored channels, the log channel itself and disabl
   assert.equal(sys.sent.length, 0, 'system message');
 
   const ign = logChannel();
-  const gIgn = await guildWith({ serverLogChannelId: LOG, serverLogIgnoredChannels: ['c1'] }, 'en-US', ign.channel);
+  const gIgn = await guildWith(
+    { serverLogChannelId: LOG, serverLogIgnoredChannels: ['c1'] },
+    'en-US',
+    ign.channel,
+  );
   await service.messageDeleted(deletedMessage(gIgn));
   assert.equal(ign.sent.length, 0, 'ignored channel');
 
@@ -121,7 +124,11 @@ test('bots, system messages, ignored channels, the log channel itself and disabl
   assert.equal(loop.sent.length, 0, 'the log channel itself (no feedback loop)');
 
   const off = logChannel();
-  const gOff = await guildWith({ serverLogChannelId: LOG, serverLogDisabledEvents: ['messageDelete'] }, 'en-US', off.channel);
+  const gOff = await guildWith(
+    { serverLogChannelId: LOG, serverLogDisabledEvents: ['messageDelete'] },
+    'en-US',
+    off.channel,
+  );
   await service.messageDeleted(deletedMessage(gOff));
   assert.equal(off.sent.length, 0, 'event turned off with the toggle');
 });
@@ -129,10 +136,25 @@ test('bots, system messages, ignored channels, the log channel itself and disabl
 test('an edit is logged only when the text actually changed, carrying both versions', async () => {
   const { sent, channel } = logChannel();
   const guild = await guildWith({ serverLogChannelId: LOG }, 'en-US', channel);
-  const base = { partial: false, inGuild: () => true, guild, channelId: 'c1', url: 'https://d/x', author: { id: 'u1', bot: false }, system: false, attachments: new Collection() };
-  await service.messageEdited({ partial: false, content: 'same', attachments: new Collection() } as any, { ...base, content: 'same' } as any);
+  const base = {
+    partial: false,
+    inGuild: () => true,
+    guild,
+    channelId: 'c1',
+    url: 'https://d/x',
+    author: { id: 'u1', bot: false },
+    system: false,
+    attachments: new Collection(),
+  };
+  await service.messageEdited(
+    { partial: false, content: 'same', attachments: new Collection() } as any,
+    { ...base, content: 'same' } as any,
+  );
   assert.equal(sent.length, 0, 'unchanged text is not logged');
-  await service.messageEdited({ partial: false, content: 'old words', attachments: new Collection() } as any, { ...base, content: 'new words' } as any);
+  await service.messageEdited(
+    { partial: false, content: 'old words', attachments: new Collection() } as any,
+    { ...base, content: 'new words' } as any,
+  );
   assert.equal(sent.length, 1);
   assert.ok(sent[0]?.includes('old words') && sent[0]?.includes('new words'));
 });
@@ -141,7 +163,17 @@ test('a bulk delete posts one line for the channel', async () => {
   const { sent, channel } = logChannel();
   const guild = await guildWith({ serverLogChannelId: LOG }, 'en-US', channel);
   const messages = new Collection<string, any>(
-    ['1', '2', '3'].map((n) => [n, { id: n, author: { id: `u${n}`, username: `u${n}`, bot: false }, content: `m${n}`, createdTimestamp: Date.now(), embeds: [], attachments: new Collection() }]),
+    ['1', '2', '3'].map((n) => [
+      n,
+      {
+        id: n,
+        author: { id: `u${n}`, username: `u${n}`, bot: false },
+        content: `m${n}`,
+        createdTimestamp: Date.now(),
+        embeds: [],
+        attachments: new Collection(),
+      },
+    ]),
   );
   await service.messagesBulkDeleted(guild, 'cbulk', messages, null);
   assert.equal(sent.length, 1);
@@ -151,7 +183,11 @@ test('a bulk delete posts one line for the channel', async () => {
 test('a member join is logged with the member', async () => {
   const { sent, channel } = logChannel();
   const guild = await guildWith({ serverLogChannelId: LOG }, 'en-US', channel);
-  await service.memberJoined({ id: 'u9', guild, user: { id: 'u9', username: 'newbie', bot: false, createdTimestamp: Date.now() - 86_400_000 } } as any);
+  await service.memberJoined({
+    id: 'u9',
+    guild,
+    user: { id: 'u9', username: 'newbie', bot: false, createdTimestamp: Date.now() - 86_400_000 },
+  } as any);
   assert.equal(sent.length, 1);
   assert.ok(sent[0]?.includes('<@u9>'), 'names the member who joined');
 });
@@ -160,16 +196,41 @@ test('a member update is logged for a real change and skipped for a no-op', asyn
   const role = (id: string) => ({ id, toString: () => `<@&${id}>` });
   const { sent, channel } = logChannel();
   const guild = await guildWith({ serverLogChannelId: LOG }, 'en-US', channel);
-  const common = { partial: false, premiumSinceTimestamp: null, communicationDisabledUntilTimestamp: null, user: { id: 'm1' }, id: 'm1', guild };
-  const before = { ...common, nickname: 'Old', roles: { cache: new Collection([['r1', role('r1')]]) } };
-  const afterChanged = { ...common, nickname: 'New', roles: { cache: new Collection([['r1', role('r1')], ['r2', role('r2')]]) } };
+  const common = {
+    partial: false,
+    premiumSinceTimestamp: null,
+    communicationDisabledUntilTimestamp: null,
+    user: { id: 'm1' },
+    id: 'm1',
+    guild,
+  };
+  const before = {
+    ...common,
+    nickname: 'Old',
+    roles: { cache: new Collection([['r1', role('r1')]]) },
+  };
+  const afterChanged = {
+    ...common,
+    nickname: 'New',
+    roles: {
+      cache: new Collection([
+        ['r1', role('r1')],
+        ['r2', role('r2')],
+      ]),
+    },
+  };
   await service.memberUpdated(before as any, afterChanged as any);
   assert.equal(sent.length, 1);
   assert.ok(sent[0]?.includes('<@&r2>'), 'names the added role');
 
   const noop = logChannel();
   const g2 = await guildWith({ serverLogChannelId: LOG }, 'en-US', noop.channel);
-  const same = { ...common, nickname: 'Same', guild: g2, roles: { cache: new Collection([['r1', role('r1')]]) } };
+  const same = {
+    ...common,
+    nickname: 'Same',
+    guild: g2,
+    roles: { cache: new Collection([['r1', role('r1')]]) },
+  };
   await service.memberUpdated({ ...same } as any, { ...same } as any);
   assert.equal(noop.sent.length, 0, 'nothing tracked changed');
 });
@@ -198,7 +259,10 @@ test('joining and leaving a voice channel are logged', async () => {
     { channelId: 'v1', member, serverMute: null, serverDeaf: null } as any,
   );
   assert.equal(join.sent.length, 1);
-  assert.ok(join.sent[0]?.includes('<@u1>') && join.sent[0]?.includes('<#v1>'), 'names member and channel');
+  assert.ok(
+    join.sent[0]?.includes('<@u1>') && join.sent[0]?.includes('<#v1>'),
+    'names member and channel',
+  );
 
   const leave = logChannel();
   const gLeave = await guildWith({ serverLogChannelId: LOG }, 'en-US', leave.channel);
@@ -209,18 +273,36 @@ test('joining and leaving a voice channel are logged', async () => {
   );
   assert.equal(leave.sent.length, 1);
   assert.ok(leave.sent[0]?.includes('<@u1>'), 'names the member who left');
+
+  const bot = logChannel();
+  const gBot = await guildWith({ serverLogChannelId: LOG }, 'en-US', bot.channel);
+  const music = { id: 'b2', user: { id: 'b2', bot: true }, guild: gBot };
+  await service.voiceStateUpdated(
+    { channelId: null, member: music, serverMute: null, serverDeaf: null } as any,
+    { channelId: 'v1', member: music, serverMute: null, serverDeaf: null } as any,
+  );
+  assert.equal(bot.sent.length, 0, 'bots joining voice are not logged');
 });
 
 test('a role permission change is logged with the permissions that moved', async () => {
   const { sent, channel } = logChannel();
   const guild = await guildWith({ serverLogChannelId: LOG }, 'en-US', channel);
-  const base = { guild, id: 'r1', name: 'Staff', color: 0, hoist: false, mentionable: false, toString: () => '<@&r1>' };
+  const base = {
+    guild,
+    id: 'r1',
+    name: 'Staff',
+    color: 0,
+    hoist: false,
+    mentionable: false,
+    toString: () => '<@&r1>',
+  };
   await service.roleUpdated(
     { ...base, permissions: new PermissionsBitField([PermissionFlagsBits.KickMembers]) } as any,
-    { ...base, permissions: new PermissionsBitField([PermissionFlagsBits.KickMembers, PermissionFlagsBits.BanMembers]) } as any,
+    { ...base, permissions: new PermissionsBitField([PermissionFlagsBits.BanMembers]) } as any,
   );
   assert.equal(sent.length, 1);
   assert.ok(sent[0]?.includes('BanMembers'), 'names the added permission');
+  assert.ok(sent[0]?.includes('KickMembers'), 'names the removed permission');
 });
 
 test('a channel permission-overwrite change is logged', async () => {
@@ -235,7 +317,12 @@ test('a channel permission-overwrite change is logged', async () => {
   const base = { guild, id: 'c1', name: 'geral', parentId: null, toString: () => '<#c1>' };
   await service.channelUpdated(
     { ...base, permissionOverwrites: { cache: new Collection([['r1', overwrite([])]]) } } as any,
-    { ...base, permissionOverwrites: { cache: new Collection([['r1', overwrite([PermissionFlagsBits.SendMessages])]]) } } as any,
+    {
+      ...base,
+      permissionOverwrites: {
+        cache: new Collection([['r1', overwrite([PermissionFlagsBits.SendMessages])]]),
+      },
+    } as any,
   );
   assert.equal(sent.length, 1);
   assert.ok(sent[0]?.includes('SendMessages'), 'names the permission whose overwrite changed');
