@@ -115,6 +115,11 @@ const voiceActionKey = (kind: VoiceAction, guildId: string, memberId: string) =>
 
 export type VoiceAction = 'move' | 'disconnect';
 
+// A message the bot deletes because it reposted it (link fixes) is not worth a log line.
+const expectedDeleteTtlSeconds = 60;
+const expectedDeleteKey = (guildId: string, messageId: string) =>
+  `logs:expected-delete:${guildId}:${messageId}`;
+
 // Accounts younger than this are flagged on join; most raid and spam accounts are days old.
 const newAccountMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -350,6 +355,8 @@ export class LogsService {
     const { guild } = message;
     if (!guild) return;
     if (message.author?.bot || message.system) return;
+    const expected = await cache.getdel(expectedDeleteKey(guild.id, message.id)).catch(() => null);
+    if (expected) return;
     await this.post(guild, 'messageDelete', sourceOf(message), async (tr) => {
       const vars = {
         author: message.author ? `<@${message.author.id}>` : tr('logs.log.someone'),
@@ -808,6 +815,13 @@ export class LogsService {
       const vars = { role: after.toString(), changes: changes.join(', ') };
       return [{ text: this.sentence(tr, after.guild, 'roleUpdate', vars, actor) }];
     });
+  }
+
+  /** Marks a message the bot is about to delete after reposting it, so the delete isn't logged. */
+  async expectMessageDelete(guildId: string, messageId: string): Promise<void> {
+    await cache
+      .set(expectedDeleteKey(guildId, messageId), '1', 'EX', expectedDeleteTtlSeconds)
+      .catch(() => undefined);
   }
 
   /** Marks a voice move or disconnect the bot is about to make for `onBehalfOf`. */

@@ -1,11 +1,15 @@
 import {
+  DiscordAPIError,
   type GuildTextBasedChannel,
   type Message,
   PermissionsBitField,
+  RESTJSONErrorCodes,
   type Webhook,
+  type WebhookMessageCreateOptions,
 } from 'discord.js';
-import { Injectable } from '@/core';
+import { Injectable, inject } from '@/core';
 import { getGuildSettings } from '@/db';
+import { LogsService } from '@/modules/logs/logs.service';
 
 /** Sites Discord previews poorly that embeds.now fixes. Also the i18n keys under `embeds.sites`. */
 export const embedSites = [
@@ -37,9 +41,11 @@ function hostToSite(host: string): EmbedSite | null {
   return null;
 }
 
-const urlPattern = /https?:\/\/[^\s<>]+/gi;
+const urlPattern = /https?:\/\/[^\s<>`]+/gi;
 // URLs at the end of a sentence grab trailing punctuation; strip it and keep it in the text.
-const trailing = /[.,!?;:)\]}>'"]+$/;
+const trailing = /[.,!?;:)\]}>'"|]+$/;
+// Code blocks and inline code are shown as typed, so links inside them are left alone.
+const codePattern = /```[\s\S]*?```|`[^`\n]*`/g;
 const webhookName = 'roboteco embeds';
 const maxContent = 2000;
 
@@ -50,12 +56,33 @@ export interface FixResult {
 
 @Injectable()
 export class EmbedsService {
+  private readonly logs = inject(LogsService);
   private readonly webhooks = new Map<string, Webhook>();
 
-  /** Rewrites every supported, non-disabled link in `content` to its embeds.now form. */
+  /**
+   * Rewrites every supported, non-disabled link in `content` to its embeds.now form. Links in code
+   * and links wrapped in `<>` (the member asked for no preview) are kept as they are.
+   */
   fix(content: string, disabled: ReadonlySet<string>): FixResult {
     let changed = false;
-    const out = content.replace(urlPattern, (raw) => {
+    let out = '';
+    let last = 0;
+    for (const code of content.matchAll(codePattern)) {
+      out += this.fixText(content.slice(last, code.index), disabled, () => {
+        changed = true;
+      });
+      out += code[0];
+      last = code.index + code[0].length;
+    }
+    out += this.fixText(content.slice(last), disabled, () => {
+      changed = true;
+    });
+    return { changed, content: out };
+  }
+
+  private fixText(text: string, disabled: ReadonlySet<string>, onChange: () => void): string {
+    return text.replace(urlPattern, (raw, offset: number) => {
+      if (text[offset - 1] === '<') return raw;
       const tail = trailing.exec(raw)?.[0] ?? '';
       const link = tail ? raw.slice(0, -tail.length) : raw;
       let url: URL;
@@ -66,18 +93,19 @@ export class EmbedsService {
       }
       const site = hostToSite(url.hostname);
       if (!site || disabled.has(site)) return raw;
-      changed = true;
+      onChange();
       // `www.` is always an alias of the apex; keep meaningful subdomains (vm., open., mobile.).
       const host = url.host.replace(/^www\./i, '');
       return `https://embeds.now/${host}${url.pathname}${url.search}${tail}`;
     });
-    return { changed, content: out };
   }
 
   async process(message: Message<true>): Promise<void> {
     const settings = await getGuildSettings(message.guildId);
     if (!settings?.embedsEnabled) return;
-    if (settings.embedsIgnoredChannels.includes(message.channelId)) return;
+    const ignored = settings.embedsIgnoredChannels;
+    const parentId = message.channel.isThread() ? message.channel.parentId : null;
+    if (ignored.includes(message.channelId) || (parentId && ignored.includes(parentId))) return;
 
     const { changed, content } = this.fix(message.content, new Set(settings.embedsDisabledSites));
     if (!changed || content.length > maxContent) return;
@@ -94,23 +122,41 @@ export class EmbedsService {
       return;
     }
 
-    const webhook = await this.webhookFor(channel);
-    if (!webhook) return;
-
     const member = message.member;
-    const sent = await webhook
-      .send({
-        content,
-        username: (member?.displayName ?? message.author.username).slice(0, 80),
-        // Discord's webhook avatar override ignores .webp (the default) and falls back to the
-        // blank avatar, so force a PNG.
-        avatarURL: (member ?? message.author).displayAvatarURL({ extension: 'png', size: 256 }),
-        threadId: channel.isThread() ? channel.id : undefined,
-        // The bot posts on a member's behalf, so it never pings anyone.
-        allowedMentions: { parse: [] },
-      })
-      .catch(() => null);
-    if (sent) await message.delete().catch(() => undefined);
+    const sent = await this.send(channel, {
+      content,
+      username: (member?.displayName ?? message.author.username).slice(0, 80),
+      // Discord's webhook avatar override ignores .webp (the default) and falls back to the
+      // blank avatar, so force a PNG.
+      avatarURL: (member ?? message.author).displayAvatarURL({ extension: 'png', size: 256 }),
+      threadId: channel.isThread() ? channel.id : undefined,
+      // The bot posts on a member's behalf, so it never pings anyone.
+      allowedMentions: { parse: [] },
+    });
+    if (!sent) return;
+    await this.logs.expectMessageDelete(message.guildId, message.id);
+    await message.delete().catch(() => undefined);
+  }
+
+  /** Sends through the channel's webhook, replacing it once if someone deleted it. */
+  private async send(
+    channel: GuildTextBasedChannel,
+    payload: WebhookMessageCreateOptions,
+  ): Promise<boolean> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const webhook = await this.webhookFor(channel);
+      if (!webhook) return false;
+      try {
+        await webhook.send(payload);
+        return true;
+      } catch (error) {
+        const gone =
+          error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownWebhook;
+        if (!gone) return false;
+        this.webhooks.delete(webhook.channelId);
+      }
+    }
+    return false;
   }
 
   private async webhookFor(channel: GuildTextBasedChannel): Promise<Webhook | null> {
