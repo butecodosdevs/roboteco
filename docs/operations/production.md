@@ -49,7 +49,7 @@ Migrations must stay backwards-compatible for one release. The old bot keeps run
 
 ### Health
 
-`GET /health` on `HEALTH_PORT` returns `200 {"status":"ok"}` once the bot is connected to Discord, and `503` before that. The Docker health check uses it. Point an uptime monitor at `http://<host>:3000/health`; `HEALTH_PUBLISH_PORT` changes the published port.
+`GET /health` on `HEALTH_PORT` returns `200 {"status":"ok"}` once the bot is connected to Discord, and `503` before that. The Docker health check uses it. Point an uptime monitor at `http://127.0.0.1:3000/health`, from the host itself or through the reverse proxy; `HEALTH_PUBLISH_PORT` changes the published port. `compose.prod.yaml` publishes it on `127.0.0.1` only — the container listens on every interface so a proxy can reach it, and the host never exposes the port to the network.
 
 ### Panel
 
