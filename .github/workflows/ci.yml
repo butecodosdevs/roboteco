@@ -53,6 +53,19 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # The plugin tests count calls through the cache (kv increments, the XP
+      # window, the DM rate limit), so a missing Valkey makes them crash with
+      # ECONNREFUSED, not fail on the assertion. Same image and flags as
+      # compose.prod.yaml, minus persistence: a rate limit does not need a disk.
+      valkey:
+        image: valkey/valkey:9.2.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       # `src/config.ts` valida o ambiente INTEIRO no import: até o migrator
       # precisa destas chaves para não morrer em "DISCORD_TOKEN is required"
