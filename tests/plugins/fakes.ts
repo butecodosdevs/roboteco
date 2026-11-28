@@ -82,12 +82,14 @@ export function fakeServer(pluginId = 'test-plugin'): FakeServer {
             return new Collection(held().map((r) => [r.id, r]));
           },
           add: async (role: any) => {
-            roleIds.push(role.id);
-            server.roleChanges.push(`+${role.id}:${userId}`);
+            const id = typeof role === 'string' ? role : role.id;
+            roleIds.push(id);
+            server.roleChanges.push(`+${id}:${userId}`);
           },
           remove: async (role: any) => {
-            roleIds.splice(roleIds.indexOf(role.id), 1);
-            server.roleChanges.push(`-${role.id}:${userId}`);
+            const id = typeof role === 'string' ? role : role.id;
+            roleIds.splice(roleIds.indexOf(id), 1);
+            server.roleChanges.push(`-${id}:${userId}`);
           },
         },
         moderatable: true,

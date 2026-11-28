@@ -16,10 +16,14 @@ import {
   PluginCallError,
   PluginEngineService,
 } from '@/modules/plugins/plugin-engine.service';
+import { PluginEventsService } from '@/modules/plugins/plugin-events.service';
 import {
   choicesSchema,
   eventDataSchemas,
   eventInputSchema,
+  type GatewayEvent,
+  gatewayEvents,
+  intentPermission,
   invocationSchema,
   jobInputSchema,
   manifestSchema,
@@ -28,6 +32,7 @@ import {
   pluginEvents,
   responseSchema,
 } from '@/modules/plugins/plugin-manifest.service';
+import { PluginRegistryService } from '@/modules/plugins/plugin-registry.service';
 
 const usage = `Usage:
   pnpm plugin check <file.wasm>                      validate the manifest and list what it needs
@@ -36,7 +41,8 @@ const usage = `Usage:
   pnpm plugin click <file.wasm> <id> [value ...]     click a button (or pick select values)
   pnpm plugin submit <file.wasm> <id> [field=value ...]
                                                      submit a form
-  pnpm plugin event <file.wasm> <event> ['{json}']   deliver an event (data shape: pnpm plugin schema)
+  pnpm plugin event <file.wasm> <event> ['{json}']   deliver an event; Discord events (MESSAGE_DELETE, …) take
+                                                     Discord's JSON, with guild_id filled in
   pnpm plugin job <file.wasm> [key] ['{json}']       run a scheduled job now
   pnpm plugin schema [output.json]                   write the JSON Schema of the plugin contract
 
@@ -126,6 +132,9 @@ async function check(wasm: string) {
   }
   for (const menu of plugin.contextMenus) console.log(`  ${menu.type} menu: ${menu.name}`);
   if (plugin.events.length > 0) console.log(`  events: ${plugin.events.join(', ')}`);
+  if (plugin.discordEvents.length > 0) {
+    console.log(`  Discord events: ${plugin.discordEvents.join(', ')}`);
+  }
   console.log(`  uses: ${[...plugin.access.uses].join(', ') || 'nothing'}`);
   console.log(
     `  permissions to grant in plugins/registry.json: ${JSON.stringify(plugin.permissions)}`,
@@ -265,15 +274,34 @@ async function submit(wasm: string, id: string, pairs: string[], flags: Flags) {
 }
 
 async function event(wasm: string, name: string, json: string | undefined, flags: Flags) {
-  if (!(name in pluginEvents)) {
-    throw new Error(`no event "${name}"; events: ${Object.keys(pluginEvents).join(', ')}`);
+  const own = Object.hasOwn(pluginEvents, name);
+  if (!own && !Object.hasOwn(gatewayEvents, name)) {
+    throw new Error(
+      `no event "${name}"; events: ${Object.keys(pluginEvents).join(', ')}; Discord events: ${Object.keys(gatewayEvents).join(', ')}`,
+    );
   }
   const plugin = await load(wasm);
-  if (!plugin.events.includes(name as PluginEvent)) {
+  const subscribed = own
+    ? plugin.events.includes(name as PluginEvent)
+    : plugin.discordEvents.includes(name as GatewayEvent);
+  if (!subscribed) {
     await plugin.instance.close();
     throw new Error(`the plugin does not subscribe to ${name}`);
   }
-  const data = eventDataSchemas[name as PluginEvent].parse(JSON.parse(json ?? '{}'));
+  const raw = JSON.parse(json ?? '{}');
+  // Discord events go through the same path as in the bot, Message Content stripping included.
+  if (!own) {
+    await attempt(plugin, async () => {
+      inject(PluginRegistryService).add(plugin);
+      await inject(PluginEventsService).gateway(
+        { t: name, d: { guild_id: flags.guild ?? devGuild, ...raw } },
+        '0',
+      );
+      console.log(`✔ delivered ${name}`);
+    });
+    return;
+  }
+  const data = eventDataSchemas[name as PluginEvent].parse(raw);
   await attempt(plugin, async () => {
     await inject(PluginEngineService).event(plugin, {
       event: name as PluginEvent,
@@ -313,6 +341,15 @@ async function schema(output = 'plugins/sdk/schema.json') {
         Object.entries(eventDataSchemas).map(([name, schema]) => [
           name,
           { permission: pluginEvents[name as PluginEvent], data: json(schema) },
+        ]),
+      ),
+      discordEvents: Object.fromEntries(
+        Object.entries(gatewayEvents).map(([name, intent]) => [
+          name,
+          {
+            permission: intentPermission(intent),
+            data: 'as Discord sends it: https://discord.com/developers/docs/events/gateway-events',
+          },
         ]),
       ),
     },

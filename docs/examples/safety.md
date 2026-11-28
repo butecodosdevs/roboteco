@@ -76,7 +76,7 @@ Every source implements one contract, `ThreatCheck<S>`: `confirm(subject)` retur
 
 **Phishing lists** are kept in memory. They are downloaded on start, then every hour by `RefreshPhishingListsJob` (every 5 minutes until a first download works). If every download fails, the previous list is kept.
 
-**Data.** Settings are two columns on `guilds` (`safety_enabled`, `safety_timeout_minutes`, migration `drizzle/0014_safety.sql`). The module stores no user data. `onGuildRemove` drops the server's pending rechecks.
+**Data.** Settings are two columns on `guilds` (`safety_enabled`, `safety_timeout_minutes`, migration `drizzle/0015_safety.sql`). The module stores no user data. `onGuildRemove` drops the server's pending rechecks.
 
 ## Running ClamAV
 

@@ -7,25 +7,6 @@
         "kv",
         "levels.read"
       ]
-    },
-    {
-      "id": "coin",
-      "wasm": "plugins/dist/coin.wasm",
-      "permissions": [
-        "kv"
-      ]
-    },
-    {
-      "id": "remind",
-      "wasm": "plugins/dist/remind.wasm",
-      "permissions": [
-        "schedule",
-        "messages.send",
-        "reactions",
-        "kv",
-        "events.messages",
-        "events.levels"
-      ]
     }
   ]
 }

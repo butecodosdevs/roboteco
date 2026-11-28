@@ -11,7 +11,8 @@ import { z } from 'zod';
 import { cache } from '@/cache';
 import { CapabilityError, Expose, Injectable, inject, type PluginScope, snowflake } from '@/core';
 import { db, schema } from '@/db';
-import { DiscordDataService, elevatedPermissions } from './discord-data.service';
+import { elevatedPermissions } from '@/lib/permissions';
+import { DiscordDataService } from './discord-data.service';
 import { messageBodySchema } from './plugin-manifest.service';
 import { PluginRenderService } from './plugin-render.service';
 
