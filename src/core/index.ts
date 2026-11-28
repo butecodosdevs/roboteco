@@ -56,14 +56,5 @@ export {
   type OnUserErase,
   resolveApp,
 } from './module';
-export {
-  cookie,
-  handlePanelAuthRequest,
-  isPublicPanelSegment,
-  panelSessionValid,
-  registerPanelAuth,
-  registerPanelAuthHandler,
-  registerPublicPanelSegment,
-} from './panel-auth';
-export { type PanelReply, type PanelRequest, registerPanelRoute } from './panel-routes';
+export { type PanelGateway, panelGateway, registerPanelGateway } from './panel-gateway';
 export type { Type } from './types';

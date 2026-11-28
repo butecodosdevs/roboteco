@@ -3,9 +3,9 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, resolve } from 'node:path';
 import type { Client } from 'discord.js';
 import { isCacheReady } from '@/cache';
+import { config } from '@/config';
 import { reportError } from '@/logger';
-import { handlePanel, isPanelPath } from './panel';
-import { handlePanelAuthRequest } from './panel-auth';
+import { panelGateway } from './panel-gateway';
 
 const types: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -47,11 +47,15 @@ async function serveStatic(path: string, response: ServerResponse): Promise<bool
   return true;
 }
 
-export function startHttpServer(
-  client: Client,
-  port: number,
-  options: { panelToken?: string } = {},
-): Server {
+/**
+ * The HTTP server. `/health` is core's: it is what the probes and the uptime check read, and it must
+ * answer even when the panel is off. Everything else is the panel's, reached through the gateway so
+ * core keeps no knowledge of features.
+ *
+ * `PANEL_HOST` defaults to loopback: a session cookie must not travel over plain HTTP on a public
+ * interface. Behind a reverse proxy that terminates TLS, set it to `0.0.0.0` on purpose.
+ */
+export function startHttpServer(client: Client, port: number): Server {
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://localhost');
     try {
@@ -66,19 +70,14 @@ export function startHttpServer(
         );
         return;
       }
-      if (
-        url.pathname.startsWith('/api/auth') &&
-        (await handlePanelAuthRequest(request, response))
-      ) {
-        return;
+      const panel = panelGateway();
+      if (panel && url.pathname.startsWith('/api/auth')) {
+        if (await panel.handleAuth(request, response)) return;
       }
-      if (isPanelPath(url.pathname)) {
-        await handlePanel(request, response, url, {
-          client,
-          token: options.panelToken,
-          method: request.method ?? 'GET',
-          body: await readBody(request, maxJsonBytes),
-        });
+      if (
+        panel &&
+        (await panel.handle(client, request, response, url, await readBody(request, maxJsonBytes)))
+      ) {
         return;
       }
       if (request.method === 'GET' && (await serveStatic(url.pathname, response))) return;
@@ -87,7 +86,7 @@ export function startHttpServer(
       if (error instanceof BodyTooLarge) {
         response
           .writeHead(413, { 'content-type': 'application/json' })
-          .end(JSON.stringify({ error: 'arquivo maior que o limite' }));
+          .end(JSON.stringify({ error: 'body_too_large' }));
         return;
       }
       reportError(error, { path: url.pathname }, 'HTTP request failed');
@@ -95,6 +94,6 @@ export function startHttpServer(
       response.end(JSON.stringify({ error: 'internal' }));
     }
   });
-  server.listen(port, '0.0.0.0');
+  server.listen(port, config.panelHost);
   return server;
 }

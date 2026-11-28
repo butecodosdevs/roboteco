@@ -37,6 +37,7 @@ export const ptBR: Messages = {
     guildOnly: 'Este comando só funciona dentro de um servidor.',
     cooldown: 'Calma. Você poderá usar isto de novo {when}.',
     componentExpired: 'Este controle não funciona mais. Execute o comando de novo.',
+    commandDisabled: 'Este comando está desligado. Um administrador pode religá-lo no painel.',
   },
   ping: pingPtBR,
   honeypot: honeypotPtBR,

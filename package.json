@@ -18,7 +18,6 @@
     "test": "node --env-file-if-exists=.env --import tsx --test --test-concurrency=1 \"tests/**/*.test.ts\"",
     "lint": "biome check . && pnpm lint:structure",
     "lint:structure": "tsx scripts/lint-structure.ts",
-    "panel:check": "tsx scripts/panel-check.ts",
     "format": "biome check --write .",
     "services:up": "docker compose up -d --wait",
     "services:down": "docker compose down",

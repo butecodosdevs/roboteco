@@ -11,17 +11,26 @@ export interface SettingsKey {
   secret?: boolean;
   /** Read once at boot: changing it needs a restart to take effect. */
   restart: boolean;
+  /**
+   * Writable from the panel. Everything else is shown but not saved: a panel session must not be
+   * able to replace the bot token or the Sentry DSN, which is the same power as taking over the bot
+   * and exfiltrating every server's data to an attacker-controlled endpoint.
+   */
+  writable: boolean;
 }
 
 export const settingsKeys: SettingsKey[] = [
-  { key: 'DISCORD_TOKEN', secret: true, restart: true },
-  { key: 'DISCORD_CLIENT_ID', restart: true },
-  { key: 'DISCORD_GUILD_ID', restart: true },
-  { key: 'LOG_LEVEL', restart: true },
-  { key: 'GUILD_DATA_RETENTION_DAYS', restart: true },
-  { key: 'SENTRY_DSN', secret: true, restart: true },
+  // Read-only on purpose. Setting either one from a web session is a privilege escalation: the
+  // token is the bot, and the DSN ships logs (with user IDs) to a collector the session picks.
+  { key: 'DISCORD_TOKEN', secret: true, restart: true, writable: false },
+  { key: 'DISCORD_CLIENT_ID', restart: true, writable: false },
+  { key: 'DISCORD_GUILD_ID', restart: true, writable: false },
+  { key: 'SENTRY_DSN', secret: true, restart: true, writable: false },
+  // Operational knobs: changing them cannot hand anyone the bot, only tune how it behaves.
+  { key: 'LOG_LEVEL', restart: true, writable: true },
+  { key: 'GUILD_DATA_RETENTION_DAYS', restart: true, writable: true },
   // No restart: the allowlist is read live, so removing an email revokes its session at once.
-  { key: 'PANEL_ALLOWED_EMAILS', restart: false },
+  { key: 'PANEL_ALLOWED_EMAILS', restart: false, writable: true },
 ];
 
 // Overridable so tests write to a throwaway file instead of the real settings.
@@ -55,6 +64,9 @@ function readSafely(): string {
 export function writeSettings(next: Record<string, string>): void {
   const merged = { ...readSettings() };
   for (const item of settingsKeys) {
+    // A read-only key is refused here, at the single write path, so no route can bypass it by
+    // calling `writeSettings` directly.
+    if (!item.writable) continue;
     const value = next[item.key];
     if (value === undefined) continue;
     if (value === '') delete merged[item.key];

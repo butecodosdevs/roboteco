@@ -1,10 +1,15 @@
-import { Client, Events, type GatewayIntentBits, type Interaction, MessageFlags } from 'discord.js';
+import {
+  Client,
+  Events,
+  type GatewayIntentBits,
+  type Interaction,
+  MessageFlags,
+  type RepliableInteraction,
+} from 'discord.js';
 import { closeCache } from '@/cache';
 import { closeDb } from '@/db';
 import { t } from '@/i18n';
 import { flushErrors, logger, reportError } from '@/logger';
-import { isCommandDisabled } from './command-toggles';
-import { recordUsage } from './command-usage';
 import { isDelegatedComponent, kindOf, parseCustomId } from './component';
 import { contextMenuKey } from './context-menu';
 import { startHttpServer } from './http';
@@ -16,13 +21,13 @@ import {
   registerModules,
 } from './lifecycle';
 import { privilegedIntents, type ResolvedApp, resolveApp } from './module';
+import { panelGateway } from './panel-gateway';
 import type { Type } from './types';
 
 export interface BootstrapOptions {
   token: string;
   privilegedIntents: boolean;
   healthPort?: number;
-  panelToken?: string;
 }
 
 function selectIntents(app: ResolvedApp, allowPrivileged: boolean): GatewayIntentBits[] {
@@ -37,25 +42,42 @@ function selectIntents(app: ResolvedApp, allowPrivileged: boolean): GatewayInten
   return app.intents.filter((i) => !privilegedIntents.includes(i));
 }
 
+/**
+ * The member asked for a command the panel turned off. Saying so beats leaving the interaction
+ * unacknowledged, which shows up as "The application did not respond" to whoever ran it.
+ */
+function disabledReply(interaction: RepliableInteraction): Promise<unknown> {
+  return interaction.reply({
+    content: t(interaction.locale, 'errors.commandDisabled'),
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
 async function route(app: ResolvedApp, interaction: Interaction): Promise<unknown> {
+  const panel = panelGateway();
   if (interaction.isChatInputCommand()) {
-    if (isCommandDisabled(interaction.commandName)) return undefined;
+    /**
+     * A disabled command answers instead of vanishing: returning `undefined` here left the
+     * interaction unacknowledged, and Discord tells the member "The application did not respond"
+     * three seconds later. The toggle is per bot, not per server, so the text says so.
+     */
+    if (panel?.isDisabled(interaction.commandName)) return disabledReply(interaction);
     const handler = app.commands.get(interaction.commandName);
     if (handler && interaction.inGuild()) {
-      recordUsage(interaction.guildId, handler.name, interaction.user.id, 'builtin');
+      panel?.recordUsage(interaction.guildId, handler.name, interaction.user.id, 'builtin');
     }
     return handler?.handle(interaction);
   }
   if (interaction.isAutocomplete()) {
-    if (isCommandDisabled(interaction.commandName)) return interaction.respond([]);
+    if (panel?.isDisabled(interaction.commandName)) return interaction.respond([]);
     return app.commands.get(interaction.commandName)?.autocomplete(interaction);
   }
   if (interaction.isContextMenuCommand()) {
-    if (isCommandDisabled(interaction.commandName)) return undefined;
+    if (panel?.isDisabled(interaction.commandName)) return disabledReply(interaction);
     const key = contextMenuKey(interaction.commandType, interaction.commandName);
     const handler = app.contextMenus.get(key);
     if (handler && interaction.inGuild()) {
-      recordUsage(interaction.guildId, handler.name, interaction.user.id, 'builtin');
+      panel?.recordUsage(interaction.guildId, handler.name, interaction.user.id, 'builtin');
     }
     return handler?.handle(interaction);
   }
@@ -145,9 +167,7 @@ export async function bootstrap(root: Type, options: BootstrapOptions): Promise<
     }
   });
 
-  const health = options.healthPort
-    ? startHttpServer(client, options.healthPort, { panelToken: options.panelToken })
-    : undefined;
+  const health = options.healthPort ? startHttpServer(client, options.healthPort) : undefined;
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutting down');

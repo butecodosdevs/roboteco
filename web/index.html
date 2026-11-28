@@ -100,6 +100,15 @@ const DICT = {
     "perm.http": "requisições para hosts liberados", "perm.title": "Permissões que o WASM pede",
     "perm.base": "só as funções base", "perm.missing": "faltam {list} — o plugin não carrega assim",
     "perm.hosts": "Hosts liberados", "perm.hostsHint": "separados por vírgula; sem eles a permissão http não faz nada",
+    "perm.reviewed": "Permissões e hosts ficam em plugins/registry.json: mudam por commit, com revisão.",
+    "err.unknownRoute": "Rota do painel desconhecida.", "err.unknownGuild": "O bot não está nesse servidor.",
+    "err.noGuild": "Ainda não há servidor para mostrar.", "err.method": "Essa ação não é permitida.",
+    "err.unauthorized": "Sua sessão não vale mais.", "err.disabled": "O painel está desligado.",
+    "err.tooLarge": "O corpo da requisição é grande demais.", "err.wasmMissing": "O plugin não foi compilado: rode pnpm plugins:build.",
+    "err.unknownCommand": "Comando desconhecido", "err.notInRegistry": "Esse plugin não está no registry.json.",
+    "err.notLoaded": "Esse plugin não está carregado.", "err.notOwned": "Esses comandos são de outro plugin",
+    "err.missingPlugin": "Informe o plugin no endereço.", "err.removeInRepo": "Remover plugin é edição no registry.json.",
+    "err.readOnlySetting": "Essa configuração é somente leitura aqui.",
 
     "ps.inactive": "inativo", "ps.nowasm": "sem WASM", "ps.failed": "falhou ao carregar",
     "ps.loaded": "carregado", "ps.notLoaded": "não carregado", "ps.builtin": "embutido",
@@ -139,6 +148,7 @@ const DICT = {
     "set.title": "Configurações",
     "set.lede": "O que o bot usa para falar com o Discord. Salvar grava em panel/settings.json; o que é lido na inicialização só vale depois de reiniciar.",
     "set.empty": "vazio", "set.active": "ativo", "set.saved": "salvo, reinicie", "set.loading": "Carregando…",
+    "set.readOnly": "só no ambiente", "set.readOnlyHint": "este valor vem do ambiente do contêiner: mudar aqui daria a uma sessão web o bot inteiro.",
     "set.notSet": "não definido", "set.restartTitle": "lido na inicialização",
     "access.title": "Quem tem acesso", "access.hint": "Só estes e-mails entram pelo login do Discord. Tirar um encerra a sessão dele na hora, sem reiniciar.",
     "access.you": "você", "access.add": "Adicionar", "access.remove": "Remover", "access.placeholder": "pessoa@exemplo.com",
@@ -186,7 +196,6 @@ const DICT = {
     "toast.reloaded": "{n}", "toast.published": "{n} em {guild}", "toast.pluginPublished": "{id}: {n}, o resto foi mantido",
     "toast.cmdOn": "/{c} ligado", "toast.cmdOff": "/{c} desligado — sai da próxima publicação",
     "toast.plugOn": "{id}: ativado", "toast.plugOff": "{id}: inativado — os comandos saem na próxima publicação",
-    "toast.permOn": "{id}: ganhou {p}", "toast.permOff": "{id}: perdeu {p}",
     "toast.hosts": "{n} para {id}", "toast.fail": "falhou: {m}",
     "toast.nothing": "Nada mudou.", "toast.saved": "Salvo. Reinicie o bot para aplicar o que é lido na inicialização.",
     "toast.restarting": "Reiniciando — volte em alguns segundos",
@@ -244,6 +253,15 @@ const DICT = {
     "perm.http": "requests to allowed hosts", "perm.title": "Permissions the WASM asks for",
     "perm.base": "base functions only", "perm.missing": "missing {list} — the plugin will not load",
     "perm.hosts": "Allowed hosts", "perm.hostsHint": "comma separated; without them the http permission does nothing",
+    "perm.reviewed": "Permissions and hosts live in plugins/registry.json: they change by commit, under review.",
+    "err.unknownRoute": "Unknown panel route.", "err.unknownGuild": "The bot is not in that server.",
+    "err.noGuild": "No server to show yet.", "err.method": "That action is not allowed.",
+    "err.unauthorized": "Your session is not valid any more.", "err.disabled": "The panel is turned off.",
+    "err.tooLarge": "The request body is too large.", "err.wasmMissing": "The plugin was not compiled: run pnpm plugins:build.",
+    "err.unknownCommand": "Unknown command", "err.notInRegistry": "That plugin is not in registry.json.",
+    "err.notLoaded": "That plugin is not loaded.", "err.notOwned": "Those commands belong to another plugin",
+    "err.missingPlugin": "Name the plugin in the address.", "err.removeInRepo": "Removing a plugin is a registry.json edit.",
+    "err.readOnlySetting": "That setting is read-only here.",
 
     "ps.inactive": "inactive", "ps.nowasm": "no WASM", "ps.failed": "failed to load",
     "ps.loaded": "loaded", "ps.notLoaded": "not loaded", "ps.builtin": "built-in",
@@ -283,6 +301,7 @@ const DICT = {
     "set.title": "Settings",
     "set.lede": "What the bot uses to talk to Discord. Saving writes panel/settings.json; values read at startup only apply after a restart.",
     "set.empty": "empty", "set.active": "active", "set.saved": "saved, restart", "set.loading": "Loading…",
+    "set.readOnly": "environment only", "set.readOnlyHint": "this value comes from the container environment: editing it here would hand a web session the whole bot.",
     "set.notSet": "not set", "set.restartTitle": "read at startup",
     "access.title": "Who has access", "access.hint": "Only these emails get in through Discord sign-in. Removing one ends their session right away, no restart.",
     "access.you": "you", "access.add": "Add", "access.remove": "Remove", "access.placeholder": "person@example.com",
@@ -330,7 +349,6 @@ const DICT = {
     "toast.reloaded": "{n}", "toast.published": "{n} in {guild}", "toast.pluginPublished": "{id}: {n}, the rest was kept",
     "toast.cmdOn": "/{c} on", "toast.cmdOff": "/{c} off — dropped on next publish",
     "toast.plugOn": "{id}: enabled", "toast.plugOff": "{id}: disabled — commands drop on next publish",
-    "toast.permOn": "{id}: gained {p}", "toast.permOff": "{id}: lost {p}",
     "toast.hosts": "{n} for {id}", "toast.fail": "failed: {m}",
     "toast.nothing": "Nothing changed.", "toast.saved": "Saved. Restart the bot to apply what is read at startup.",
     "toast.restarting": "Restarting — back in a few seconds",
@@ -388,6 +406,15 @@ const DICT = {
     "perm.http": "请求允许的主机", "perm.title": "WASM 申请的权限",
     "perm.base": "仅基础函数", "perm.missing": "缺少 {list}，插件无法加载",
     "perm.hosts": "允许的主机", "perm.hostsHint": "逗号分隔；缺失时 http 权限无效",
+    "perm.reviewed": "权限和主机写在 plugins/registry.json 中：通过提交修改并接受审查。",
+    "err.unknownRoute": "未知的面板路由。", "err.unknownGuild": "机器人不在该服务器中。",
+    "err.noGuild": "还没有可显示的服务器。", "err.method": "不允许该操作。",
+    "err.unauthorized": "会话已失效。", "err.disabled": "面板已关闭。",
+    "err.tooLarge": "请求体过大。", "err.wasmMissing": "插件未编译：请运行 pnpm plugins:build。",
+    "err.unknownCommand": "未知命令", "err.notInRegistry": "该插件不在 registry.json 中。",
+    "err.notLoaded": "该插件未加载。", "err.notOwned": "这些命令属于另一个插件",
+    "err.missingPlugin": "请在地址中指明插件。", "err.removeInRepo": "移除插件需修改 registry.json。",
+    "err.readOnlySetting": "该配置在此为只读。",
 
     "ps.inactive": "未启用", "ps.nowasm": "缺少 WASM", "ps.failed": "加载失败",
     "ps.loaded": "已加载", "ps.notLoaded": "未加载", "ps.builtin": "内置",
@@ -427,6 +454,7 @@ const DICT = {
     "set.title": "设置",
     "set.lede": "机器人连接 Discord 所用的配置。保存会写入 panel/settings.json；启动时读取的项需重启后生效。",
     "set.empty": "空", "set.active": "生效中", "set.saved": "已保存，需重启", "set.loading": "加载中…",
+    "set.readOnly": "仅由环境变量设置", "set.readOnlyHint": "该值来自容器环境：在面板中修改等于把整个机器人交给网页会话。",
     "set.notSet": "未设置", "set.restartTitle": "启动时读取",
     "access.title": "访问权限", "access.hint": "只有这些邮箱可以通过 Discord 登录。移除后其会话立即失效，无需重启。",
     "access.you": "你", "access.add": "添加", "access.remove": "移除", "access.placeholder": "person@example.com",
@@ -474,7 +502,6 @@ const DICT = {
     "toast.reloaded": "{n}", "toast.published": "{n}，服务器 {guild}", "toast.pluginPublished": "{id}: {n}，其余保留",
     "toast.cmdOn": "/{c} 已启用", "toast.cmdOff": "/{c} 已停用 —— 下次发布时移除",
     "toast.plugOn": "{id}: 已启用", "toast.plugOff": "{id}: 已停用 —— 命令将在下次发布时移除",
-    "toast.permOn": "{id}: 获得 {p}", "toast.permOff": "{id}: 失去 {p}",
     "toast.hosts": "{n}，{id}", "toast.fail": "失败：{m}",
     "toast.nothing": "没有变化。", "toast.saved": "已保存。重启机器人后生效。",
     "toast.restarting": "正在重启 —— 几秒后回来",
@@ -513,6 +540,24 @@ let builtins = null;
 let usage = null;
 let settings = null;
 let access = null;
+
+/* Error codes the server sends instead of prose, so all three languages can read them. */
+const ERR = {
+  unknown_route: "err.unknownRoute", unknown_guild: "err.unknownGuild", no_guild: "err.noGuild",
+  method_not_allowed: "err.method", unauthorized: "err.unauthorized", disabled: "err.disabled",
+  body_too_large: "err.tooLarge", wasm_missing: "err.wasmMissing",
+  unknown_command: "err.unknownCommand", not_in_registry: "err.notInRegistry",
+  not_loaded: "err.notLoaded", not_owned_by: "err.notOwned", missing_plugin: "err.missingPlugin",
+  plugin_removal_is_a_repository_edit: "err.removeInRepo", "read-only setting": "err.readOnlySetting",
+};
+const describeError = (raw) => {
+  const text = String(raw ?? "");
+  const [code, ...rest] = text.split(": ");
+  const key = ERR[code];
+  if (!key) return text;
+  const detail = rest.join(": ");
+  return detail ? `${t(key)}: ${detail}` : t(key);
+};
 
 const t = (key, vars) => {
   const raw = DICT[state.lang]?.[key] ?? DICT.pt[key] ?? key;
@@ -555,7 +600,7 @@ async function api(path, init) {
   });
   const payload = await res.json().catch(() => null);
   if (res.status === 401) { showLogin(t("login.expired")); throw new Error(t("login.expired")); }
-  if (!res.ok) throw new Error(payload?.error ?? (res.status === 503 ? t("login.off") : `HTTP ${res.status}`));
+  if (!res.ok) throw new Error(payload?.error ? describeError(payload.error) : (res.status === 503 ? t("login.off") : `HTTP ${res.status}`));
   return payload;
 }
 
@@ -803,18 +848,10 @@ function pluginCard(p) {
   </div>
   <div class="plug-sec">
     <div class="sec">${esc(t("perm.title"))}</div>
-    <div class="chips">${p.required.length ? p.required.map(permTag).join("") : `<span class="hint">${esc(t("perm.base"))}</span>`}</div>
+    <div class="chips">${p.permissions.length ? p.permissions.map(permTag).join("") : `<span class="hint">${esc(t("perm.base"))}</span>`}</div>
     ${missing.length ? `<div class="callout amber">${t("perm.missing", { list: missing.map(permTag).join(" ") })}</div>` : ""}
-    <div class="perms">${PERMISSIONS.map(([name, key]) => `<label class="cap-row">
-      <input type="checkbox" data-act="plugin-perm" data-id="${esc(p.id)}" data-perm="${name}" ${p.permissions.includes(name) ? "checked" : ""}>
-      <span class="nm mono">${name}</span>
-      <span class="ds">${esc(t(key))}</span>
-    </label>`).join("")}</div>
-    ${p.permissions.includes("http") ? `<label class="field">
-      <span class="sec">${esc(t("perm.hosts"))}</span>
-      <input data-act="plugin-hosts" data-id="${esc(p.id)}" value="${esc((p.allowedHosts ?? []).join(", "))}" placeholder="api.exemplo.com, outro.com">
-      <span class="hint">${esc(t("perm.hostsHint"))}</span>
-    </label>` : ""}
+    ${p.allowedHosts.length ? `<div class="hint mono">${esc(t("perm.hosts"))}: ${esc(p.allowedHosts.join(", "))}</div>` : ""}
+    <div class="hint">${esc(t("perm.reviewed"))}</div>
   </div>
 </section>`;
 }
@@ -953,8 +990,10 @@ function viewSettings() {
   const head = pageHead(t("set.title"), esc(t("set.lede")), "");
   if (!settings) return shell(head, `<section class="card">${emptyRow(t("set.loading"))}</section>`);
   const rows = settings.fields.map((f) => {
-    const label = f.value === null ? t("set.empty") : f.active ? t("set.active") : t("set.saved");
-    const cls = f.value === null ? "" : f.active ? "ok" : "warn";
+    const label = f.writable
+      ? f.value === null ? t("set.empty") : f.active ? t("set.active") : t("set.saved")
+      : t("set.readOnly");
+    const cls = f.writable ? (f.value === null ? "" : f.active ? "ok" : "warn") : "";
     return `<div class="set-row">
     <div class="set-label">
       <div class="nm">${esc(t("set.k." + f.key))}</div>
@@ -962,8 +1001,8 @@ function viewSettings() {
     </div>
     <div class="set-input">
       <input data-setting="${esc(f.key)}" type="${f.secret ? "password" : "text"}" autocomplete="off" spellcheck="false"
-        value="${esc(f.value ?? "")}" placeholder="${f.secret ? esc(t("set.notSet")) : ""}">
-      <span class="stat ${cls}" ${f.restart && f.value !== null ? `title="${esc(t("set.restartTitle"))}"` : ""}><i class="dot"></i>${esc(label)}</span>
+        value="${esc(f.value ?? "")}" placeholder="${f.secret ? esc(t("set.notSet")) : ""}" ${f.writable ? "" : "disabled"}>
+      <span class="stat ${cls}" title="${esc(!f.writable ? t("set.readOnlyHint") : f.restart && f.value !== null ? t("set.restartTitle") : "")}"><i class="dot"></i>${esc(label)}</span>
     </div>
   </div>`;
   }).join("");
@@ -1127,7 +1166,7 @@ async function signIn(button) {
     });
     const payload = await res.json().catch(() => null);
     if (payload?.url) return void (location.href = payload.url);
-    throw new Error(payload?.message ?? payload?.error ?? `HTTP ${res.status}`);
+    throw new Error(payload?.message ?? (payload?.error ? describeError(payload.error) : `HTTP ${res.status}`));
   } catch (err) {
     button.disabled = false;
     button.textContent = label;
@@ -1216,14 +1255,6 @@ async function pluginAction(act) {
       busy("…");
       applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}${guildQuery()}`, { method: "PUT", body: { enabled: next } }));
       toast(next ? t("toast.plugOn", { id }) : t("toast.plugOff", { id }));
-    } else if (act.dataset.act === "plugin-perm") {
-      const plugin = (plugins ?? []).find((p) => p.id === id);
-      if (!plugin) return;
-      const perm = act.dataset.perm;
-      const on = act.checked;
-      const next = on ? [...new Set([...plugin.permissions, perm])] : plugin.permissions.filter((p) => p !== perm);
-      applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}${guildQuery()}`, { method: "PUT", body: { permissions: next } }));
-      toast(on ? t("toast.permOn", { id, p: perm }) : t("toast.permOff", { id, p: perm }));
     } else if (act.dataset.act === "settings-save") {
       busy("…");
       // Only send what changed: a masked secret left untouched must not be erased with "".
@@ -1291,16 +1322,6 @@ document.addEventListener("click", (e) => {
 document.addEventListener("change", async (e) => {
   const lang = e.target.closest('[data-act="lang"]');
   if (lang) return setLang(lang.value);
-  const input = e.target.closest('[data-act="plugin-hosts"]');
-  if (!input) return;
-  const id = input.dataset.id;
-  const hosts = input.value.split(",").map((h) => h.trim()).filter(Boolean);
-  try {
-    applyPlugins(await api(`/api/panel/plugins/${encodeURIComponent(id)}${guildQuery()}`, { method: "PUT", body: { allowedHosts: hosts } }));
-    toast(t("toast.hosts", { n: pl(hosts.length, "unit.host1", "unit.hostN"), id }));
-  } catch (err) {
-    toast(t("toast.fail", { m: err.message }), true);
-  }
 });
 
 paintChrome();

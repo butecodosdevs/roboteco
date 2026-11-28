@@ -1,14 +1,17 @@
 import { spawn } from 'node:child_process';
 import { z } from 'zod';
 import { config } from '@/config';
-import { Injectable, inject, registerPanelRoute } from '@/core';
+import { Injectable } from '@/core';
 import { liveSetting, readSettings, settingsKeys, writeSettings } from '@/core/settings';
+import type { PanelRouterService } from './panel-router.service';
 
 export interface SettingField {
   /** The panel translates each key; the server only reports state. */
   key: string;
   restart: boolean;
   secret: boolean;
+  /** False for keys the panel may show but never save (the bot token, the Sentry DSN). */
+  writable: boolean;
   /** Masked for secrets, `null` when unset. */
   value: string | null;
   /** True when the running process already uses this value. */
@@ -16,6 +19,9 @@ export interface SettingField {
 }
 
 const defaults: Record<string, string> = { LOG_LEVEL: 'info', GUILD_DATA_RETENTION_DAYS: '30' };
+
+/** A save that names a read-only key, answered as 400 instead of a silent partial write. */
+export class BadSettingKey extends Error {}
 
 /** What the running process parsed, so the panel can show "salvo" versus "ativo". */
 function running(key: string): string | null {
@@ -59,13 +65,24 @@ export class PanelSettingsService {
           key: item.key,
           restart: item.restart,
           secret: item.secret ?? false,
+          writable: item.writable,
           value: stored && item.secret ? redact(stored) : stored,
           active: active !== null && active === stored,
         };
       });
   }
 
+  /**
+   * Refuses a read-only key instead of dropping it silently: a 200 that ignored half the body
+   * would look like the value was saved.
+   */
   save(input: Record<string, string>): SettingField[] {
+    const readOnly = Object.keys(input).filter(
+      (key) => settingsKeys.find((item) => item.key === key && !item.writable) !== undefined,
+    );
+    if (readOnly.length > 0) {
+      throw new BadSettingKey(`read-only setting: ${readOnly.join(', ')}`);
+    }
     writeSettings(input);
     return this.list();
   }
@@ -83,18 +100,25 @@ export class PanelSettingsService {
 
 const saveSchema = z.record(z.string(), z.string());
 
-export function registerPanelSettings(): void {
-  const settings = inject(PanelSettingsService);
-
-  registerPanelRoute('settings', async ({ method, body }) => {
+/** Mounts `PUT /api/panel/settings` and friends. Called once, by PanelModule. */
+export function registerPanelSettings(
+  settings: PanelSettingsService,
+  router: PanelRouterService,
+): void {
+  router.route('settings', async ({ method, body }) => {
     if (method === 'GET') return { body: { fields: settings.list() } };
     if (method === 'PUT' || method === 'PATCH') {
-      return { body: { fields: settings.save(saveSchema.parse(body ?? {})) } };
+      try {
+        return { body: { fields: settings.save(saveSchema.parse(body ?? {})) } };
+      } catch (error) {
+        if (error instanceof BadSettingKey) return { status: 400, body: { error: error.message } };
+        throw error;
+      }
     }
     if (method === 'POST') {
       z.object({ action: z.literal('restart') }).parse(body ?? {});
       return { body: settings.restart() };
     }
-    return { status: 405, body: { error: `settings: ${method} não suportado` } };
+    return { status: 405, body: { error: 'method_not_allowed' } };
   });
 }

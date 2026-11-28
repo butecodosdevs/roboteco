@@ -6,15 +6,10 @@ import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
 import { inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { config } from '@/config';
-import {
-  Injectable,
-  registerPanelAuth,
-  registerPanelAuthHandler,
-  registerPanelRoute,
-  registerPublicPanelSegment,
-} from '@/core';
+import { Injectable, inject } from '@/core';
 import { liveSetting, writeSettings } from '@/core/settings';
 import { authSchema, db } from '@/db';
+import { PanelRouterService } from './panel-router.service';
 
 export interface PanelIdentity {
   id: string;
@@ -71,13 +66,18 @@ const auth = config.panelSecret
             before: async (user) => {
               const allow = allowedEmails();
               if (allow.length === 0) {
-                throw new APIError('FORBIDDEN', { message: 'PANEL_ALLOWED_EMAILS está vazio' });
+                throw new APIError('FORBIDDEN', { message: 'PANEL_ALLOWED_EMAILS is empty' });
               }
               // Discord returns a null email for phone-only accounts; those never get in.
               if (!user.email || !allow.includes(user.email.toLowerCase())) {
-                throw new APIError('FORBIDDEN', {
-                  message: 'esta conta do Discord não tem acesso',
-                });
+                throw new APIError('FORBIDDEN', { message: 'this Discord account has no access' });
+              }
+              // An allowlist entry names the address someone controls, and Discord only proves
+              // control by flagging it verified. Without this check, anyone who types an
+              // allowlisted address into a Discord account that never verified it gets a session
+              // for a mailbox they do not own — the allowlist would be self-asserted.
+              if (user.emailVerified !== true) {
+                throw new APIError('FORBIDDEN', { message: 'verify your Discord email first' });
               }
             },
           },
@@ -98,12 +98,14 @@ const accessSchema = z.object({
 /** Better Auth owns the sessions, so they survive a restart and live in the same Postgres. */
 @Injectable()
 export class PanelAuthService {
-  async start(): Promise<void> {
-    registerPublicPanelSegment('auth');
-    registerPanelAuth(async (request) => (await this.identity(request)) !== null);
-    if (auth) registerPanelAuthHandler(toNodeHandler(auth));
+  private readonly router = inject(PanelRouterService);
 
-    registerPanelRoute('auth', async ({ segments: [action], method, body, request }) => {
+  start(): void {
+    this.router.publicSegment('auth');
+    this.router.auth(async (request) => (await this.identity(request)) !== null);
+    if (auth) this.router.authHandlerFor(toNodeHandler(auth));
+
+    this.router.route('auth', async ({ segments: [action], method, body, request }) => {
       if (action === 'status' && method === 'GET') {
         const identity = await this.identity(request);
         return {
@@ -150,7 +152,7 @@ export class PanelAuthService {
           .catch(() => undefined);
         return { body: { ok: true } };
       }
-      return { status: 405, body: { error: `auth: ${method} não suportado` } };
+      return { status: 405, body: { error: 'method_not_allowed' } };
     });
   }
 
@@ -163,6 +165,8 @@ export class PanelAuthService {
     // Checked again on every request: dropping an email from PANEL_ALLOWED_EMAILS must revoke a
     // session that already exists, not just block new sign-ups.
     if (!allowedEmails().includes(session.user.email.toLowerCase())) return null;
+    // Same reason: a session created before the verified-email check existed must not outlive it.
+    if (session.user.emailVerified !== true) return null;
     return {
       id: session.user.id,
       name: session.user.name,

@@ -43,6 +43,19 @@ const schema = z.object({
     .min(32, 'PANEL_SECRET must be at least 32 characters')
     .optional()
     .transform((v) => v || undefined),
+  /**
+   * Interface the HTTP server binds. Loopback by default: a session cookie must not travel over
+   * plain HTTP on a public interface. Behind a TLS-terminating reverse proxy, set `0.0.0.0` on
+   * purpose and keep a proxy rule that refuses to forward the panel over http.
+   */
+  PANEL_HOST: z
+    .string()
+    .min(1)
+    .default('127.0.0.1')
+    .refine(
+      (host) => !/^https?:\/\//.test(host),
+      'PANEL_HOST is an interface (127.0.0.1, 0.0.0.0), not a URL',
+    ),
   GUILD_DATA_RETENTION_DAYS: z.coerce.number().int().min(0).default(30),
   PLUGIN_REGISTRY: z.string().min(1).default('plugins/registry.json'),
   DISCORD_GUILD_ID: z
@@ -92,6 +105,7 @@ export const config = {
   panelToken: parsed.data.PANEL_TOKEN,
   panelUrl: parsed.data.PANEL_URL,
   panelSecret: parsed.data.PANEL_SECRET,
+  panelHost: parsed.data.PANEL_HOST,
   guildDataRetentionDays: parsed.data.GUILD_DATA_RETENTION_DAYS,
   pluginRegistry: parsed.data.PLUGIN_REGISTRY,
   databaseUrl: parsed.data.DATABASE_URL,

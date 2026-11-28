@@ -1,14 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { z } from 'zod';
-import { Injectable, inject, isBuiltInCommand, registerPanelRoute } from '@/core';
-import { disabledCommands, setCommandsEnabled } from '@/core/command-toggles';
-import { usageReport } from '@/core/command-usage';
-import { commandCatalog } from '@/core/lifecycle';
+import { Injectable, inject, isBuiltInCommand } from '@/core';
+import { commandCatalog, type RegisteredCommand } from '@/core/lifecycle';
+import { PanelTogglesService } from '@/modules/panel/panel-toggles.service';
+import { PanelUsageService } from '@/modules/panel/panel-usage.service';
 import type { PluginSource } from './plugin-build.service';
 import { PluginBuildService } from './plugin-build.service';
 import { PluginDeployService } from './plugin-deploy.service';
-import type { LoadedPlugin, Permission } from './plugin-engine.service';
+import type { LoadedPlugin } from './plugin-engine.service';
 import { PluginEngineService } from './plugin-engine.service';
 import { PluginManifestService } from './plugin-manifest.service';
 import {
@@ -54,8 +53,11 @@ export interface PanelUsage {
 }
 
 /**
- * Read-mostly: the panel shows what is on disk and flips commands on and off. Installing,
- * building and deleting stay in the repository, where a wrong click cannot break the bot.
+ * Read-mostly: the panel shows what is on disk and flips a plugin on and off. Installing, building,
+ * deleting, and — since a granted permission is the security boundary — the permission list itself
+ * stay in the reviewed `plugins/registry.json`, where a change gets a diff and a review. A typo in
+ * a permission name saved from the browser used to leave the plugin unloaded until someone fixed
+ * the file by hand.
  */
 @Injectable()
 export class PluginPanelService {
@@ -64,18 +66,28 @@ export class PluginPanelService {
   private readonly manifests = inject(PluginManifestService);
   private readonly deployer = inject(PluginDeployService);
   private readonly builder = inject(PluginBuildService);
+  private readonly toggles = inject(PanelTogglesService);
+  private readonly usage = inject(PanelUsageService);
 
   async list(
     guildId?: string,
     locale?: string | null,
   ): Promise<{ plugins: PanelPlugin[]; usage: PanelUsage | null }> {
-    const usage = guildId ? await usageReport(guildId, 30) : null;
-    const used = new Map((usage?.commands ?? []).map((row) => [row.command, row.total]));
+    const report = guildId ? await this.usage.report(guildId, 30) : null;
+    const used = new Map((report?.commands ?? []).map((row) => [row.command, row.total]));
     const definitions = await this.registry.definitions();
     const plugins = await Promise.all(
       definitions.map((definition) => this.describe(definition, used, locale)),
     );
-    return { plugins, usage };
+    return {
+      plugins,
+      usage: report && {
+        total: report.total,
+        members: report.members,
+        series: report.series,
+        commands: report.commands,
+      },
+    };
   }
 
   private async describe(
@@ -86,7 +98,7 @@ export class PluginPanelService {
     const loaded: LoadedPlugin | undefined = this.registry.get(definition.id);
     const path = resolve(registryPath, '../..', definition.wasm);
     const wasm = await readFile(path).catch(() => null);
-    const disabled = new Set(disabledCommands());
+    const disabled = new Set(this.toggles.disabled());
     let required: string[] = [];
     let present = false;
     if (wasm) {
@@ -94,7 +106,7 @@ export class PluginPanelService {
       try {
         required = this.engine.requiredPermissions(wasm);
       } catch {
-        // A corrupt WASM throws here too; the card shows it as "não carregou" instead of a 500.
+        // A corrupt WASM throws here too; the card shows it as unloaded instead of a 500.
         required = [];
       }
     }
@@ -128,10 +140,8 @@ export class PluginPanelService {
       allowedHosts: definition.allowedHosts ?? [],
       required,
       autocompletes: loaded?.autocompletes ?? false,
-      // A missing file is not a load bug: say which path is expected instead of an ENOENT.
-      failure: present
-        ? (this.registry.failure(definition.id) ?? null)
-        : `falta ${definition.wasm} — compile com pnpm plugins:build`,
+      // A missing file is not a load bug: name the build step instead of an ENOENT path.
+      failure: present ? (this.registry.failure(definition.id) ?? null) : 'wasm_missing',
       source: await this.builder.source(definition.id),
       commands,
       uses: commands.reduce((sum, command) => sum + command.uses, 0),
@@ -141,32 +151,27 @@ export class PluginPanelService {
   /** Turns commands on or off. Works for built-ins and plugins: the toggle list is shared. */
   async toggle(names: string[], enabled: boolean): Promise<string[]> {
     const unknown = names.filter((name) => !isBuiltInCommand(name) && !this.registry.command(name));
-    if (unknown.length > 0) throw new Error(`comando desconhecido: ${unknown.join(', ')}`);
-    return setCommandsEnabled(names, enabled);
+    if (unknown.length > 0) throw new Error(`unknown_command: ${unknown.join(', ')}`);
+    return this.toggles.setEnabled(names, enabled);
   }
 
-  /** Enables or disables the plugin as a whole, and edits its permissions/hosts. */
-  async update(
-    id: string,
-    changes: { enabled?: boolean; permissions?: Permission[]; allowedHosts?: string[] },
-  ): Promise<string[]> {
+  /**
+   * Enabling or disabling the plugin as a whole. Permission and host changes are refused here on
+   * purpose: they live in the reviewed registry, and the panel has no route that writes them.
+   */
+  async update(id: string, changes: { enabled?: boolean }): Promise<string[]> {
     const definitions = await this.registry.definitions();
     if (!definitions.some((definition) => definition.id === id)) {
-      throw new Error(`plugin ${id} não está no registry`);
+      throw new Error(`not_in_registry: ${id}`);
     }
     const next = definitions.map((definition) =>
       definition.id === id
-        ? {
-            ...definition,
-            ...(changes.enabled !== undefined && { enabled: changes.enabled }),
-            ...(changes.permissions && { permissions: changes.permissions }),
-            ...(changes.allowedHosts && { allowedHosts: changes.allowedHosts }),
-          }
+        ? { ...definition, enabled: changes.enabled ?? definition.enabled }
         : definition,
     );
     await this.registry.save(next);
     await this.registry.reload();
-    return disabledCommands();
+    return this.toggles.disabled();
   }
 
   async refresh(guildId?: string, locale?: string | null) {
@@ -176,83 +181,28 @@ export class PluginPanelService {
 
   /**
    * A deploy is a bulk PUT, so Discord replaces whatever is not in the body. Disabled commands are
-   * left out on purpose: that is what makes the toggle reach Discord.
+   * left out on purpose: that is what makes the toggle reach Discord. Context menus go in too: a
+   * deploy that only sent slash commands deleted every plugin menu, and the bot's own.
    */
   async deploy(id?: string): Promise<{ commands: number; guild: string; plugin: number | null }> {
-    const disabled = new Set(disabledCommands());
-    const body = [...commandCatalog()].filter((command) => !disabled.has(command.name));
+    const disabled = new Set(this.toggles.disabled());
+    const body: RegisteredCommand[] = [...commandCatalog()].filter(
+      (command) => !disabled.has(command.name),
+    );
     let plugin: number | null = null;
     for (const loaded of this.registry.all()) {
-      const specs = loaded.commands.filter((spec) => !disabled.has(spec.name));
-      body.push(...specs.map((spec) => this.manifests.toCommandJSON(spec)));
+      const specs: RegisteredCommand[] = [
+        ...loaded.commands
+          .filter((spec) => !disabled.has(spec.name))
+          .map((spec): RegisteredCommand => this.manifests.toCommandJSON(spec)),
+        ...loaded.contextMenus
+          .filter((spec) => !disabled.has(spec.name))
+          .map((spec): RegisteredCommand => this.manifests.toContextMenuJSON(spec)),
+      ];
+      body.push(...specs);
       if (loaded.id === id) plugin = specs.length;
     }
-    if (id && plugin === null) throw new Error(`plugin ${id} não está carregado`);
+    if (id && plugin === null) throw new Error(`not_loaded: ${id}`);
     return { ...(await this.deployer.deploy(body)), plugin };
   }
-}
-
-const toggleSchema = z.object({
-  commands: z.array(z.string().min(1)).min(1).max(200),
-  enabled: z.boolean(),
-});
-
-const pluginSchema = z.object({
-  enabled: z.boolean().optional(),
-  permissions: z.array(z.string()).optional(),
-  allowedHosts: z.array(z.string().min(1).max(253)).optional(),
-});
-
-// One route for the whole segment: core stays unaware of plugin shapes.
-export function registerPluginPanel(): void {
-  const panel = inject(PluginPanelService);
-  const registry = inject(PluginRegistryService);
-
-  registerPanelRoute('plugins', async ({ segments: [first, second], query, method, body }) => {
-    const guildId = query.get('guild') ?? undefined;
-    const locale = query.get('locale');
-    const action = second ?? undefined;
-    if (action === 'refresh' && method === 'POST') {
-      return { body: await panel.refresh(guildId, locale) };
-    }
-    if (action === 'deploy' && method === 'POST') {
-      // `all` republishes everything; an id only reports how many came from that plugin.
-      const result = await panel.deploy(first === 'all' ? undefined : first);
-      return { body: { ...result, ...(await panel.list(guildId, locale)) } };
-    }
-    if (action === 'commands' && (method === 'PUT' || method === 'POST')) {
-      if (!first)
-        return { status: 400, body: { error: 'informe o plugin em /plugins/<id>/commands' } };
-      const { commands, enabled } = toggleSchema.parse(body ?? {});
-      const own = new Set((registry.get(first)?.commands ?? []).map((spec) => spec.name));
-      const foreign = commands.filter((name) => !own.has(name));
-      if (foreign.length > 0) {
-        return {
-          status: 400,
-          body: { error: `não pertence a ${first}: ${foreign.join(', ')}` },
-        };
-      }
-      await panel.toggle(commands, enabled);
-      return { body: await panel.list(guildId, locale) };
-    }
-    if (!second && first && (method === 'PUT' || method === 'PATCH')) {
-      await panel.update(first, pluginSchema.parse(body ?? {}));
-      return { body: await panel.list(guildId, locale) };
-    }
-    if (!second && first && method === 'DELETE') {
-      return {
-        status: 405,
-        body: { error: 'remover plugin é no repositório: saia do registry.json' },
-      };
-    }
-    if (method === 'GET') {
-      return {
-        body: { ...(await panel.list(guildId, locale)), registry: await registry.definitions() },
-      };
-    }
-    return {
-      status: 405,
-      body: { error: 'o painel só lista e liga/desliga; instalar é no repositório' },
-    };
-  });
 }

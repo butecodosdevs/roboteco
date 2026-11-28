@@ -4,12 +4,12 @@ import { resolve } from 'node:path';
 import type { Client } from 'discord.js';
 import { and, count, desc, eq, gt, isNull } from 'drizzle-orm';
 import { z } from 'zod';
+import { Injectable, inject } from '@/core';
 import { db, schema } from '@/db';
-import { disabledCommands, setCommandsEnabled } from './command-toggles';
-import { usageReport } from './command-usage';
-import { commandCatalog, commandOwners } from './lifecycle';
-import { isPublicPanelSegment, panelSessionValid } from './panel-auth';
-import { panelRoute } from './panel-routes';
+import { PanelCatalogService } from './panel-catalog.service';
+import { PanelRouterService } from './panel-router.service';
+import { PanelTogglesService } from './panel-toggles.service';
+import { PanelUsageService } from './panel-usage.service';
 
 export interface PanelEvent {
   client: Client;
@@ -33,10 +33,13 @@ const json = (response: ServerResponse, status: number, body: unknown, headers =
 };
 
 /** Cookies come from Better Auth; the header is what scripts and CI send. */
-
-async function authorized(request: IncomingMessage, token?: string): Promise<boolean> {
-  if (request.headers['x-panel-token'] === token && token) return true;
-  return panelSessionValid(request);
+async function authorized(
+  router: PanelRouterService,
+  request: IncomingMessage,
+  token?: string,
+): Promise<boolean> {
+  if (token && request.headers['x-panel-token'] === token) return true;
+  return router.sessionValid(request);
 }
 
 const total = async (query: Promise<{ total: number }[]>) => (await query)[0]?.total ?? 0;
@@ -64,49 +67,6 @@ async function pluginFiles() {
  */
 const discordLocale = (locale: string | null): string =>
   locale === 'pt' ? 'pt-BR' : locale === 'zh' ? 'zh-CN' : 'en-US';
-
-/** Built-in commands grouped by the module that declared them, with the panel's toggles. */
-async function builtInModules(guildId: string | undefined, locale: string | null) {
-  const want = discordLocale(locale);
-  const owners = commandOwners();
-  const disabled = new Set(disabledCommands());
-  const usage = guildId ? await usageReport(guildId, 30) : null;
-  const used = new Map((usage?.commands ?? []).map((row) => [row.command, row.total]));
-  const groups = new Map<
-    string,
-    { name: string; code: string; description: string; disabled: boolean; uses: number }[]
-  >();
-  for (const command of commandCatalog()) {
-    const owner = owners[command.name];
-    if (!owner) continue;
-    const localized = (command as { name_localizations?: Record<string, string> })
-      .name_localizations;
-    const descriptions = (command as { description_localizations?: Record<string, string> })
-      .description_localizations;
-    const group = groups.get(owner) ?? [];
-    group.push({
-      name: localized?.[want] ?? command.name,
-      code: command.name,
-      description:
-        descriptions?.[want] ?? ('description' in command ? (command.description ?? '') : ''),
-      disabled: disabled.has(command.name),
-      uses: used.get(command.name) ?? 0,
-    });
-    groups.set(owner, group);
-  }
-  return [...groups]
-    .map(([module, commands]) => ({
-      module,
-      commands: commands.sort((a, b) => b.uses - a.uses || a.name.localeCompare(b.name)),
-      uses: commands.reduce((sum, command) => sum + command.uses, 0),
-    }))
-    .sort(
-      (a, b) =>
-        b.uses - a.uses ||
-        b.commands.length - a.commands.length ||
-        a.module.localeCompare(b.module),
-    );
-}
 
 /** Display names come from the cache when Discord has them; the raw id is the fallback. */
 function nameResolver(client: Client, guildId: string) {
@@ -273,106 +233,166 @@ async function summary(client: Client, guildId: string) {
   };
 }
 
-export async function handlePanel(
-  request: IncomingMessage,
-  response: ServerResponse,
-  url: URL,
-  event: PanelEvent,
-): Promise<void> {
-  const { client, token, method, body } = event;
-  if (!token) {
-    json(response, 503, { error: 'disabled' });
-    return;
-  }
+@Injectable()
+export class PanelService {
+  private readonly router = inject(PanelRouterService);
+  private readonly catalog = inject(PanelCatalogService);
+  private readonly toggles = inject(PanelTogglesService);
+  private readonly usage = inject(PanelUsageService);
 
-  const [head, ...segments] = url.pathname.split('/').filter(Boolean).slice(2);
-
-  if (!isPublicPanelSegment(head) && !(await authorized(request, token))) {
-    json(response, 401, { error: 'unauthorized' });
-    return;
-  }
-
-  if (head && head !== 'guilds' && head !== 'commands' && head !== 'usage') {
-    const route = panelRoute(head);
-    if (!route) {
-      json(response, 404, { error: 'unknown route' });
-      return;
-    }
-    try {
-      const reply = await route({
-        segments,
-        query: url.searchParams,
-        method,
-        body,
-        client,
-        request,
+  /** Built-in commands grouped by the module that declared them, with the panel's toggles. */
+  private async builtInModules(guildId: string | undefined, locale: string | null) {
+    const want = discordLocale(locale);
+    const disabled = new Set(this.toggles.disabled());
+    const usage = guildId ? await this.usage.report(guildId, 30) : null;
+    const used = new Map((usage?.commands ?? []).map((row) => [row.command, row.total]));
+    const groups = new Map<
+      string,
+      { name: string; code: string; description: string; disabled: boolean; uses: number }[]
+    >();
+    for (const command of this.catalog.commands()) {
+      const owner = this.catalog.ownerOf(command.name);
+      if (!owner) continue;
+      const localized = (command as { name_localizations?: Record<string, string> })
+        .name_localizations;
+      const descriptions = (command as { description_localizations?: Record<string, string> })
+        .description_localizations;
+      const group = groups.get(owner) ?? [];
+      group.push({
+        name: localized?.[want] ?? command.name,
+        code: command.name,
+        description:
+          descriptions?.[want] ?? ('description' in command ? (command.description ?? '') : ''),
+        disabled: disabled.has(command.name),
+        uses: used.get(command.name) ?? 0,
       });
-      json(response, reply.status ?? 200, reply.body, reply.headers);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      json(response, 400, { error: message });
+      groups.set(owner, group);
     }
-    return;
+    return [...groups]
+      .map(([module, commands]) => ({
+        module,
+        commands: commands.sort((a, b) => b.uses - a.uses || a.name.localeCompare(b.name)),
+        uses: commands.reduce((sum, command) => sum + command.uses, 0),
+      }))
+      .sort(
+        (a, b) =>
+          b.uses - a.uses ||
+          b.commands.length - a.commands.length ||
+          a.module.localeCompare(b.module),
+      );
   }
 
-  const guilds = [...client.guilds.cache.values()].map((guild) => ({
-    id: guild.id,
-    name: guild.name,
-    members: guild.memberCount,
-    icon: guild.iconURL({ size: 64 }),
-  }));
-
-  if (url.pathname === '/api/panel/guilds') {
-    json(response, 200, {
-      bot: client.user
-        ? { tag: client.user.tag, avatar: client.user.displayAvatarURL({ size: 64 }) }
-        : null,
-      ping: client.ws.ping,
-      guilds,
-      plugins: await pluginFiles(),
-    });
-    return;
-  }
-
-  if (url.pathname === '/api/panel/commands') {
-    const guildId = url.searchParams.get('guild') ?? guilds[0]?.id;
-    if (method !== 'GET' && method !== 'PUT') {
-      json(response, 405, { error: `método ${method} não suportado` });
-      return;
+  /** Answers `/api/panel/*` and reports whether it did; core still serves `/health` and `web/`. */
+  async handle(
+    request: IncomingMessage,
+    response: ServerResponse,
+    url: URL,
+    event: PanelEvent,
+  ): Promise<boolean> {
+    if (!isPanelPath(url.pathname)) return false;
+    const { client, token, method, body } = event;
+    if (!token) {
+      json(response, 503, { error: 'disabled' });
+      return true;
     }
-    if (method === 'PUT') {
-      const { commands, enabled } = z
-        .object({ commands: z.array(z.string().min(1)).max(200), enabled: z.boolean() })
-        .parse(body ?? {});
-      const known = new Set([...commandCatalog().map((c) => c.name)]);
-      const unknown = commands.filter((name) => !known.has(name));
-      if (unknown.length > 0)
-        json(response, 400, { error: `comando desconhecido: ${unknown.join(', ')}` });
-      else setCommandsEnabled(commands, enabled);
-      if (unknown.length > 0) return;
-    }
-    json(response, 200, {
-      modules: await builtInModules(guildId, url.searchParams.get('locale')),
-      disabled: disabledCommands(),
-    });
-    return;
-  }
 
-  if (url.pathname === '/api/panel/usage') {
-    const guildId = url.searchParams.get('guild') ?? guilds[0]?.id;
-    if (!guildId) {
-      json(response, 400, { error: 'no guild' });
-      return;
-    }
-    const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? 30), 1), 365);
-    json(response, 200, await usageReport(guildId, days));
-    return;
-  }
+    const [head, ...segments] = url.pathname.split('/').filter(Boolean).slice(2);
 
-  const guildId = url.searchParams.get('guild') ?? guilds[0]?.id;
-  if (!guildId) {
-    json(response, 400, { error: 'no guild' });
-    return;
+    if (!this.router.isPublic(head) && !(await authorized(this.router, request, token))) {
+      json(response, 401, { error: 'unauthorized' });
+      return true;
+    }
+
+    if (head && head !== 'guilds' && head !== 'commands' && head !== 'usage') {
+      const route = this.router.get(head);
+      if (!route) {
+        json(response, 404, { error: 'unknown_route' });
+        return true;
+      }
+      try {
+        const reply = await route({
+          segments,
+          query: url.searchParams,
+          method,
+          body,
+          client,
+          request,
+        });
+        json(response, reply.status ?? 200, reply.body, reply.headers);
+      } catch (error) {
+        // Zod and capability failures carry a stable message the panel can show verbatim.
+        const message = error instanceof Error ? error.message : String(error);
+        json(response, 400, { error: message });
+      }
+      return true;
+    }
+
+    const guilds = [...client.guilds.cache.values()].map((guild) => ({
+      id: guild.id,
+      name: guild.name,
+      members: guild.memberCount,
+      icon: guild.iconURL({ size: 64 }),
+    }));
+
+    if (url.pathname === '/api/panel/guilds') {
+      json(response, 200, {
+        bot: client.user
+          ? { tag: client.user.tag, avatar: client.user.displayAvatarURL({ size: 64 }) }
+          : null,
+        ping: client.ws.ping,
+        guilds,
+        plugins: await pluginFiles(),
+      });
+      return true;
+    }
+
+    /**
+     * The guild comes from the query string, so it is checked against the servers the bot is
+     * actually in. Without this, any panel user could read another server's cases and private
+     * reasons by guessing an id. The panel is operator-only: every allowlisted e-mail sees every
+     * server the bot serves, which is what `docs/operations/production.md` says out loud.
+     */
+    const wanted = url.searchParams.get('guild') ?? guilds[0]?.id;
+    if (!wanted) {
+      json(response, 400, { error: 'no_guild' });
+      return true;
+    }
+    if (!client.guilds.cache.has(wanted)) {
+      json(response, 404, { error: 'unknown_guild' });
+      return true;
+    }
+
+    if (url.pathname === '/api/panel/commands') {
+      if (method !== 'GET' && method !== 'PUT') {
+        json(response, 405, { error: 'method_not_allowed' });
+        return true;
+      }
+      if (method === 'PUT') {
+        const { commands, enabled } = z
+          .object({ commands: z.array(z.string().min(1)).max(200), enabled: z.boolean() })
+          .parse(body ?? {});
+        const known = new Set(this.catalog.names());
+        const unknown = commands.filter((name) => !known.has(name));
+        if (unknown.length > 0) {
+          json(response, 400, { error: `unknown_command: ${unknown.join(', ')}` });
+          return true;
+        }
+        this.toggles.setEnabled(commands, enabled);
+      }
+      json(response, 200, {
+        modules: await this.builtInModules(wanted, url.searchParams.get('locale')),
+        disabled: this.toggles.disabled(),
+      });
+      return true;
+    }
+
+    if (url.pathname === '/api/panel/usage') {
+      const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? 30), 1), 365);
+      json(response, 200, await this.usage.report(wanted, days));
+      return true;
+    }
+
+    json(response, 200, await summary(client, wanted));
+    return true;
   }
-  json(response, 200, await summary(client, guildId));
 }

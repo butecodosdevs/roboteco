@@ -90,7 +90,6 @@ Two more are for the [plugin](concepts/plugins.md#recorded-discord-payloads) tes
 | `pnpm typecheck` | TypeScript, including `scripts/` and `tests/` |
 | `pnpm test` | Behaviour tests in `tests/`, against the Postgres and Valkey in `.env` (run `pnpm db:migrate` first) |
 | `pnpm zip:check` | Asserts the in-memory zip reader used by the panel upload |
-| `pnpm panel:check` | Asserts the panel's HTTP boundary: session gate, Discord sign-in, grouping, command toggles |
 | `pnpm lint` | Biome plus [structure rules](concepts/structure-rules.md) |
 | `pnpm lint:structure` | Structure rules only |
 | `pnpm format` | Format and apply safe Biome fixes |

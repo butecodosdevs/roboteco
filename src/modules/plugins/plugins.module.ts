@@ -27,7 +27,7 @@ import { PluginHostService } from './plugin-host.service';
 import { PluginJobsService } from './plugin-jobs.service';
 import { PluginManifestService } from './plugin-manifest.service';
 import { PluginModerationService } from './plugin-moderation.service';
-import { registerPluginPanel } from './plugin-panel.service';
+import { PluginPanelRouterService } from './plugin-panel-router.service';
 import { PluginRegistryService, registryPath } from './plugin-registry.service';
 import { pluginComponentPrefix } from './plugin-render.service';
 
@@ -90,7 +90,7 @@ export class PluginsModule implements OnReady, OnGuildRemove, OnUserErase, OnCom
 
   async onReady(client: Client<true>) {
     // Registered before loading, so the panel answers even when every plugin fails.
-    registerPluginPanel();
+    inject(PluginPanelRouterService).register();
     this.discord.attach(client);
     client.on(Events.Raw as never, (packet: GatewayPacket) => {
       this.events

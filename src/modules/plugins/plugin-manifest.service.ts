@@ -6,8 +6,8 @@ import {
   Locale,
   PermissionFlagsBits,
   PermissionsBitField,
-  type RESTPostAPIApplicationCommandsJSONBody,
   type RESTPostAPIChatInputApplicationCommandsJSONBody,
+  type RESTPostAPIContextMenuApplicationCommandsJSONBody,
 } from 'discord.js';
 import { z } from 'zod';
 import { Injectable } from '@/core';
@@ -511,7 +511,9 @@ export class PluginManifestService {
     } as RESTPostAPIChatInputApplicationCommandsJSONBody;
   }
 
-  toContextMenuJSON(spec: PluginContextMenuSpec): RESTPostAPIApplicationCommandsJSONBody {
+  toContextMenuJSON(
+    spec: PluginContextMenuSpec,
+  ): RESTPostAPIContextMenuApplicationCommandsJSONBody {
     const required = permissionBits(spec.defaultMemberPermissions);
     return {
       type: spec.type === 'user' ? ApplicationCommandType.User : ApplicationCommandType.Message,
@@ -519,6 +521,6 @@ export class PluginManifestService {
       name_localizations: spec.nameLocalizations,
       contexts: [InteractionContextType.Guild],
       ...(required !== undefined && { default_member_permissions: required.toString() }),
-    } as RESTPostAPIApplicationCommandsJSONBody;
+    } as RESTPostAPIContextMenuApplicationCommandsJSONBody;
   }
 }

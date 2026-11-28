@@ -32,7 +32,10 @@ const manifests = new PluginManifestService();
 const body = [
   ...app.commands.map((command) => command.toJSON()),
   ...app.contextMenus.map((menu) => menu.toJSON()),
-  ...chosen.flatMap((plugin) => plugin.commands.map((spec) => manifests.toCommandJSON(spec))),
+  ...chosen.flatMap((plugin) => [
+    ...plugin.commands.map((spec) => manifests.toCommandJSON(spec)),
+    ...plugin.contextMenus.map((spec) => manifests.toContextMenuJSON(spec)),
+  ]),
 ];
 
 if (dropped.length > 0) {

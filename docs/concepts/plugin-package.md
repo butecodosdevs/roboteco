@@ -1,40 +1,60 @@
 # Plugin package
 
-O painel **não** instala plugins: ele lista o que está em `plugins/registry.json`, liga/desliga comandos e mostra o uso. Instalar é no repositório, com dois arquivos:
+The panel does **not** install plugins: it lists what `plugins/registry.json` holds, turns commands
+on and off, and shows usage. Installing is a repository change, with two files:
 
 ```sh
-pnpm plugins:build              # gera plugins/dist/<id>.wasm a partir de plugins/<id>-go ou -rust
+pnpm plugins:build              # writes plugins/dist/<id>.wasm from plugins/<id>-go or -rust
 ```
 
-| Onde | O que é |
+| Path | What it is |
 | --- | --- |
-| `plugins/dist/<id>.wasm` | O binário. Fica fora do git (`.gitignore`), por isso precisa ser compilado em cada máquina. |
-| `plugins/registry.json` | Uma entrada `{ id, wasm, enabled, permissions, allowedHosts? }` por plugin. |
+| `plugins/dist/<id>.wasm` | The binary. Gitignored, so it is compiled on every machine. |
+| `plugins/registry.json` | One `{ id, wasm, enabled, permissions, allowedHosts? }` entry per plugin. |
 
 ```json
 {
   "plugins": [
-    { "id": "coin", "wasm": "plugins/dist/coin.wasm", "enabled": true, "permissions": ["kv"] }
+    { "id": "hello", "wasm": "plugins/dist/hello.wasm", "enabled": true, "permissions": ["kv"] }
   ]
 }
 ```
 
-O `id` é o nome do plugin: letras minúsculas, números e hífen, até 32 caracteres — `coin`, `daily-xp`, `welcome-2`.
+The `id` is the plugin name: lowercase letters, digits and hyphen, up to 32 characters — `hello`,
+`daily-xp`, `welcome-2`.
 
-## O que o bot faz
+## What the bot does
 
-1. Lê `registry.json` no boot.
-2. Carrega o `.wasm` de cada entrada com `enabled: true`.
-3. Confere as permissões que o WASM importa contra a lista `permissions`; o que faltar aparece no card como `faltam ...`.
-4. Publica os comandos no Discord (`pnpm deploy-plugins`, ou o botão **Publicar no Discord** no painel).
+1. Reads `registry.json` at boot.
+2. Loads the `.wasm` of every entry with `enabled: true`.
+3. Checks the permissions the WASM imports against the `permissions` list; whatever is missing is
+   shown on the panel card.
+4. Publishes the commands to Discord (`pnpm deploy-plugins`, or the **Publish to Discord** button in
+   the panel).
 
-Se o WASM não puder ser lido, ou se os comandos dele colidirem com um comando embutido ou de outro plugin, o plugin não carrega e o card mostra o motivo. O resto continua funcionando.
+If the WASM cannot be read, or its commands collide with a built-in or another plugin's, the plugin
+does not load and the card shows why. Everything else keeps working.
 
-## Atualizar uma versão
+## What the panel controls, and what it does not
 
-Recompile com `pnpm plugins:build`, suba o novo `.wasm` para `plugins/dist/` e clique em **Recarregar** no painel. As permissões já concedidas no registry são mantidas.
+| Action | Where |
+| --- | --- |
+| Enable or disable a plugin | Panel |
+| Turn a single command on or off | Panel |
+| Publish commands to Discord | Panel |
+| Install, build, remove a plugin | Repository |
+| Grant a permission or an allowed host | Repository |
 
-## Ver também
+Permissions and hosts are the security boundary for a plugin, so they live in the reviewed
+`registry.json`: a change gets a diff and a reviewer. The panel reads them and renders them as text;
+a request that carries `permissions` or `allowedHosts` is refused with a 400.
 
-- [plugins](plugins.md) — contrato do WASM, comandos e permissões.
-- [getting started](../getting-started.md) — scripts, incluindo `pnpm deploy-plugins`.
+## Updating a version
+
+Rebuild with `pnpm plugins:build`, put the new `.wasm` in `plugins/dist/` and press **Reload** in the
+panel. The permissions already granted in the registry stay as they are.
+
+## See also
+
+- [plugins](plugins.md) — the WASM contract, commands and permissions.
+- [getting started](../getting-started.md) — scripts, including `pnpm deploy-plugins`.

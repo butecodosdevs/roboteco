@@ -1,27 +1,29 @@
 name: ci
 
-# Testes do bot, no PR e na `main`.
+# The bot's tests, on every PR and on push to `main`.
 #
-# ## Por que `ubuntu-latest` e não o runner do cluster
+# ## Why `ubuntu-latest` and not the cluster runner
 #
-# O repositório é público: um PR de fork executa código de estranho. Num runner
-# self-hosted isso significa código de terceiro com o `config.json` do registry
-# montado e o daemon do cluster ao lado — não é um risco teórico. Runner do
-# GitHub não tem credencial nenhuma, e em repositório público ele é de graça.
+# This repository is public: a fork PR runs a stranger's code. On a self-hosted
+# runner that means third-party code with the registry's `config.json` mounted
+# and the cluster daemon next door — not a theoretical risk. A GitHub-hosted
+# runner has no credential at all, and on a public repo it is free.
 #
-# O build da imagem é outro workflow (`image.yml`), que só roda na `main` e só
-# DEPOIS que este passa: ele escuta `workflow_run` deste workflow, não o `push`.
+# The image build is another workflow (`image.yml`). It runs on `main` AND only
+# AFTER this passes: it listens to `workflow_run` of this workflow, not to the
+# `push` event.
 #
-# Este workflow roda em `pull_request` E em `push: main`, de propósito. O de PR
-# é o que pega o defeito antes do merge; o de push na `main` é o que serve de
-# gatilho para o build — sem ele, um merge direto (ou um commit sem PR) não
-# testaria nada e o `image.yml` não teria um `workflow_run` para esperar.
+# This workflow runs on `pull_request` AND on `push: main`, on purpose. The PR run
+# is what catches the defect before the merge; the `main` run is what serves as
+# the trigger for the build — without it, a direct merge (or a commit without a
+# PR) would test nothing and `image.yml` would have no `workflow_run` to await.
 #
-# ## Por que só o Postgres, e não o `docker compose` inteiro
+# ## Why only Postgres and Valkey, and not the whole `docker compose`
 #
-# `panel:check` forja sessões no banco e prova a allowlist pelo HTTP; ele nunca
-# fala com o S3. O `config` valida o ambiente todo no import, então as chaves do
-# S3 entram como valor qualquer — é o mesmo motivo do workflow antigo.
+# `tests/panel/boundary.test.ts` forges sessions in the database and proves the allowlist, the
+# guild guard and the read-only settings over real HTTP; the plugin tests count calls through the
+# cache (kv increments, the XP window, the DM rate limit). Neither talks to S3. `config` validates
+# the whole environment at import, so the S3 keys come in as any value.
 
 on:
   pull_request:
@@ -53,10 +55,10 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-      # The plugin tests count calls through the cache (kv increments, the XP
-      # window, the DM rate limit), so a missing Valkey makes them crash with
-      # ECONNREFUSED, not fail on the assertion. Same image and flags as
-      # compose.prod.yaml, minus persistence: a rate limit does not need a disk.
+      # The plugin tests count calls through the cache, so a missing Valkey makes
+      # them crash with ECONNREFUSED instead of failing on the assertion. Same
+      # image and flags as compose.prod.yaml, minus persistence: a rate limit
+      # counter does not need a disk.
       valkey:
         image: valkey/valkey:9.2.1-alpine
         ports:
@@ -67,9 +69,9 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      # `src/config.ts` valida o ambiente INTEIRO no import: até o migrator
-      # precisa destas chaves para não morrer em "DISCORD_TOKEN is required"
-      # antes de tocar no banco.
+      # `src/config.ts` validates the WHOLE environment at import: even the
+      # migrator needs these keys so it does not die on "DISCORD_TOKEN is
+      # required" before touching the database.
       DISCORD_TOKEN: x
       DISCORD_CLIENT_ID: x
       DATABASE_URL: postgres://roboteco:roboteco@localhost:5432/roboteco
@@ -100,19 +102,16 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      # Banco vazio, migração do zero: é o caminho que um deploy novo percorre.
-      # O `initContainer` de produção roda exatamente este script.
+      # Empty database, migration from scratch: the path a new deploy takes. The
+      # production `initContainer` runs exactly this script.
       - name: Migrate
         run: pnpm db:migrate:runtime
 
-      - name: Panel boundary
-        run: pnpm panel:check
-
       # Plugins are Rust/Go source (plugins/dist is gitignored), and the test
       # suite loads built WASM — `tests/plugins/*` fails with "run pnpm
-      # plugins:build first". The image build compiles the same sources, so
-      # this step is also what catches a plugin that stops compiling, before
-      # it reaches a registry the bot reads.
+      # plugins:build first". The image build compiles the same sources, so this
+      # step is also what catches a plugin that stops compiling, before it
+      # reaches a registry the bot reads.
       #
       # `rustup target add` is not redundant with rust-toolchain.toml: mise
       # exports RUSTUP_TOOLCHAIN, which takes precedence over that file, so
@@ -123,4 +122,3 @@ jobs:
           rustup target add wasm32-unknown-unknown
           pnpm plugins:build
           pnpm test
-
