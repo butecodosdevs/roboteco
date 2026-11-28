@@ -4,11 +4,12 @@
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| [mise](https://mise.jdx.dev) | latest | `mise install` installs the Node and pnpm pinned in `mise.toml` |
+| [mise](https://mise.jdx.dev) | latest | `mise install` installs the Node, pnpm, Rust and Go pinned in `mise.toml` |
 | [Node.js](https://nodejs.org) | 26.10.0 (min. 22.12) | Runtime |
 | [pnpm](https://pnpm.io) | 12.5.1 | Package manager |
 | [Docker](https://docs.docker.com/get-docker/) + Compose | Compose v2+ | Runs PostgreSQL, Garage and Valkey locally |
-| [Rust](https://rustup.rs) with `wasm32-unknown-unknown` | optional | Only to build the example [plugin](concepts/plugins.md) and the test fixtures (`pnpm plugins:build`, needed by `pnpm test`), which also needs [Go](https://go.dev) 1.24+ |
+| [Rust](https://rustup.rs) | stable | Builds the [plugins](concepts/plugins.md) and the Rust test fixtures with `pnpm plugins:build`, which `pnpm test` needs. `rust-toolchain.toml` adds the `wasm32-unknown-unknown` target on the first build |
+| [Go](https://go.dev) | 1.27 (min. 1.24) | Builds the Go test fixture in `pnpm plugins:build`, and Go plugins |
 
 ## Discord application
 
@@ -48,6 +49,7 @@ Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
 ```sh
 mise install
 pnpm install
+pnpm plugins:build     # WASM plugins and test fixtures; needed by pnpm test
 pnpm services:up       # PostgreSQL + Garage + Valkey
 pnpm storage:init      # Garage layout, key and bucket (safe to rerun)
 pnpm db:migrate
