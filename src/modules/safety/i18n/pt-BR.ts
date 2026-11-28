@@ -42,7 +42,7 @@ export const safetyPtBR: Messages['safety'] = {
   dm: 'Sua mensagem em **{server}** foi removida porque uma verificação de segurança confirmou que ela é maliciosa:\n{findings}\nSe você não quis enviar isso, sua conta ou seu dispositivo podem estar comprometidos: troque sua senha e verifique seu dispositivo com um antivírus.',
   replies: {
     enabled:
-      'A verificação está ligada. Mensagens só são removidas quando uma verificação confirma uma ameaça; o que for desconhecido continua no ar. As remoções aparecem no log de moderação (/moderacao log).',
+      'A verificação está ligada. Mensagens só são removidas quando uma verificação confirma uma ameaça; o que for desconhecido continua no ar. As remoções aparecem no log de moderação (/moderacao log casos).',
     disabled: 'A verificação está desligada.',
     timeoutSet: 'Membros que tiverem a mensagem removida serão castigados por {minutes} minutos.',
     timeoutOff: 'Membros que tiverem a mensagem removida não serão castigados.',
@@ -63,6 +63,6 @@ export const safetyPtBR: Messages['safety'] = {
       'O bot está rodando sem o intent Message Content, então não consegue ver links nem arquivos.',
     noManageMessages: 'Preciso da permissão Gerenciar Mensagens para remover mensagens.',
     noLogChannel:
-      'Nenhum canal de log de moderação está definido, então as remoções não são registradas. Use /moderacao log.',
+      'Nenhum canal de log de moderação está definido, então as remoções não são registradas. Use /moderacao log casos.',
   },
 };

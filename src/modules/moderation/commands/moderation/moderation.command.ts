@@ -3,7 +3,7 @@ import { Command } from '@/core';
 import { localize } from '@/i18n';
 import { DmSubcommand } from './dm.subcommand';
 import { EscalationSubcommand } from './escalation.subcommand';
-import { LogSubcommand } from './log.subcommand';
+import { LogGroup } from './log/log.group';
 import { StatusSubcommand } from './status.subcommand';
 import { WarnExpirySubcommand } from './warn-expiry.subcommand';
 
@@ -13,12 +13,7 @@ import { WarnExpirySubcommand } from './warn-expiry.subcommand';
     'moderation.commands.settings',
   ).setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   guildOnly: true,
-  subcommands: [
-    LogSubcommand,
-    DmSubcommand,
-    EscalationSubcommand,
-    WarnExpirySubcommand,
-    StatusSubcommand,
-  ],
+  subcommands: [DmSubcommand, EscalationSubcommand, WarnExpirySubcommand, StatusSubcommand],
+  groups: [LogGroup],
 })
 export class ModerationCommand {}

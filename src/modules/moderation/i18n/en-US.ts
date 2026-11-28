@@ -12,7 +12,11 @@ export const moderationEnUS = {
     caseReason: { name: 'reason', description: 'Change the reason of a case' },
     history: { name: 'history', description: "Show a user's moderation history" },
     settings: { name: 'moderation', description: 'Configure moderation' },
-    settingsLog: { name: 'log', description: 'Set or clear the moderation log channel' },
+    logGroup: { name: 'log', description: 'Where moderation cases and server events are logged' },
+    logCases: {
+      name: 'cases',
+      description: 'Set or clear the channel moderation cases are logged to',
+    },
     settingsDm: { name: 'dm', description: 'Choose whether users get a DM when actioned' },
     settingsEscalation: {
       name: 'escalation',

@@ -29,6 +29,7 @@ interface Problem {
 const decoratorFor = {
   command: 'Command',
   subcommand: 'Subcommand',
+  group: 'SubcommandGroup',
   'context-menu': 'UserContextMenu|MessageContextMenu',
   button: 'Button',
   select: 'SelectMenu',
@@ -107,11 +108,27 @@ function checkPlacement(file: SourceFile) {
     if (name === `${feature}.module.ts` || name.endsWith('.service.ts')) return;
     report(file, `Only ${feature}.module.ts and *.service.ts may sit at the root of a module.`);
   } else if (folder === 'commands') {
-    if (parts.length !== 3) {
-      report(file, 'Command files go in commands/<name>/.');
+    if (parts.length !== 3 && parts.length !== 4) {
+      report(
+        file,
+        'Command files go in commands/<name>/, or commands/<name>/<group>/ for a group.',
+      );
       return;
     }
     const commandName = parts[1] as string;
+    if (parts.length === 4) {
+      const group = parts[2] as string;
+      if (name.endsWith('.group.ts') && name !== `${group}.group.ts`) {
+        report(
+          file,
+          `The group in commands/${commandName}/${group}/ must be named ${group}.group.ts.`,
+        );
+      }
+      if (kindOf(name) && !/\.(group|subcommand)\.ts$/.test(name)) {
+        report(file, 'Only *.group.ts and *.subcommand.ts files may live in a group folder.');
+      }
+      return;
+    }
     if (name.endsWith('.command.ts') && name !== `${commandName}.command.ts`) {
       report(
         file,
@@ -119,7 +136,10 @@ function checkPlacement(file: SourceFile) {
       );
     }
     if (kindOf(name) && !/\.(command|subcommand)\.ts$/.test(name)) {
-      report(file, 'Only *.command.ts and *.subcommand.ts files may live in a command folder.');
+      report(
+        file,
+        'Only *.command.ts and *.subcommand.ts files may live in a command folder; groups get their own folder.',
+      );
     }
   } else if (folder && folder in flatFolders) {
     const allowed = flatFolders[folder] as Kind[];
@@ -203,7 +223,8 @@ type RegistrationKey =
   | 'components'
   | 'events'
   | 'jobs'
-  | 'subcommands';
+  | 'subcommands'
+  | 'groups';
 
 function registrations(file: SourceFile, key: RegistrationKey) {
   const match = new RegExp(`\\b${key}\\s*:\\s*\\[([^\\]]*)\\]`).exec(file.text);
@@ -213,16 +234,17 @@ function registrations(file: SourceFile, key: RegistrationKey) {
 function checkRegistration() {
   const registeredBy: Record<
     Exclude<Kind, 'service' | 'module'>,
-    ['module' | 'command', RegistrationKey]
+    [('module' | 'command' | 'group')[], RegistrationKey]
   > = {
-    command: ['module', 'commands'],
-    subcommand: ['command', 'subcommands'],
-    'context-menu': ['module', 'contextMenus'],
-    button: ['module', 'components'],
-    select: ['module', 'components'],
-    modal: ['module', 'components'],
-    event: ['module', 'events'],
-    job: ['module', 'jobs'],
+    command: [['module'], 'commands'],
+    subcommand: [['command', 'group'], 'subcommands'],
+    group: [['command'], 'groups'],
+    'context-menu': [['module'], 'contextMenus'],
+    button: [['module'], 'components'],
+    select: [['module'], 'components'],
+    modal: [['module'], 'components'],
+    event: [['module'], 'events'],
+    job: [['module'], 'jobs'],
   };
 
   for (const file of files.values()) {
@@ -235,17 +257,17 @@ function checkRegistration() {
       continue;
     }
 
-    const [ownerKind, key] = registeredBy[kind];
+    const [ownerKinds, key] = registeredBy[kind];
     const owners = [...files.values()].filter(
       (f) =>
-        kindOf(f.path) === ownerKind &&
+        ownerKinds.includes(kindOf(f.path) as (typeof ownerKinds)[number]) &&
         f.imports.some((i) => i.target === file.path) &&
         registrations(f, key).has(file.exportedClass as string),
     );
     if (owners.length === 0) {
       report(
         file,
-        `${file.exportedClass} is not listed in any @${ownerKind === 'module' ? 'Module' : 'Command'}({ ${key} }).`,
+        `${file.exportedClass} is not listed in any ${ownerKinds.map((k) => `@${decoratorFor[k]}`).join(' or ')}({ ${key} }).`,
       );
     }
   }
@@ -299,11 +321,17 @@ function checkModuleLayout() {
       ? readdirSync(commandsDir, { withFileTypes: true }).filter((d) => d.isDirectory())
       : [];
     for (const command of commands) {
-      if (!files.has(join(commandsDir, command.name, `${command.name}.command.ts`))) {
-        report(
-          relative(root, join(commandsDir, command.name)),
-          `Missing ${command.name}.command.ts.`,
-        );
+      const commandDir = join(commandsDir, command.name);
+      if (!files.has(join(commandDir, `${command.name}.command.ts`))) {
+        report(relative(root, commandDir), `Missing ${command.name}.command.ts.`);
+      }
+      for (const group of readdirSync(commandDir, { withFileTypes: true })) {
+        if (
+          group.isDirectory() &&
+          !files.has(join(commandDir, group.name, `${group.name}.group.ts`))
+        ) {
+          report(relative(root, join(commandDir, group.name)), `Missing ${group.name}.group.ts.`);
+        }
       }
     }
 

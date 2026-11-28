@@ -1,6 +1,5 @@
 import { GatewayIntentBits, Partials } from 'discord.js';
 import { Module } from '@/core';
-import { LogsCommand } from './commands/logs/logs.command';
 import { ChannelCreateEvent } from './events/channel-create.event';
 import { ChannelDeleteEvent } from './events/channel-delete.event';
 import { ChannelUpdateEvent } from './events/channel-update.event';
@@ -26,7 +25,6 @@ import { VoiceStateUpdateEvent } from './events/voice-state-update.event';
     GatewayIntentBits.GuildVoiceStates,
   ],
   partials: [Partials.Message, Partials.Channel, Partials.GuildMember],
-  commands: [LogsCommand],
   events: [
     MessageUpdateEvent,
     MessageDeleteEvent,

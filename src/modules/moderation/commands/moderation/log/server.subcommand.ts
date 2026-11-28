@@ -10,11 +10,11 @@ import { updateGuildSettings } from '@/db';
 import { localize, translator } from '@/i18n';
 
 @Subcommand(
-  localize(new SlashCommandSubcommandBuilder(), 'logs.channel').addChannelOption((opt) =>
+  localize(new SlashCommandSubcommandBuilder(), 'logs.server').addChannelOption((opt) =>
     localize(opt, 'logs.options.channel').addChannelTypes(ChannelType.GuildText),
   ),
 )
-export class ChannelSubcommand {
+export class ServerSubcommand {
   async execute(interaction: GuildInteraction) {
     const tr = translator(interaction.locale);
     const channel = interaction.options.getChannel('channel', false, [ChannelType.GuildText]);

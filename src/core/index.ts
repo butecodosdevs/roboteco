@@ -5,6 +5,7 @@ export {
   type GuildAutocompleteInteraction,
   type GuildInteraction,
   Subcommand,
+  SubcommandGroup,
 } from './command';
 export {
   Button,
