@@ -115,6 +115,12 @@ const voiceActionKey = (kind: VoiceAction, guildId: string, memberId: string) =>
 
 export type VoiceAction = 'move' | 'disconnect';
 
+// A feature deleting a member's message marks it with its reason, so the log credits the bot with
+// that reason even without View Audit Log.
+const expectedDeleteTtlSeconds = 60;
+const expectedDeleteKey = (guildId: string, messageId: string) =>
+  `logs:expected-delete:${guildId}:${messageId}`;
+
 // Accounts younger than this are flagged on join; most raid and spam accounts are days old.
 const newAccountMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -350,6 +356,7 @@ export class LogsService {
     const { guild } = message;
     if (!guild) return;
     if (message.author?.bot || message.system) return;
+    const expected = await cache.getdel(expectedDeleteKey(guild.id, message.id)).catch(() => null);
     await this.post(guild, 'messageDelete', sourceOf(message), async (tr) => {
       const vars = {
         author: message.author ? `<@${message.author.id}>` : tr('logs.log.someone'),
@@ -361,14 +368,17 @@ export class LogsService {
             : tr('logs.log.noText'),
       };
       let text = tr('logs.log.messageDelete', vars);
-      if (message.author && this.audit.canRead(guild)) {
+      if (expected !== null) {
+        const bot = { id: guild.client.user.id, reason: expected };
+        text = this.sentence(tr, guild, 'messageDelete', vars, bot);
+      } else if (message.author && this.audit.canRead(guild)) {
         const deleter = await this.audit.messageDeleter(
           guild,
           message.author.id,
           message.channelId,
         );
         text = deleter
-          ? tr('logs.log.messageDeleteBy', { ...vars, actor: `<@${deleter.id}>` })
+          ? this.sentence(tr, guild, 'messageDelete', vars, deleter)
           : tr('logs.log.messageDeleteSelf', vars);
       }
       const reply = message.reference?.messageId
@@ -808,6 +818,13 @@ export class LogsService {
       const vars = { role: after.toString(), changes: changes.join(', ') };
       return [{ text: this.sentence(tr, after.guild, 'roleUpdate', vars, actor) }];
     });
+  }
+
+  /** Marks a member's message the bot is about to delete, with the reason the log should show. */
+  async expectMessageDelete(guildId: string, messageId: string, reason: string): Promise<void> {
+    await cache
+      .set(expectedDeleteKey(guildId, messageId), reason, 'EX', expectedDeleteTtlSeconds)
+      .catch(() => undefined);
   }
 
   /** Marks a voice move or disconnect the bot is about to make for `onBehalfOf`. */

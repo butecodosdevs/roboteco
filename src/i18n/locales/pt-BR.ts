@@ -5,6 +5,7 @@ import { countingPtBR } from '@/modules/counting/i18n/pt-BR';
 import { customCommandsPtBR } from '@/modules/custom-commands/i18n/pt-BR';
 import { devPtBR } from '@/modules/dev/i18n/pt-BR';
 import { dropsPtBR } from '@/modules/drops/i18n/pt-BR';
+import { embedsPtBR } from '@/modules/embeds/i18n/pt-BR';
 import { feedsPtBR } from '@/modules/feeds/i18n/pt-BR';
 import { giveawaysPtBR } from '@/modules/giveaways/i18n/pt-BR';
 import { honeypotPtBR } from '@/modules/honeypot/i18n/pt-BR';
@@ -63,4 +64,5 @@ export const ptBR: Messages = {
   counting: countingPtBR,
   invites: invitesPtBR,
   automod: automodPtBR,
+  embeds: embedsPtBR,
 };

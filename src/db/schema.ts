@@ -40,6 +40,7 @@ export const guilds = pgTable('guilds', {
     .$type<string[]>()
     .notNull()
     .default([]),
+  embedsEnabled: boolean('embeds_enabled').notNull().default(false),
   purgeJobId: integer('purge_job_id'),
   escalationWarnings: integer('escalation_warnings'),
   escalationAction: text('escalation_action', { enum: ['timeout', 'kick', 'ban'] }),
