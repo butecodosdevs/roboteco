@@ -176,7 +176,8 @@ export class RecorderService {
       ownStrings(d.data, session.anonymizer.known);
       if (d.data.component_type === 3)
         for (const v of d.data.values) session.anonymizer.known.add(v);
-      this.save('interactions', name, { t: packet.t, d });
+      // Autocomplete fires on every keystroke and the first one has nothing typed, so keep the last.
+      this.save('interactions', name, { t: packet.t, d }, name === 'autocomplete');
       return;
     }
     if (!Object.hasOwn(gatewayEvents, packet.t)) return;
@@ -185,9 +186,9 @@ export class RecorderService {
     this.save('gateway', `${packet.t}${variant}${byBot ? '.bot' : ''}`, { t: packet.t, d });
   }
 
-  private save(folder: string, name: string, packet: unknown): void {
+  private save(folder: string, name: string, packet: unknown, replace = false): void {
     const session = this.session;
-    if (!session || session.seen.has(`${folder}/${name}`)) return;
+    if (!session || (session.seen.has(`${folder}/${name}`) && !replace)) return;
     session.seen.add(`${folder}/${name}`);
     mkdirSync(join(out, folder), { recursive: true });
     const file = join(out, folder, `${name}.json`);
