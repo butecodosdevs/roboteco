@@ -283,6 +283,7 @@ body.auth-mode .wrap{padding:0 18px}
 .set-label .nm{font-size:12.5px;font-weight:500;letter-spacing:-.005em}
 .set-label .hint{margin-top:2px;max-width:46ch}
 .set-input{display:flex;align-items:center;gap:10px;min-width:0}
+.grow{flex:1;min-width:0;width:auto;font-size:12.5px}
 .set-input input{font-size:12.5px}
 .set-input .stat{flex:0 0 auto;min-width:104px;justify-content:flex-end;text-align:right}
 @media(max-width:760px){.set-row{grid-template-columns:1fr;gap:7px}}

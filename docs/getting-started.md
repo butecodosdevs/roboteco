@@ -33,7 +33,7 @@ Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
 | `PANEL_TOKEN` | no | 16+ char secret; enables the panel and lets scripts authenticate with the `x-panel-token` header |
 | `PANEL_URL` | no | public panel URL (default `http://localhost:4321`); Google OAuth callbacks use it |
 | `PANEL_SECRET` | no | 32+ chars, signs sessions with Better Auth; without it the panel refuses logins |
-| `PANEL_ALLOWED_EMAILS` | no | comma-separated Google emails allowed in; empty blocks every login |
+| `PANEL_ALLOWED_EMAILS` | no | comma-separated, case-insensitive Google emails allowed in; also editable from the panel, where changes apply without a restart |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | no | OAuth client from Google Cloud Console; redirect URI is `${PANEL_URL}/api/auth/callback/google` |
 | `GUILD_DATA_RETENTION_DAYS` | no | days to keep a server's data after the bot leaves (default 30) |
 | `PLUGIN_REGISTRY` | no | plugin registry to load (default `plugins/registry.json`, empty; `plugins/registry.example.json` loads the examples) |

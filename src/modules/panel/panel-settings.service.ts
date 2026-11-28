@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { z } from 'zod';
 import { config } from '@/config';
 import { Injectable, inject, registerPanelRoute } from '@/core';
-import { readSettings, settingsKeys, writeSettings } from '@/core/settings';
+import { liveSetting, readSettings, settingsKeys, writeSettings } from '@/core/settings';
 
 export interface SettingField {
   /** The panel translates each key; the server only reports state. */
@@ -32,6 +32,9 @@ function running(key: string): string | null {
       return String(config.guildDataRetentionDays);
     case 'SENTRY_DSN':
       return config.sentryDsn ?? null;
+    case 'PANEL_ALLOWED_EMAILS':
+      // Read live, so "ativo" means what the next request will actually check.
+      return liveSetting('PANEL_ALLOWED_EMAILS');
     default:
       return null;
   }
@@ -45,17 +48,21 @@ const redact = (value: string) =>
 export class PanelSettingsService {
   list(): SettingField[] {
     const file = readSettings();
-    return settingsKeys.map((item) => {
-      const stored = file[item.key] ?? process.env[item.key] ?? defaults[item.key] ?? null;
-      const active = running(item.key);
-      return {
-        key: item.key,
-        restart: item.restart,
-        secret: item.secret ?? false,
-        value: stored && item.secret ? redact(stored) : stored,
-        active: active !== null && active === stored,
-      };
-    });
+    // The allowlist has its own card (it applies without a restart); listing it twice invites edits
+    // in two places with different behaviour.
+    return settingsKeys
+      .filter((item) => item.key !== 'PANEL_ALLOWED_EMAILS')
+      .map((item) => {
+        const stored = file[item.key] ?? process.env[item.key] ?? defaults[item.key] ?? null;
+        const active = running(item.key);
+        return {
+          key: item.key,
+          restart: item.restart,
+          secret: item.secret ?? false,
+          value: stored && item.secret ? redact(stored) : stored,
+          active: active !== null && active === stored,
+        };
+      });
   }
 
   save(input: Record<string, string>): SettingField[] {

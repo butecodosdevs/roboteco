@@ -81,6 +81,7 @@ const DICT = {
     "action.warn": "Advertência", "action.timeout": "Castigo", "action.untimeout": "Fim do castigo",
     "action.kick": "Expulsão", "action.ban": "Banimento", "action.unban": "Desbanimento",
 
+    "unit.person1": "pessoa", "unit.personN": "pessoas",
     "unit.case1": "caso", "unit.caseN": "casos",
     "unit.report1": "denúncia aberta", "unit.reportN": "denúncias abertas",
     "unit.giveaway1": "sorteio rolando", "unit.giveawayN": "sorteios rolando",
@@ -139,6 +140,11 @@ const DICT = {
     "set.lede": "O que o bot usa para falar com o Discord. Salvar grava em panel/settings.json; o que é lido na inicialização só vale depois de reiniciar.",
     "set.empty": "vazio", "set.active": "ativo", "set.saved": "salvo, reinicie", "set.loading": "Carregando…",
     "set.notSet": "não definido", "set.restartTitle": "lido na inicialização",
+    "access.title": "Quem tem acesso", "access.hint": "Só estes e-mails entram pelo Google. Tirar um encerra a sessão dele na hora, sem reiniciar.",
+    "access.you": "você", "access.add": "Adicionar", "access.remove": "Remover", "access.placeholder": "pessoa@gmail.com",
+    "access.empty": "A lista está vazia — ninguém entra.", "access.only": "não dá para remover o último e-mail",
+    "access.bad": "e-mail inválido: {e}", "access.dupe": "já está na lista",
+    "toast.accessAdd": "{e} entrou na lista", "toast.accessDel": "{e} perdeu o acesso",
     "set.apply.title": "Aplicar",
     "set.apply.hint": "Salvar só escreve o arquivo. Token, Application ID, servidor de testes e nível de log são lidos na inicialização.",
     "btn.save": "Salvar", "btn.restart": "Reiniciar o bot",
@@ -219,6 +225,7 @@ const DICT = {
     "action.warn": "Warning", "action.timeout": "Timeout", "action.untimeout": "Timeout lifted",
     "action.kick": "Kick", "action.ban": "Ban", "action.unban": "Unban",
 
+    "unit.person1": "person", "unit.personN": "people",
     "unit.case1": "case", "unit.caseN": "cases",
     "unit.report1": "open report", "unit.reportN": "open reports",
     "unit.giveaway1": "running giveaway", "unit.giveawayN": "running giveaways",
@@ -277,6 +284,11 @@ const DICT = {
     "set.lede": "What the bot uses to talk to Discord. Saving writes panel/settings.json; values read at startup only apply after a restart.",
     "set.empty": "empty", "set.active": "active", "set.saved": "saved, restart", "set.loading": "Loading…",
     "set.notSet": "not set", "set.restartTitle": "read at startup",
+    "access.title": "Who has access", "access.hint": "Only these emails get in through Google. Removing one ends their session right away, no restart.",
+    "access.you": "you", "access.add": "Add", "access.remove": "Remove", "access.placeholder": "person@gmail.com",
+    "access.empty": "The list is empty — nobody gets in.", "access.only": "the last email cannot be removed",
+    "access.bad": "invalid email: {e}", "access.dupe": "already on the list",
+    "toast.accessAdd": "{e} was added", "toast.accessDel": "{e} lost access",
     "set.apply.title": "Apply",
     "set.apply.hint": "Saving only writes the file. Token, Application ID, test server and log level are read at startup.",
     "btn.save": "Save", "btn.restart": "Restart the bot",
@@ -357,6 +369,7 @@ const DICT = {
     "action.warn": "警告", "action.timeout": "禁言", "action.untimeout": "解除禁言",
     "action.kick": "踢出", "action.ban": "封禁", "action.unban": "解封",
 
+    "unit.person1": "人", "unit.personN": "人",
     "unit.case1": "个案例", "unit.caseN": "个案例",
     "unit.report1": "个待处理举报", "unit.reportN": "个待处理举报",
     "unit.giveaway1": "个进行中的抽奖", "unit.giveawayN": "个进行中的抽奖",
@@ -415,6 +428,11 @@ const DICT = {
     "set.lede": "机器人连接 Discord 所用的配置。保存会写入 panel/settings.json；启动时读取的项需重启后生效。",
     "set.empty": "空", "set.active": "生效中", "set.saved": "已保存，需重启", "set.loading": "加载中…",
     "set.notSet": "未设置", "set.restartTitle": "启动时读取",
+    "access.title": "访问权限", "access.hint": "只有这些邮箱可以通过 Google 登录。移除后其会话立即失效，无需重启。",
+    "access.you": "你", "access.add": "添加", "access.remove": "移除", "access.placeholder": "person@gmail.com",
+    "access.empty": "列表为空 —— 无人可进入。", "access.only": "无法移除最后一个邮箱",
+    "access.bad": "邮箱无效：{e}", "access.dupe": "已在列表中",
+    "toast.accessAdd": "{e} 已加入", "toast.accessDel": "{e} 已失去访问权限",
     "set.apply.title": "应用",
     "set.apply.hint": "保存仅写入文件。Token、Application ID、测试服务器和日志级别在启动时读取。",
     "btn.save": "保存", "btn.restart": "重启机器人",
@@ -494,6 +512,7 @@ let pluginError = null;
 let builtins = null;
 let usage = null;
 let settings = null;
+let access = null;
 
 const t = (key, vars) => {
   const raw = DICT[state.lang]?.[key] ?? DICT.pt[key] ?? key;
@@ -953,7 +972,26 @@ function viewSettings() {
     <div class="hint" style="margin-bottom:10px">${esc(t("set.apply.hint"))}</div>
     <div class="actions"><button class="btn pri" data-act="settings-save">${esc(t("btn.save"))}</button><button class="btn" data-act="settings-restart">${esc(t("btn.restart"))}</button></div>
   </section>`;
-  return shell(head, `<section class="card">${rows}</section>${actions}`);
+  return shell(head, `<section class="card">${rows}</section>${accessCard()}${actions}`);
+}
+
+/* Allowlist: the one setting that takes effect without a restart, so it gets its own card. */
+function accessCard() {
+  if (access === null) return `<section class="card pad" style="margin-top:12px">${sk("220px", 11)}</section>`;
+  const me = state.auth?.user?.email?.toLowerCase() ?? "";
+  const rows = access.map((email) => `<div class="row-item">
+    <div class="row-main"><div class="name mono">${esc(email)}${email === me ? ` <span class="tag acc">${esc(t("access.you"))}</span>` : ""}</div></div>
+    <div class="row-end"><button class="btn sm" data-act="access-del" data-email="${esc(email)}" ${access.length <= 1 ? `disabled title="${esc(t("access.only"))}"` : ""}>${esc(t("access.remove"))}</button></div>
+  </div>`).join("");
+  return `<section class="card" style="margin-top:12px">
+    <div class="card-h"><h2>${esc(t("access.title"))}</h2><span class="sub">${pl(access.length, "unit.person1", "unit.personN")}</span></div>
+    <div class="rows">${rows || emptyRow(t("access.empty"))}</div>
+    <div class="pad" style="border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input class="grow" id="access-email" type="email" autocomplete="off" spellcheck="false" placeholder="${esc(t("access.placeholder"))}">
+      <button class="btn pri" data-act="access-add">${esc(t("access.add"))}</button>
+    </div>
+    <div class="pad" style="padding-top:0"><div class="hint" style="margin:0">${esc(t("access.hint"))}</div></div>
+  </section>`;
 }
 
 async function loadSettings() {
@@ -962,6 +1000,15 @@ async function loadSettings() {
   } catch (err) {
     settings = { fields: [], error: err.message };
   }
+  access = await api("/api/panel/auth/access").then((r) => r.emails).catch(() => []);
+}
+
+/* Both actions write the whole list, so the server never has to guess what to merge. */
+async function saveAccess(next) {
+  const payload = await api("/api/panel/auth/access", { method: "PUT", body: { emails: next } });
+  access = payload.emails;
+  if (state.auth) state.auth.allowlist = access.length;
+  render();
 }
 
 function viewAbout() {
@@ -1051,7 +1098,7 @@ function navigate(next) {
 /* Sem senha: o botão manda o navegador para o Google pelo Better Auth. */
 function showLogin(message) {
   state.loginMessage = message;
-  meta = null; data = null; plugins = null; builtins = null; settings = null;
+  meta = null; data = null; plugins = null; builtins = null; settings = null; access = null;
   const ready = Boolean(state.auth?.ready);
   const hint = !state.auth ? "" : !state.auth.secret ? t("login.nosecret") : !state.auth.google ? t("login.unconfigured") : !state.auth.allowlist ? t("login.noallow") : "";
   $("#view").innerHTML = `<div class="auth"><div class="auth-card">
@@ -1190,6 +1237,18 @@ async function pluginAction(act) {
       settings = await api("/api/panel/settings", { method: "PUT", body });
       render();
       toast(t("toast.saved"), true);
+    } else if (act.dataset.act === "access-add") {
+      const input = $("#access-email");
+      const email = (input?.value ?? "").trim().toLowerCase();
+      if (!email) return;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast(t("access.bad", { e: email }), true);
+      if (access.includes(email)) return toast(t("access.dupe"), true);
+      await saveAccess([...access, email]);
+      toast(t("toast.accessAdd", { e: email }));
+    } else if (act.dataset.act === "access-del") {
+      const email = act.dataset.email;
+      await saveAccess(access.filter((e) => e !== email));
+      toast(t("toast.accessDel", { e: email }));
     } else if (act.dataset.act === "settings-restart") {
       if (!confirm(t("confirm.restart"))) return;
       busy("…");
@@ -1223,7 +1282,7 @@ document.addEventListener("click", (e) => {
       .catch(() => null)
       .then(() => showLogin(t("login.leaving")));
   }
-  if (/^plugin|^plugins|^cmd-toggle|^commands-|^settings/.test(act.dataset.act ?? "")) {
+  if (/^plugin|^plugins|^cmd-toggle|^commands-|^settings|^access-/.test(act.dataset.act ?? "")) {
     e.preventDefault();
     return pluginAction(act);
   }

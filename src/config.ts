@@ -38,16 +38,6 @@ const schema = z.object({
     .min(32, 'PANEL_SECRET must be at least 32 characters')
     .optional()
     .transform((v) => v || undefined),
-  /** Comma-separated emails allowed to sign in with Google. */
-  PANEL_ALLOWED_EMAILS: z
-    .string()
-    .default('')
-    .transform((v) =>
-      v
-        .split(',')
-        .map((e) => e.trim())
-        .filter(Boolean),
-    ),
   GUILD_DATA_RETENTION_DAYS: z.coerce.number().int().min(0).default(30),
   PLUGIN_REGISTRY: z.string().min(1).default('plugins/registry.json'),
   DISCORD_GUILD_ID: z
@@ -78,7 +68,6 @@ export const config = {
   panelToken: parsed.data.PANEL_TOKEN,
   panelUrl: parsed.data.PANEL_URL,
   panelSecret: parsed.data.PANEL_SECRET,
-  panelAllowedEmails: parsed.data.PANEL_ALLOWED_EMAILS,
   guildDataRetentionDays: parsed.data.GUILD_DATA_RETENTION_DAYS,
   pluginRegistry: parsed.data.PLUGIN_REGISTRY,
   databaseUrl: parsed.data.DATABASE_URL,

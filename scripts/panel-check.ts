@@ -1,6 +1,8 @@
 // Run with: pnpm panel:check
 // Asserts the HTTP boundary: health, session gate, the public auth segment, static files.
 import assert from 'node:assert/strict';
+import { rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { Client, GatewayIntentBits } from 'discord.js';
 
 process.env.DATABASE_URL ??= 'postgres://roboteco:roboteco@localhost:5432/roboteco';
@@ -16,11 +18,14 @@ process.env.PANEL_SECRET ??= 'panel-check-secret-0123456789abcdef';
 process.env.PANEL_ALLOWED_EMAILS ??= 'eu@exemplo.com';
 process.env.GOOGLE_CLIENT_ID ??= 'check-client-id';
 process.env.GOOGLE_CLIENT_SECRET ??= 'check-client-secret';
+// Never touch the real panel/settings.json: this check edits the allowlist on purpose.
+process.env.ROBOTECO_SETTINGS_PATH = `${tmpdir()}/roboteco-panel-check-${process.pid}.json`;
 
 const { startHttpServer } = await import('@/core/http');
 const { inject, registerCommandCatalog, registerCommandOwners } = await import('@/core');
 const { PanelAuthService } = await import('@/modules/panel/panel-auth.service');
 const { registerPanelSettings } = await import('@/modules/panel/panel-settings.service');
+const { liveSetting, writeSettings } = await import('@/core/settings');
 
 // Only what the grouping endpoint reads: the catalog plus who owns each built-in.
 registerCommandCatalog([
@@ -130,6 +135,112 @@ assert.ok(
   socialBody.url?.startsWith('https://accounts.google.com/'),
   'sign-in hands back the Google redirect url',
 );
+// The allowlist is enforced on every request, so removing an email also kills its live session.
+const { createHmac } = await import('node:crypto');
+const { authSchema, db } = await import('@/db');
+const { eq } = await import('drizzle-orm');
+const forge = (token: string) =>
+  `better-auth.session_token=${encodeURIComponent(
+    `${token}.${createHmac('sha256', process.env.PANEL_SECRET ?? '')
+      .update(token)
+      .digest('base64')}`,
+  )}`;
+const session = async (id: string, email: string) => {
+  await db
+    .insert(authSchema.authUsers)
+    .values({ id: `u_${id}`, name: id, email, emailVerified: true })
+    .onConflictDoNothing();
+  await db
+    .insert(authSchema.authSessions)
+    .values({
+      id: `s_${id}`,
+      token: `check-session-${id}-0123456789`,
+      userId: `u_${id}`,
+      expiresAt: new Date(Date.now() + 3_600_000),
+    })
+    .onConflictDoNothing();
+  return forge(`check-session-${id}-0123456789`);
+};
+const inside = await session('inside', 'EU@EXEMPLO.COM');
+assert.equal(
+  (await fetch(`${base}/api/panel/guilds`, { headers: { cookie: inside } })).status,
+  200,
+  'a session matches the allowlist regardless of case',
+);
+const outside = await session('outside', 'intruso@exemplo.com');
+assert.equal(
+  (await fetch(`${base}/api/panel/guilds`, { headers: { cookie: outside } })).status,
+  401,
+  'a session whose email is not allowlisted is refused',
+);
+
+// The allowlist is editable from the panel, and the edit applies to the next request.
+// Start from a known list: a settings file left over from another run would win over the env.
+writeSettings({ PANEL_ALLOWED_EMAILS: 'eu@exemplo.com' });
+assert.equal(
+  (await fetch(`${base}/api/panel/auth/access`)).status,
+  401,
+  'reading the allowlist needs a session',
+);
+const list = (await (
+  await fetch(`${base}/api/panel/auth/access`, { headers: { cookie: inside } })
+).json()) as { emails: string[] };
+assert.deepEqual(list.emails, ['eu@exemplo.com'], 'the allowlist comes back lowercased');
+const put = await fetch(`${base}/api/panel/auth/access`, {
+  method: 'PUT',
+  headers: { cookie: inside, 'content-type': 'application/json' },
+  body: '{"emails":["EU@Exemplo.com","Novo@Exemplo.com","eu@exemplo.com"]}',
+});
+assert.equal(put.status, 200, 'saving the allowlist works');
+assert.deepEqual(
+  ((await put.json()) as { emails: string[] }).emails,
+  ['eu@exemplo.com', 'novo@exemplo.com'],
+  'duplicates collapse and case is normalised',
+);
+assert.equal(
+  (
+    await fetch(`${base}/api/panel/auth/access`, {
+      method: 'PUT',
+      headers: { cookie: inside, 'content-type': 'application/json' },
+      body: '{"emails":[]}',
+    })
+  ).status,
+  400,
+  'an empty allowlist is refused, or the panel locks itself out',
+);
+assert.equal(
+  (
+    await fetch(`${base}/api/panel/auth/access`, {
+      method: 'PUT',
+      headers: { cookie: inside, 'content-type': 'application/json' },
+      body: '{"emails":["nao-e-email"]}',
+    })
+  ).status,
+  400,
+  'a malformed email is refused',
+);
+// The session that was inside the list keeps working after the edit; the file, not the process, wins.
+
+assert.equal(liveSetting('PANEL_ALLOWED_EMAILS'), 'eu@exemplo.com,novo@exemplo.com');
+writeSettings({ PANEL_ALLOWED_EMAILS: 'eu@exemplo.com' });
+assert.equal(
+  (await fetch(`${base}/api/panel/guilds`, { headers: { cookie: inside } })).status,
+  200,
+  'the remaining email still gets in',
+);
+
+assert.equal(
+  (await fetch(`${base}/api/panel/guilds`, { headers: { cookie: outside } })).status,
+  401,
+  'removing an email from the allowlist refuses its session at once',
+);
+writeSettings({ PANEL_ALLOWED_EMAILS: '' });
+
+await db.delete(authSchema.authSessions).where(eq(authSchema.authSessions.userId, 'u_inside'));
+await db.delete(authSchema.authSessions).where(eq(authSchema.authSessions.userId, 'u_outside'));
+await db.delete(authSchema.authUsers).where(eq(authSchema.authUsers.id, 'u_inside'));
+await db.delete(authSchema.authUsers).where(eq(authSchema.authUsers.id, 'u_outside'));
+
 assert.equal((await fetch(`${base}/../package.json`)).status, 404, 'no path traversal');
 assert.equal((await fetch(`${base}/server.js`)).status, 404, 'only known extensions');
 
@@ -143,6 +254,7 @@ bare.close();
 
 server.close();
 await client.destroy();
+rmSync(process.env.ROBOTECO_SETTINGS_PATH ?? '', { force: true });
 // The Postgres pool keeps the event loop alive; close it so the check exits on its own.
 const { closeDb } = await import('@/db');
 await closeDb();

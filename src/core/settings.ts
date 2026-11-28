@@ -20,9 +20,12 @@ export const settingsKeys: SettingsKey[] = [
   { key: 'LOG_LEVEL', restart: true },
   { key: 'GUILD_DATA_RETENTION_DAYS', restart: true },
   { key: 'SENTRY_DSN', secret: true, restart: true },
+  // No restart: the allowlist is read live, so removing an email revokes its session at once.
+  { key: 'PANEL_ALLOWED_EMAILS', restart: false },
 ];
 
-export const settingsPath = resolve('panel/settings.json');
+// Overridable so tests write to a throwaway file instead of the real settings.
+export const settingsPath = process.env.ROBOTECO_SETTINGS_PATH ?? resolve('panel/settings.json');
 
 export function readSettings(): Record<string, string> {
   const raw = readSafely();
@@ -61,6 +64,17 @@ export function writeSettings(next: Record<string, string>): void {
   const temporary = `${settingsPath}.tmp`;
   writeFileSync(temporary, `${JSON.stringify(merged, null, 2)}\n`, { mode: 0o600 });
   renameSync(temporary, settingsPath);
+}
+
+/**
+ * Read from the file on every call instead of caching in `config`: the allowlist has to change the
+ * moment someone saves it, without a restart, or removing an email would leave them in for a day.
+ */
+export function liveSetting(key: string): string | null {
+  const file = readSettings();
+  if (file[key] !== undefined) return file[key];
+  const env = process.env[key];
+  return env === undefined || env === '' ? null : env;
 }
 
 /** Called before anything imports `config`, so overrides win over the real environment. */

@@ -55,7 +55,7 @@ Migrations must stay backwards-compatible for one release. The old bot keeps run
 
 The same port serves the panel at `/` with `web/`. It needs `PANEL_TOKEN` (16+ characters); without it every `/api/panel` call answers `503` and the page says the panel is off. The panel reads the same Postgres as the bot, so it shows real numbers even while the gateway is reconnecting.
 
-Sign-in is Google only. Create an OAuth client in Google Cloud Console, add `${PANEL_URL}/api/auth/callback/google` as an authorized redirect URI, and set `PANEL_URL`, `PANEL_SECRET` (`openssl rand -hex 32`), `PANEL_ALLOWED_EMAILS`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Only the listed emails can sign in: the allowlist is checked before a user row exists, through a Better Auth `databaseHooks.user.create.before` hook that throws `FORBIDDEN`.
+Sign-in is Google only. Create an OAuth client in Google Cloud Console, add `${PANEL_URL}/api/auth/callback/google` as an authorized redirect URI, and set `PANEL_URL`, `PANEL_SECRET` (`openssl rand -hex 32`), `PANEL_ALLOWED_EMAILS`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Only the listed emails can sign in: the allowlist is checked before a user row exists, through a Better Auth `databaseHooks.user.create.before` hook that throws `FORBIDDEN`, and again on every request, so deleting an email from `PANEL_ALLOWED_EMAILS` logs that person out on the next call. Adding one is a matter of comma-separated, case-insensitive emails — and it no longer needs a restart: the list can be edited in **Configurações → Quem tem acesso**, which writes `panel/settings.json` (mode `0600`) and is read on every request.
 
 ```sh
 PANEL_TOKEN=$(openssl rand -hex 24) PANEL_SECRET=$(openssl rand -hex 32) \
