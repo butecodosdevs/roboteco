@@ -18,6 +18,7 @@ export const embedsPtBR = {
   },
   deleteReason: 'Repostada com o preview do link corrigido (embeds.now)',
   replies: {
+    noPermission: 'Você precisa da permissão Gerenciar Servidor para usar /embeds.',
     enabled:
       'Conserto de links ligado. Ele funciona nos canais onde tenho Gerenciar Mensagens e Gerenciar Webhooks; para deixar um canal de fora, tire uma delas de mim lá.',
     disabled: 'Conserto de links desligado.',
