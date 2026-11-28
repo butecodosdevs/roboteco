@@ -1,0 +1,94 @@
+{
+  "t": "MESSAGE_CREATE",
+  "d": {
+    "type": 19,
+    "tts": false,
+    "timestamp": "2026-11-28T06:58:07.481000+00:00",
+    "referenced_message": {
+      "type": 0,
+      "tts": false,
+      "timestamp": "2026-11-28T06:58:02.816000+00:00",
+      "pinned": false,
+      "mentions": [],
+      "mention_roles": [],
+      "mention_everyone": false,
+      "id": "100000000000000033",
+      "flags": 0,
+      "embeds": [],
+      "edited_timestamp": null,
+      "content": "content-29",
+      "components": [],
+      "channel_type": 0,
+      "channel_id": "100000000000000018",
+      "author": {
+        "username": "username-17",
+        "public_flags": 0,
+        "primary_guild": null,
+        "id": "100000000000000003",
+        "global_name": "global_name-18",
+        "display_name_styles": {
+          "font_id": 17,
+          "effect_id": 4,
+          "colors": [15999128]
+        },
+        "discriminator": "0",
+        "collectibles": null,
+        "clan": null,
+        "avatar_decoration_data": null,
+        "avatar": "avatar-19"
+      },
+      "attachments": []
+    },
+    "pinned": false,
+    "nonce": "100000000000000034",
+    "message_reference": {
+      "type": 0,
+      "message_id": "100000000000000033",
+      "guild_id": "100000000000000001",
+      "channel_id": "100000000000000018"
+    },
+    "mentions": [],
+    "mention_roles": [],
+    "mention_everyone": false,
+    "member": {
+      "roles": [],
+      "premium_since": null,
+      "pending": false,
+      "nick": null,
+      "mute": false,
+      "joined_at": "2024-08-31T23:52:48.154000+00:00",
+      "flags": 0,
+      "deaf": false,
+      "communication_disabled_until": null,
+      "banner": null,
+      "avatar": null
+    },
+    "id": "100000000000000035",
+    "flags": 0,
+    "embeds": [],
+    "edited_timestamp": null,
+    "content": "content-30",
+    "components": [],
+    "channel_type": 0,
+    "channel_id": "100000000000000018",
+    "author": {
+      "username": "username-17",
+      "public_flags": 0,
+      "primary_guild": null,
+      "id": "100000000000000003",
+      "global_name": "global_name-18",
+      "display_name_styles": {
+        "font_id": 17,
+        "effect_id": 4,
+        "colors": [15999128]
+      },
+      "discriminator": "0",
+      "collectibles": null,
+      "clan": null,
+      "avatar_decoration_data": null,
+      "avatar": "avatar-19"
+    },
+    "attachments": [],
+    "guild_id": "100000000000000001"
+  }
+}

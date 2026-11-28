@@ -302,7 +302,7 @@ See [docs/getting-started.md](docs/getting-started.md) for the full Discord app 
 | `pnpm storage:init` | Create the Garage bucket and keys |
 | `pnpm db:generate` / `db:migrate` | Generate / apply Drizzle migrations |
 | `pnpm db:studio` | Open Drizzle Studio |
-| `pnpm plugins:build` | Build the example plugin and the test fixture (Rust) |
+| `pnpm plugins:build` | Build the example plugin and the test fixtures (Rust and Go) |
 | `pnpm prod:up` / `prod:logs` | Start the production stack / follow the bot logs |
 
 ---

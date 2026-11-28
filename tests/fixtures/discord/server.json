@@ -1,0 +1,268 @@
+{
+  "botId": "100000000000000002",
+  "guild": {
+    "id": "100000000000000001",
+    "name": "name-1",
+    "owner_id": "100000000000000003",
+    "preferred_locale": "en-US",
+    "member_count": 8,
+    "icon": null,
+    "roles": [
+      {
+        "id": "100000000000000001",
+        "name": "name-2",
+        "description": null,
+        "permissions": "2248473465835073",
+        "position": 0,
+        "color": 0,
+        "colors": {
+          "primary_color": 0,
+          "secondary_color": null,
+          "tertiary_color": null
+        },
+        "hoist": false,
+        "managed": false,
+        "mentionable": false,
+        "icon": null,
+        "unicode_emoji": null,
+        "flags": 0
+      },
+      {
+        "id": "100000000000000004",
+        "name": "name-3",
+        "description": null,
+        "permissions": "8",
+        "position": 5,
+        "color": 0,
+        "colors": {
+          "primary_color": 0,
+          "secondary_color": null,
+          "tertiary_color": null
+        },
+        "hoist": false,
+        "managed": true,
+        "mentionable": false,
+        "icon": null,
+        "unicode_emoji": null,
+        "tags": {
+          "bot_id": "100000000000000005"
+        },
+        "flags": 0
+      },
+      {
+        "id": "100000000000000006",
+        "name": "name-4",
+        "description": null,
+        "permissions": "8",
+        "position": 4,
+        "color": 0,
+        "colors": {
+          "primary_color": 0,
+          "secondary_color": null,
+          "tertiary_color": null
+        },
+        "hoist": false,
+        "managed": true,
+        "mentionable": false,
+        "icon": null,
+        "unicode_emoji": null,
+        "tags": {
+          "bot_id": "100000000000000007"
+        },
+        "flags": 0
+      },
+      {
+        "id": "100000000000000008",
+        "name": "name-5",
+        "description": null,
+        "permissions": "8",
+        "position": 3,
+        "color": 0,
+        "colors": {
+          "primary_color": 0,
+          "secondary_color": null,
+          "tertiary_color": null
+        },
+        "hoist": false,
+        "managed": true,
+        "mentionable": false,
+        "icon": null,
+        "unicode_emoji": null,
+        "tags": {
+          "bot_id": "100000000000000009"
+        },
+        "flags": 0
+      },
+      {
+        "id": "100000000000000010",
+        "name": "name-6",
+        "description": null,
+        "permissions": "8",
+        "position": 2,
+        "color": 0,
+        "colors": {
+          "primary_color": 0,
+          "secondary_color": null,
+          "tertiary_color": null
+        },
+        "hoist": false,
+        "managed": true,
+        "mentionable": false,
+        "icon": null,
+        "unicode_emoji": null,
+        "tags": {
+          "bot_id": "100000000000000011"
+        },
+        "flags": 0
+      },
+      {
+        "id": "100000000000000012",
+        "name": "name-7",
+        "description": null,
+        "permissions": "2080374975",
+        "position": 1,
+        "color": 0,
+        "colors": {
+          "primary_color": 0,
+          "secondary_color": null,
+          "tertiary_color": null
+        },
+        "hoist": false,
+        "managed": true,
+        "mentionable": false,
+        "icon": null,
+        "unicode_emoji": null,
+        "tags": {
+          "bot_id": "100000000000000013"
+        },
+        "flags": 0
+      },
+      {
+        "id": "100000000000000014",
+        "name": "name-8",
+        "description": null,
+        "permissions": "8",
+        "position": 6,
+        "color": 15277667,
+        "colors": {
+          "primary_color": 15277667,
+          "secondary_color": null,
+          "tertiary_color": null
+        },
+        "hoist": false,
+        "managed": false,
+        "mentionable": false,
+        "icon": null,
+        "unicode_emoji": null,
+        "flags": 0
+      }
+    ],
+    "channels": [
+      {
+        "id": "100000000000000015",
+        "type": 4,
+        "flags": 0,
+        "guild_id": "100000000000000001",
+        "name": "name-9",
+        "parent_id": null,
+        "position": 0,
+        "permission_overwrites": []
+      },
+      {
+        "id": "100000000000000016",
+        "type": 4,
+        "flags": 0,
+        "guild_id": "100000000000000001",
+        "name": "name-10",
+        "parent_id": null,
+        "position": 0,
+        "permission_overwrites": []
+      },
+      {
+        "id": "100000000000000017",
+        "type": 0,
+        "last_message_id": "100000000000000018",
+        "flags": 0,
+        "guild_id": "100000000000000001",
+        "name": "name-11",
+        "parent_id": "100000000000000015",
+        "rate_limit_per_user": 0,
+        "topic": null,
+        "position": 0,
+        "permission_overwrites": [],
+        "nsfw": false,
+        "icon_emoji": {
+          "id": null,
+          "name": "👋"
+        },
+        "theme_color": null
+      },
+      {
+        "id": "100000000000000019",
+        "type": 2,
+        "last_message_id": null,
+        "flags": 0,
+        "guild_id": "100000000000000001",
+        "name": "name-12",
+        "parent_id": "100000000000000016",
+        "rate_limit_per_user": 0,
+        "bitrate": 96000,
+        "user_limit": 0,
+        "rtc_region": null,
+        "position": 0,
+        "permission_overwrites": [],
+        "nsfw": false,
+        "icon_emoji": {
+          "id": null,
+          "name": "🎙️"
+        },
+        "theme_color": null,
+        "application_id": null,
+        "voice_background_display": null,
+        "voice_hangout": null
+      },
+      {
+        "id": "100000000000000020",
+        "type": 0,
+        "last_message_id": "100000000000000021",
+        "flags": 0,
+        "guild_id": "100000000000000001",
+        "name": "name-13",
+        "parent_id": "100000000000000015",
+        "rate_limit_per_user": 0,
+        "topic": null,
+        "position": 1,
+        "permission_overwrites": [],
+        "nsfw": false
+      },
+      {
+        "id": "100000000000000022",
+        "type": 0,
+        "last_message_id": "100000000000000023",
+        "flags": 0,
+        "guild_id": "100000000000000001",
+        "name": "name-14",
+        "parent_id": "100000000000000015",
+        "rate_limit_per_user": 0,
+        "topic": null,
+        "position": 2,
+        "permission_overwrites": [],
+        "nsfw": false
+      },
+      {
+        "id": "100000000000000024",
+        "type": 0,
+        "last_message_id": null,
+        "flags": 0,
+        "guild_id": "100000000000000001",
+        "name": "name-15",
+        "parent_id": "100000000000000016",
+        "rate_limit_per_user": 0,
+        "topic": null,
+        "position": 3,
+        "permission_overwrites": [],
+        "nsfw": false
+      }
+    ]
+  }
+}

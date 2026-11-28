@@ -8,7 +8,7 @@
 | [Node.js](https://nodejs.org) | 26.10.0 (min. 22.12) | Runtime |
 | [pnpm](https://pnpm.io) | 12.5.1 | Package manager |
 | [Docker](https://docs.docker.com/get-docker/) + Compose | Compose v2+ | Runs PostgreSQL, Garage and Valkey locally |
-| [Rust](https://rustup.rs) with `wasm32-unknown-unknown` | optional | Only to build the example [plugin](concepts/plugins.md) and the test fixture (`pnpm plugins:build`, needed by `pnpm test`). Go plugins need [Go](https://go.dev) 1.24+ |
+| [Rust](https://rustup.rs) with `wasm32-unknown-unknown` | optional | Only to build the example [plugin](concepts/plugins.md) and the test fixtures (`pnpm plugins:build`, needed by `pnpm test`), which also needs [Go](https://go.dev) 1.24+ |
 
 ## Discord application
 
@@ -68,6 +68,10 @@ With `NODE_ENV=development` (the default), the bot also loads `/dev`, which is n
 
 Add `actor` (and `reason`) to pretend the audit log credits that user, so you can see "By" lines without a second account. Discord writes no audit entry for some events, such as message edits, joins and boosts. For those, and for any other option a scenario doesn't use, the reply says what was ignored. Fake joins, leaves and channel deletes reach every listener, so the reply also lists what else they touched.
 
+Two more are for the [plugin](concepts/plugins.md#recorded-discord-payloads) tests:
+- `/dev record on:True`: save one anonymized example of each Discord event and `/dev fidelity` interaction into `tests/fixtures/discord`, until `on:False`.
+- `/dev fidelity`: every option type, plus a panel with a button, a form and each kind of select. The **Fidelity user** and **Fidelity message** menus go with it.
+
 ## Scripts
 
 | Script | Purpose |
@@ -85,6 +89,6 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm db:generate` / `db:migrate` | Create / apply migrations |
 | `pnpm db:migrate:runtime` | Apply migrations the way production does (no drizzle-kit) |
 | `pnpm prod:up` / `prod:logs` | Build and start `compose.prod.yaml` / follow the bot's logs |
-| `pnpm plugins:build` | Build the example WASM plugins into `plugins/dist/` |
+| `pnpm plugins:build` | Build the example WASM plugin and the test fixtures into `plugins/dist/` |
 | `pnpm plugin check\|run\|click\|submit\|event\|job\|schema` | Validate a plugin; run its commands, buttons, forms, events and jobs without Discord; export the contract's JSON Schema ([plugins](concepts/plugins.md#quick-start)) |
 | `pnpm db:push` / `db:studio` | Sync the schema without a migration (local only) / browse data |

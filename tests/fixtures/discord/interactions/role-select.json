@@ -1,0 +1,339 @@
+{
+  "t": "INTERACTION_CREATE",
+  "d": {
+    "version": 1,
+    "type": 3,
+    "token": "token-46",
+    "message": {
+      "webhook_id": "100000000000000002",
+      "type": 20,
+      "tts": false,
+      "timestamp": "2026-11-28T07:37:02.304000+00:00",
+      "pinned": false,
+      "mentions": [],
+      "mention_roles": [],
+      "mention_everyone": false,
+      "interaction_metadata": {
+        "user": {
+          "username": "username-17",
+          "public_flags": 0,
+          "primary_guild": null,
+          "id": "100000000000000003",
+          "global_name": "global_name-18",
+          "display_name_styles": {
+            "font_id": 17,
+            "effect_id": 4,
+            "colors": [15999128]
+          },
+          "discriminator": "0",
+          "collectibles": null,
+          "clan": null,
+          "avatar_decoration_data": null,
+          "avatar": "avatar-19"
+        },
+        "type": 2,
+        "name": "name-24",
+        "id": "100000000000000027",
+        "command_type": 1,
+        "authorizing_integration_owners": {
+          "0": "100000000000000001"
+        }
+      },
+      "interaction": {
+        "user": {
+          "username": "username-17",
+          "public_flags": 0,
+          "primary_guild": null,
+          "id": "100000000000000003",
+          "global_name": "global_name-18",
+          "display_name_styles": {
+            "font_id": 17,
+            "effect_id": 4,
+            "colors": [15999128]
+          },
+          "discriminator": "0",
+          "collectibles": null,
+          "clan": null,
+          "avatar_decoration_data": null,
+          "avatar": "avatar-19"
+        },
+        "type": 2,
+        "name": "name-24",
+        "id": "100000000000000027"
+      },
+      "id": "100000000000000028",
+      "flags": 64,
+      "embeds": [],
+      "edited_timestamp": null,
+      "content": "content-25",
+      "components": [
+        {
+          "type": 1,
+          "id": 1,
+          "components": [
+            {
+              "type": 2,
+              "style": 1,
+              "label": "label-26",
+              "id": 2,
+              "custom_id": "dev.fidelityButton"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "id": 3,
+          "components": [
+            {
+              "type": 3,
+              "placeholder": "placeholder-27",
+              "options": [
+                {
+                  "value": "red",
+                  "label": "label-29"
+                },
+                {
+                  "value": "blue",
+                  "label": "label-31"
+                }
+              ],
+              "min_values": 1,
+              "max_values": 2,
+              "id": 4,
+              "custom_id": "dev.fidelitySelect:pick"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "id": 5,
+          "components": [
+            {
+              "type": 5,
+              "placeholder": "placeholder-33",
+              "min_values": 1,
+              "max_values": 5,
+              "id": 6,
+              "custom_id": "dev.fidelitySelect:who"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "id": 7,
+          "components": [
+            {
+              "type": 6,
+              "placeholder": "placeholder-35",
+              "min_values": 1,
+              "max_values": 5,
+              "id": 8,
+              "custom_id": "dev.fidelitySelect:groups"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "id": 9,
+          "components": [
+            {
+              "type": 8,
+              "placeholder": "placeholder-37",
+              "min_values": 1,
+              "max_values": 5,
+              "id": 10,
+              "custom_id": "custom_id-38"
+            }
+          ]
+        }
+      ],
+      "channel_id": "100000000000000017",
+      "author": {
+        "username": "username-39",
+        "public_flags": 0,
+        "primary_guild": null,
+        "id": "100000000000000002",
+        "global_name": null,
+        "display_name_styles": null,
+        "discriminator": "2695",
+        "collectibles": null,
+        "clan": null,
+        "bot": true,
+        "avatar_decoration_data": null,
+        "avatar": null
+      },
+      "attachments": [],
+      "application_id": "100000000000000002"
+    },
+    "member": {
+      "user": {
+        "username": "username-17",
+        "public_flags": 0,
+        "primary_guild": null,
+        "id": "100000000000000003",
+        "global_name": "global_name-18",
+        "display_name_styles": {
+          "font_id": 17,
+          "effect_id": 4,
+          "colors": [15999128]
+        },
+        "discriminator": "0",
+        "collectibles": null,
+        "clan": null,
+        "avatar_decoration_data": null,
+        "avatar": "avatar-19"
+      },
+      "unusual_dm_activity_until": null,
+      "roles": [],
+      "premium_since": null,
+      "permissions": "18014398509481983",
+      "pending": false,
+      "nick": null,
+      "mute": false,
+      "joined_at": "2024-08-31T23:52:48.154000+00:00",
+      "flags": 0,
+      "deaf": false,
+      "communication_disabled_until": null,
+      "banner": null,
+      "avatar": null
+    },
+    "locale": "en-US",
+    "id": "100000000000000033",
+    "guild_locale": "en-US",
+    "guild_id": "100000000000000001",
+    "guild": {
+      "locale": "en-US",
+      "id": "100000000000000001",
+      "features": ["features-20"]
+    },
+    "entitlements": [],
+    "entitlement_sku_ids": [],
+    "data": {
+      "values": [
+        "100000000000000014",
+        "100000000000000006",
+        "100000000000000008",
+        "100000000000000010"
+      ],
+      "resolved": {
+        "roles": {
+          "100000000000000014": {
+            "unicode_emoji": null,
+            "position": 6,
+            "permissions": "8",
+            "name": "name-8",
+            "mentionable": false,
+            "managed": false,
+            "id": "100000000000000014",
+            "icon": null,
+            "hoist": false,
+            "flags": 0,
+            "description": null,
+            "colors": {
+              "tertiary_color": null,
+              "secondary_color": null,
+              "primary_color": 15277667
+            },
+            "color": 15277667
+          },
+          "100000000000000010": {
+            "unicode_emoji": null,
+            "tags": {
+              "bot_id": "100000000000000011"
+            },
+            "position": 2,
+            "permissions": "8",
+            "name": "name-6",
+            "mentionable": false,
+            "managed": true,
+            "id": "100000000000000010",
+            "icon": null,
+            "hoist": false,
+            "flags": 0,
+            "description": null,
+            "colors": {
+              "tertiary_color": null,
+              "secondary_color": null,
+              "primary_color": 0
+            },
+            "color": 0
+          },
+          "100000000000000008": {
+            "unicode_emoji": null,
+            "tags": {
+              "bot_id": "100000000000000009"
+            },
+            "position": 3,
+            "permissions": "8",
+            "name": "name-5",
+            "mentionable": false,
+            "managed": true,
+            "id": "100000000000000008",
+            "icon": null,
+            "hoist": false,
+            "flags": 0,
+            "description": null,
+            "colors": {
+              "tertiary_color": null,
+              "secondary_color": null,
+              "primary_color": 0
+            },
+            "color": 0
+          },
+          "100000000000000006": {
+            "unicode_emoji": null,
+            "tags": {
+              "bot_id": "100000000000000007"
+            },
+            "position": 4,
+            "permissions": "8",
+            "name": "name-4",
+            "mentionable": false,
+            "managed": true,
+            "id": "100000000000000006",
+            "icon": null,
+            "hoist": false,
+            "flags": 0,
+            "description": null,
+            "colors": {
+              "tertiary_color": null,
+              "secondary_color": null,
+              "primary_color": 0
+            },
+            "color": 0
+          }
+        }
+      },
+      "id": 8,
+      "custom_id": "dev.fidelitySelect:groups",
+      "component_type": 6
+    },
+    "context": 0,
+    "channel_id": "100000000000000017",
+    "channel": {
+      "type": 0,
+      "topic": null,
+      "theme_color": null,
+      "rate_limit_per_user": 0,
+      "position": 0,
+      "permissions": "18014398509481983",
+      "parent_id": "100000000000000015",
+      "nsfw": false,
+      "name": "name-11",
+      "last_message_id": "100000000000000018",
+      "id": "100000000000000017",
+      "icon_emoji": {
+        "name": "👋",
+        "id": null
+      },
+      "guild_id": "100000000000000001",
+      "flags": 0
+    },
+    "authorizing_integration_owners": {
+      "0": "100000000000000001"
+    },
+    "attachment_size_limit": 1073741824,
+    "application_id": "100000000000000002",
+    "app_permissions": "18014398509481983"
+  }
+}
