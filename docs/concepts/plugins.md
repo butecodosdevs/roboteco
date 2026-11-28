@@ -313,6 +313,7 @@ All of these are built with `pnpm plugins:build`.
 | `plugins/hello-rust` | `/hello` with autocomplete; `/count` with a button that updates the message; `/flavor`, a select; `/feedback`, a form; `/profile` and the **Profile** user menu (embeds, `levels.get`); the **Quote** message menu |
 | `plugins/coin-go` | `/coin flip call:heads\|tails` with a "Flip again" button, `/coin stats` as an embed: subcommands, choices, KV |
 | `plugins/remind-go` | `/nudge` (`schedule.create`, then `handle_job` posts with `discord.messages.send`), a 🏓 reaction on "ping" (`messageCreate`, `discord.reactions.add`), level-up congratulations (`levelUp`, embeds), `/levelup-channel` limited to Manage Server |
+| `plugins/activity-rust` | Discord events (`discordEvents`): an activity feed in a channel set with `/activity set`. Voice joins, leaves and moves (`VOICE_STATE_UPDATE`, keeping each member's last channel in KV), removed reactions (`MESSAGE_REACTION_REMOVE`), edits (`MESSAGE_UPDATE`, text hidden without `intents.MessageContent`) and deletes (`MESSAGE_DELETE`), each read with `event.decode()` into its own small struct |
 | `plugins/fixtures/contract-rust` | The raw JSON contract without an SDK, used by `pnpm test` |
 | `plugins/fixtures/evil-rust`, `greedy-rust` | Hostile tests: loops, memory, network, calling capabilities it shouldn't, farming XP |
 

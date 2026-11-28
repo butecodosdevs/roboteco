@@ -26,6 +26,17 @@
         "events.messages",
         "events.levels"
       ]
+    },
+    {
+      "id": "activity",
+      "wasm": "plugins/dist/activity.wasm",
+      "permissions": [
+        "kv",
+        "messages.send",
+        "intents.GuildVoiceStates",
+        "intents.GuildMessageReactions",
+        "intents.GuildMessages"
+      ]
     }
   ]
 }
