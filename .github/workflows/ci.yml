@@ -97,3 +97,16 @@ jobs:
 
       - name: Panel boundary
         run: pnpm panel:check
+
+      # Plugins are Rust/Go source in the repo, and the tests load a built WASM
+      # (`tests/plugins/*` says "run pnpm plugins:build first"). Without this
+      # step the suite would either skip or fail on a missing file — and the
+      # image build compiles the same sources, so a plugin that does not
+      # compile is caught before it reaches a registry the bot reads.
+      - name: Plugin toolchain
+        run: |
+          rustup target add wasm32-unknown-unknown
+          pnpm plugins:build
+
+      - name: Tests
+        run: pnpm test

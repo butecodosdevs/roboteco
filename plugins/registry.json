@@ -1,3 +1,10 @@
 {
-  "plugins": []
+  "plugins": [
+    {
+      "id": "hello",
+      "wasm": "plugins/dist/hello.wasm",
+      "enabled": true,
+      "permissions": ["kv", "levels.read"]
+    }
+  ]
 }
