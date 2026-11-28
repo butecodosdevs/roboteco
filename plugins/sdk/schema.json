@@ -799,6 +799,76 @@
           ]
         }
       },
+      "discordEvents": {
+        "default": [],
+        "maxItems": 60,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "GUILD_UPDATE",
+            "GUILD_DELETE",
+            "GUILD_ROLE_CREATE",
+            "GUILD_ROLE_UPDATE",
+            "GUILD_ROLE_DELETE",
+            "CHANNEL_CREATE",
+            "CHANNEL_UPDATE",
+            "CHANNEL_DELETE",
+            "CHANNEL_PINS_UPDATE",
+            "THREAD_CREATE",
+            "THREAD_UPDATE",
+            "THREAD_DELETE",
+            "THREAD_LIST_SYNC",
+            "THREAD_MEMBER_UPDATE",
+            "STAGE_INSTANCE_CREATE",
+            "STAGE_INSTANCE_UPDATE",
+            "STAGE_INSTANCE_DELETE",
+            "GUILD_MEMBER_ADD",
+            "GUILD_MEMBER_UPDATE",
+            "GUILD_MEMBER_REMOVE",
+            "THREAD_MEMBERS_UPDATE",
+            "GUILD_AUDIT_LOG_ENTRY_CREATE",
+            "GUILD_BAN_ADD",
+            "GUILD_BAN_REMOVE",
+            "GUILD_EMOJIS_UPDATE",
+            "GUILD_STICKERS_UPDATE",
+            "GUILD_SOUNDBOARD_SOUND_CREATE",
+            "GUILD_SOUNDBOARD_SOUND_UPDATE",
+            "GUILD_SOUNDBOARD_SOUND_DELETE",
+            "GUILD_SOUNDBOARD_SOUNDS_UPDATE",
+            "GUILD_INTEGRATIONS_UPDATE",
+            "INTEGRATION_CREATE",
+            "INTEGRATION_UPDATE",
+            "INTEGRATION_DELETE",
+            "WEBHOOKS_UPDATE",
+            "INVITE_CREATE",
+            "INVITE_DELETE",
+            "VOICE_STATE_UPDATE",
+            "VOICE_CHANNEL_EFFECT_SEND",
+            "PRESENCE_UPDATE",
+            "MESSAGE_CREATE",
+            "MESSAGE_UPDATE",
+            "MESSAGE_DELETE",
+            "MESSAGE_DELETE_BULK",
+            "MESSAGE_REACTION_ADD",
+            "MESSAGE_REACTION_REMOVE",
+            "MESSAGE_REACTION_REMOVE_ALL",
+            "MESSAGE_REACTION_REMOVE_EMOJI",
+            "TYPING_START",
+            "GUILD_SCHEDULED_EVENT_CREATE",
+            "GUILD_SCHEDULED_EVENT_UPDATE",
+            "GUILD_SCHEDULED_EVENT_DELETE",
+            "GUILD_SCHEDULED_EVENT_USER_ADD",
+            "GUILD_SCHEDULED_EVENT_USER_REMOVE",
+            "AUTO_MODERATION_RULE_CREATE",
+            "AUTO_MODERATION_RULE_UPDATE",
+            "AUTO_MODERATION_RULE_DELETE",
+            "AUTO_MODERATION_ACTION_EXECUTION",
+            "MESSAGE_POLL_VOTE_ADD",
+            "MESSAGE_POLL_VOTE_REMOVE"
+          ]
+        }
+      },
       "uses": {
         "default": [],
         "maxItems": 50,
@@ -3429,14 +3499,83 @@
       "type": "object",
       "properties": {
         "event": {
-          "type": "string",
-          "enum": [
-            "messageCreate",
-            "memberJoin",
-            "memberLeave",
-            "reactionAdd",
-            "levelUp",
-            "caseCreated"
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "messageCreate",
+                "memberJoin",
+                "memberLeave",
+                "reactionAdd",
+                "levelUp",
+                "caseCreated"
+              ]
+            },
+            {
+              "type": "string",
+              "enum": [
+                "GUILD_UPDATE",
+                "GUILD_DELETE",
+                "GUILD_ROLE_CREATE",
+                "GUILD_ROLE_UPDATE",
+                "GUILD_ROLE_DELETE",
+                "CHANNEL_CREATE",
+                "CHANNEL_UPDATE",
+                "CHANNEL_DELETE",
+                "CHANNEL_PINS_UPDATE",
+                "THREAD_CREATE",
+                "THREAD_UPDATE",
+                "THREAD_DELETE",
+                "THREAD_LIST_SYNC",
+                "THREAD_MEMBER_UPDATE",
+                "STAGE_INSTANCE_CREATE",
+                "STAGE_INSTANCE_UPDATE",
+                "STAGE_INSTANCE_DELETE",
+                "GUILD_MEMBER_ADD",
+                "GUILD_MEMBER_UPDATE",
+                "GUILD_MEMBER_REMOVE",
+                "THREAD_MEMBERS_UPDATE",
+                "GUILD_AUDIT_LOG_ENTRY_CREATE",
+                "GUILD_BAN_ADD",
+                "GUILD_BAN_REMOVE",
+                "GUILD_EMOJIS_UPDATE",
+                "GUILD_STICKERS_UPDATE",
+                "GUILD_SOUNDBOARD_SOUND_CREATE",
+                "GUILD_SOUNDBOARD_SOUND_UPDATE",
+                "GUILD_SOUNDBOARD_SOUND_DELETE",
+                "GUILD_SOUNDBOARD_SOUNDS_UPDATE",
+                "GUILD_INTEGRATIONS_UPDATE",
+                "INTEGRATION_CREATE",
+                "INTEGRATION_UPDATE",
+                "INTEGRATION_DELETE",
+                "WEBHOOKS_UPDATE",
+                "INVITE_CREATE",
+                "INVITE_DELETE",
+                "VOICE_STATE_UPDATE",
+                "VOICE_CHANNEL_EFFECT_SEND",
+                "PRESENCE_UPDATE",
+                "MESSAGE_CREATE",
+                "MESSAGE_UPDATE",
+                "MESSAGE_DELETE",
+                "MESSAGE_DELETE_BULK",
+                "MESSAGE_REACTION_ADD",
+                "MESSAGE_REACTION_REMOVE",
+                "MESSAGE_REACTION_REMOVE_ALL",
+                "MESSAGE_REACTION_REMOVE_EMOJI",
+                "TYPING_START",
+                "GUILD_SCHEDULED_EVENT_CREATE",
+                "GUILD_SCHEDULED_EVENT_UPDATE",
+                "GUILD_SCHEDULED_EVENT_DELETE",
+                "GUILD_SCHEDULED_EVENT_USER_ADD",
+                "GUILD_SCHEDULED_EVENT_USER_REMOVE",
+                "AUTO_MODERATION_RULE_CREATE",
+                "AUTO_MODERATION_RULE_UPDATE",
+                "AUTO_MODERATION_RULE_DELETE",
+                "AUTO_MODERATION_ACTION_EXECUTION",
+                "MESSAGE_POLL_VOTE_ADD",
+                "MESSAGE_POLL_VOTE_REMOVE"
+              ]
+            }
           ]
         },
         "guildId": {
@@ -3732,6 +3871,248 @@
             "durationSeconds"
           ]
         }
+      }
+    },
+    "discordEvents": {
+      "GUILD_UPDATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_DELETE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_ROLE_CREATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_ROLE_UPDATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_ROLE_DELETE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "CHANNEL_CREATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "CHANNEL_UPDATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "CHANNEL_DELETE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "CHANNEL_PINS_UPDATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "THREAD_CREATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "THREAD_UPDATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "THREAD_DELETE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "THREAD_LIST_SYNC": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "THREAD_MEMBER_UPDATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "STAGE_INSTANCE_CREATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "STAGE_INSTANCE_UPDATE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "STAGE_INSTANCE_DELETE": {
+        "permission": "intents.Guilds",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_MEMBER_ADD": {
+        "permission": "intents.GuildMembers",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_MEMBER_UPDATE": {
+        "permission": "intents.GuildMembers",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_MEMBER_REMOVE": {
+        "permission": "intents.GuildMembers",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "THREAD_MEMBERS_UPDATE": {
+        "permission": "intents.GuildMembers",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_AUDIT_LOG_ENTRY_CREATE": {
+        "permission": "intents.GuildModeration",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_BAN_ADD": {
+        "permission": "intents.GuildModeration",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_BAN_REMOVE": {
+        "permission": "intents.GuildModeration",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_EMOJIS_UPDATE": {
+        "permission": "intents.GuildExpressions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_STICKERS_UPDATE": {
+        "permission": "intents.GuildExpressions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_SOUNDBOARD_SOUND_CREATE": {
+        "permission": "intents.GuildExpressions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_SOUNDBOARD_SOUND_UPDATE": {
+        "permission": "intents.GuildExpressions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_SOUNDBOARD_SOUND_DELETE": {
+        "permission": "intents.GuildExpressions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_SOUNDBOARD_SOUNDS_UPDATE": {
+        "permission": "intents.GuildExpressions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_INTEGRATIONS_UPDATE": {
+        "permission": "intents.GuildIntegrations",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "INTEGRATION_CREATE": {
+        "permission": "intents.GuildIntegrations",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "INTEGRATION_UPDATE": {
+        "permission": "intents.GuildIntegrations",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "INTEGRATION_DELETE": {
+        "permission": "intents.GuildIntegrations",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "WEBHOOKS_UPDATE": {
+        "permission": "intents.GuildWebhooks",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "INVITE_CREATE": {
+        "permission": "intents.GuildInvites",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "INVITE_DELETE": {
+        "permission": "intents.GuildInvites",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "VOICE_STATE_UPDATE": {
+        "permission": "intents.GuildVoiceStates",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "VOICE_CHANNEL_EFFECT_SEND": {
+        "permission": "intents.GuildVoiceStates",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "PRESENCE_UPDATE": {
+        "permission": "intents.GuildPresences",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_CREATE": {
+        "permission": "intents.GuildMessages",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_UPDATE": {
+        "permission": "intents.GuildMessages",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_DELETE": {
+        "permission": "intents.GuildMessages",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_DELETE_BULK": {
+        "permission": "intents.GuildMessages",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_REACTION_ADD": {
+        "permission": "intents.GuildMessageReactions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_REACTION_REMOVE": {
+        "permission": "intents.GuildMessageReactions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_REACTION_REMOVE_ALL": {
+        "permission": "intents.GuildMessageReactions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_REACTION_REMOVE_EMOJI": {
+        "permission": "intents.GuildMessageReactions",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "TYPING_START": {
+        "permission": "intents.GuildMessageTyping",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_SCHEDULED_EVENT_CREATE": {
+        "permission": "intents.GuildScheduledEvents",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_SCHEDULED_EVENT_UPDATE": {
+        "permission": "intents.GuildScheduledEvents",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_SCHEDULED_EVENT_DELETE": {
+        "permission": "intents.GuildScheduledEvents",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_SCHEDULED_EVENT_USER_ADD": {
+        "permission": "intents.GuildScheduledEvents",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "GUILD_SCHEDULED_EVENT_USER_REMOVE": {
+        "permission": "intents.GuildScheduledEvents",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "AUTO_MODERATION_RULE_CREATE": {
+        "permission": "intents.AutoModerationConfiguration",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "AUTO_MODERATION_RULE_UPDATE": {
+        "permission": "intents.AutoModerationConfiguration",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "AUTO_MODERATION_RULE_DELETE": {
+        "permission": "intents.AutoModerationConfiguration",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "AUTO_MODERATION_ACTION_EXECUTION": {
+        "permission": "intents.AutoModerationExecution",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_POLL_VOTE_ADD": {
+        "permission": "intents.GuildMessagePolls",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
+      },
+      "MESSAGE_POLL_VOTE_REMOVE": {
+        "permission": "intents.GuildMessagePolls",
+        "data": "as Discord sends it: https://discord.com/developers/docs/events/gateway-events"
       }
     }
   },

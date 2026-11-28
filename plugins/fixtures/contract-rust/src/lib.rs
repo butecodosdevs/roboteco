@@ -19,10 +19,12 @@ pub fn manifest() -> FnResult<Json<Value>> {
             { "name": "panel", "description": "A message with a button and a select" },
             { "name": "form", "description": "Opens a form" },
             { "name": "staff", "description": "Staff only", "defaultMemberPermissions": ["BanMembers"] },
-            { "name": "spin", "description": "Never answers" }
+            { "name": "spin", "description": "Never answers" },
+            { "name": "alloc", "description": "Allocates until the sandbox stops it" }
         ],
         "contextMenus": [{ "type": "user", "name": "Inspect" }],
         "events": ["memberJoin"],
+        "discordEvents": ["MESSAGE_CREATE", "MESSAGE_DELETE"],
         "uses": ["kv.increment", "kv.set"]
     })))
 }
@@ -47,6 +49,13 @@ pub fn handle_command(Json(input): Json<Value>) -> FnResult<Json<Value>> {
         }]}),
         (_, Some("staff")) => reply("staff only".into()),
         (_, Some("spin")) => loop {},
+        (_, Some("alloc")) => {
+            let mut chunks: Vec<Vec<u8>> = Vec::new();
+            loop {
+                chunks.push(vec![1u8; 1 << 20]);
+                std::hint::black_box(&chunks);
+            }
+        }
         _ => reply("unknown".into()),
     };
     Ok(Json(out))
@@ -77,8 +86,15 @@ fn kv(name: &str, input: Value) -> Result<Value, Error> {
 
 #[plugin_fn]
 pub fn handle_event(Json(input): Json<Value>) -> FnResult<Json<Value>> {
-    if input["event"] == "memberJoin" {
+    let event = input["event"].as_str().unwrap_or("");
+    if event == "memberJoin" {
         kv("kv.increment", json!({ "key": "joins" }))?;
+    } else {
+        kv("kv.increment", json!({ "key": format!("gateway:{event}") }))?;
+    }
+    if event == "MESSAGE_CREATE" {
+        let content = input["data"]["content"].as_str().unwrap_or("(none)");
+        kv("kv.set", json!({ "key": "last-content", "value": content }))?;
     }
     Ok(Json(json!({})))
 }

@@ -1,6 +1,7 @@
 import {
   ApplicationCommandOptionType,
   ApplicationCommandType,
+  type GatewayIntentBits,
   InteractionContextType,
   Locale,
   PermissionFlagsBits,
@@ -110,6 +111,83 @@ export const pluginEvents = {
   caseCreated: 'events.moderation',
 } as const;
 export type PluginEvent = keyof typeof pluginEvents;
+
+/**
+ * Intents from https://discord.com/developers/docs/events/gateway#list-of-intents. Left out on
+ * purpose: INTERACTION_CREATE and VOICE_SERVER_UPDATE carry tokens that act as the bot,
+ * GUILD_CREATE is a full server dump, and events without a server don't belong to one.
+ */
+export const gatewayEvents = {
+  GUILD_UPDATE: 'Guilds',
+  GUILD_DELETE: 'Guilds',
+  GUILD_ROLE_CREATE: 'Guilds',
+  GUILD_ROLE_UPDATE: 'Guilds',
+  GUILD_ROLE_DELETE: 'Guilds',
+  CHANNEL_CREATE: 'Guilds',
+  CHANNEL_UPDATE: 'Guilds',
+  CHANNEL_DELETE: 'Guilds',
+  CHANNEL_PINS_UPDATE: 'Guilds',
+  THREAD_CREATE: 'Guilds',
+  THREAD_UPDATE: 'Guilds',
+  THREAD_DELETE: 'Guilds',
+  THREAD_LIST_SYNC: 'Guilds',
+  THREAD_MEMBER_UPDATE: 'Guilds',
+  STAGE_INSTANCE_CREATE: 'Guilds',
+  STAGE_INSTANCE_UPDATE: 'Guilds',
+  STAGE_INSTANCE_DELETE: 'Guilds',
+  GUILD_MEMBER_ADD: 'GuildMembers',
+  GUILD_MEMBER_UPDATE: 'GuildMembers',
+  GUILD_MEMBER_REMOVE: 'GuildMembers',
+  THREAD_MEMBERS_UPDATE: 'GuildMembers',
+  GUILD_AUDIT_LOG_ENTRY_CREATE: 'GuildModeration',
+  GUILD_BAN_ADD: 'GuildModeration',
+  GUILD_BAN_REMOVE: 'GuildModeration',
+  GUILD_EMOJIS_UPDATE: 'GuildExpressions',
+  GUILD_STICKERS_UPDATE: 'GuildExpressions',
+  GUILD_SOUNDBOARD_SOUND_CREATE: 'GuildExpressions',
+  GUILD_SOUNDBOARD_SOUND_UPDATE: 'GuildExpressions',
+  GUILD_SOUNDBOARD_SOUND_DELETE: 'GuildExpressions',
+  GUILD_SOUNDBOARD_SOUNDS_UPDATE: 'GuildExpressions',
+  GUILD_INTEGRATIONS_UPDATE: 'GuildIntegrations',
+  INTEGRATION_CREATE: 'GuildIntegrations',
+  INTEGRATION_UPDATE: 'GuildIntegrations',
+  INTEGRATION_DELETE: 'GuildIntegrations',
+  WEBHOOKS_UPDATE: 'GuildWebhooks',
+  INVITE_CREATE: 'GuildInvites',
+  INVITE_DELETE: 'GuildInvites',
+  VOICE_STATE_UPDATE: 'GuildVoiceStates',
+  VOICE_CHANNEL_EFFECT_SEND: 'GuildVoiceStates',
+  PRESENCE_UPDATE: 'GuildPresences',
+  MESSAGE_CREATE: 'GuildMessages',
+  MESSAGE_UPDATE: 'GuildMessages',
+  MESSAGE_DELETE: 'GuildMessages',
+  MESSAGE_DELETE_BULK: 'GuildMessages',
+  MESSAGE_REACTION_ADD: 'GuildMessageReactions',
+  MESSAGE_REACTION_REMOVE: 'GuildMessageReactions',
+  MESSAGE_REACTION_REMOVE_ALL: 'GuildMessageReactions',
+  MESSAGE_REACTION_REMOVE_EMOJI: 'GuildMessageReactions',
+  TYPING_START: 'GuildMessageTyping',
+  GUILD_SCHEDULED_EVENT_CREATE: 'GuildScheduledEvents',
+  GUILD_SCHEDULED_EVENT_UPDATE: 'GuildScheduledEvents',
+  GUILD_SCHEDULED_EVENT_DELETE: 'GuildScheduledEvents',
+  GUILD_SCHEDULED_EVENT_USER_ADD: 'GuildScheduledEvents',
+  GUILD_SCHEDULED_EVENT_USER_REMOVE: 'GuildScheduledEvents',
+  AUTO_MODERATION_RULE_CREATE: 'AutoModerationConfiguration',
+  AUTO_MODERATION_RULE_UPDATE: 'AutoModerationConfiguration',
+  AUTO_MODERATION_RULE_DELETE: 'AutoModerationConfiguration',
+  AUTO_MODERATION_ACTION_EXECUTION: 'AutoModerationExecution',
+  MESSAGE_POLL_VOTE_ADD: 'GuildMessagePolls',
+  MESSAGE_POLL_VOTE_REMOVE: 'GuildMessagePolls',
+} as const satisfies Record<string, keyof typeof GatewayIntentBits>;
+export type GatewayEvent = keyof typeof gatewayEvents;
+const gatewayEventName = z.enum(Object.keys(gatewayEvents) as [GatewayEvent, ...GatewayEvent[]]);
+
+export const intentPermission = (intent: keyof typeof GatewayIntentBits) => `intents.${intent}`;
+/**
+ * Without it, messages reach plugins without content, embeds, attachments, components and polls,
+ * as Discord does for bots without the Message Content intent.
+ */
+export const messageContentPermission = intentPermission('MessageContent');
 const eventName = z.enum(Object.keys(pluginEvents) as [PluginEvent, ...PluginEvent[]]);
 
 export const manifestSchema = z.object({
@@ -126,6 +204,7 @@ export const manifestSchema = z.object({
       'at most 5 user menus and 5 message menus',
     ),
   events: z.array(eventName).max(Object.keys(pluginEvents).length).default([]),
+  discordEvents: z.array(gatewayEventName).max(Object.keys(gatewayEvents).length).default([]),
   uses: z.array(z.string().max(64)).max(50).default([]),
   context: z.array(z.enum(contextKinds)).default([]),
 });
@@ -216,7 +295,7 @@ export const eventDataSchemas = {
 
 /** What `handle_event` receives. `data` has the shape of `eventDataSchemas[event]`. */
 export const eventInputSchema = z.object({
-  event: eventName,
+  event: z.union([eventName, gatewayEventName]),
   guildId: z.string(),
   channelId: z.string().nullable(),
   data: z.record(z.string(), z.unknown()),
