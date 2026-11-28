@@ -14,7 +14,14 @@ export const moderationPtBR: Messages['moderation'] = {
     caseReason: { name: 'motivo', description: 'Altera o motivo de um caso' },
     history: { name: 'historico', description: 'Mostra o histórico de moderação de um usuário' },
     settings: { name: 'moderacao', description: 'Configura a moderação' },
-    settingsLog: { name: 'log', description: 'Define ou remove o canal de log de moderação' },
+    logGroup: {
+      name: 'log',
+      description: 'Onde os casos de moderação e os eventos do servidor são registrados',
+    },
+    logCases: {
+      name: 'casos',
+      description: 'Define ou remove o canal onde os casos de moderação são registrados',
+    },
     settingsDm: { name: 'dm', description: 'Escolhe se os usuários recebem DM quando punidos' },
     settingsEscalation: {
       name: 'escalonamento',

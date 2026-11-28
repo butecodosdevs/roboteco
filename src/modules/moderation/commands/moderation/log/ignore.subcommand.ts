@@ -2,7 +2,7 @@ import { MessageFlags, SlashCommandSubcommandBuilder } from 'discord.js';
 import { type GuildInteraction, Subcommand } from '@/core';
 import { getGuildSettings, updateGuildSettings } from '@/db';
 import { localize, translator } from '@/i18n';
-import { maxIgnoredChannels } from '../../logs.service';
+import { maxIgnoredChannels } from '@/modules/logs/logs.service';
 
 @Subcommand(
   localize(new SlashCommandSubcommandBuilder(), 'logs.ignore').addChannelOption((opt) =>

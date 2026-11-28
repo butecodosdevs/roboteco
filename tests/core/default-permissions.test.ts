@@ -52,6 +52,7 @@ async function slash(
     locale: 'en-US',
     memberPermissions: member.permissions,
     options: {
+      getSubcommandGroup: () => null,
       getSubcommand: () => options.subcommand ?? null,
       getUser: (name: string) => {
         const id = options.users?.[name];

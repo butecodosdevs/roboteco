@@ -42,6 +42,7 @@ Each concept page has the same shape: **what it is**, **what it's for**, **how i
 | Add a feature | [Modules → example](concepts/modules.md#example-a-dice-module-with-roll) |
 | Add a slash command | [Commands → example](concepts/commands.md#example-announce-a-server-only-command-for-moderators) |
 | Group actions under one command | [Subcommands → example](concepts/subcommands.md#example-tag-add-and-tag-show) |
+| Add a third level (`/command group subcommand`) | [Subcommands → groups](concepts/subcommands.md#subcommand-groups) |
 | React to messages, joins, deletions | [Events → example](concepts/events.md#example-introduce-the-bot-when-it-joins-a-server) |
 | Share state or query the database | [Services → example](concepts/services.md#example-tagsservice) |
 | Show text to users or add a language | [i18n → examples](concepts/i18n.md#example-translating-the-tags-module) |

@@ -40,6 +40,7 @@ function interaction(
       locale: 'en-US',
       memberPermissions: member.permissions,
       options: {
+        getSubcommandGroup: () => null,
         getSubcommand: () => null,
         getUser: (name: string) =>
           options[name]

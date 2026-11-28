@@ -27,7 +27,8 @@ They are caught before review, by people and AI agents alike.
 | `@Module` | `modules/<feature>/<feature>.module.ts` | `*Module` |
 | `@Injectable` | `modules/<feature>/<name>.service.ts` | `*Service` |
 | `@Command` | `commands/<name>/<name>.command.ts` | `*Command` |
-| `@Subcommand` | `commands/<name>/<sub>.subcommand.ts` | `*Subcommand` |
+| `@Subcommand` | `commands/<name>/<sub>.subcommand.ts`, or `commands/<name>/<group>/<sub>.subcommand.ts` inside a group | `*Subcommand` |
+| `@SubcommandGroup` | `commands/<name>/<group>/<group>.group.ts` | `*Group` |
 | `@UserContextMenu` / `@MessageContextMenu` | `context-menus/<name>.context-menu.ts` | `*ContextMenu` |
 | `@Button` / `@SelectMenu` / `@Modal` | `components/<name>.button.ts` / `.select.ts` / `.modal.ts` | `*Button` / `*Select` / `*Modal` |
 | `@On` / `@Once` | `events/<event>.event.ts` | `*Event` |
@@ -51,7 +52,7 @@ They are caught before review, by people and AI agents alike.
 
 **Completeness**
 
-- Commands, context menus, components, events and jobs are listed in their module, subcommands in their command, and every module is reachable from `AppModule`.
+- Commands, context menus, components, events and jobs are listed in their module, subcommands in their command or group, groups in their command, and every module is reachable from `AppModule`.
 - Every service is injected somewhere.
 - A module with commands has an `i18n/` file for every language, each registered in `src/i18n/locales/`.
 

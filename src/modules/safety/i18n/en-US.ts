@@ -39,7 +39,7 @@ export const safetyEnUS = {
   dm: 'Your message in **{server}** was removed because a security check confirmed it is malicious:\n{findings}\nIf you did not mean to send it, your account or device may be compromised: change your password and scan your device.',
   replies: {
     enabled:
-      'Scanning is on. Messages are only removed when a check confirms a threat; anything unknown stays up. Removals are reported in the moderation log (/moderation log).',
+      'Scanning is on. Messages are only removed when a check confirms a threat; anything unknown stays up. Removals are reported in the moderation log (/moderation log cases).',
     disabled: 'Scanning is off.',
     timeoutSet: 'Members whose message is removed will be timed out for {minutes} minutes.',
     timeoutOff: 'Members whose message is removed will not be timed out.',
@@ -60,6 +60,6 @@ export const safetyEnUS = {
       'The bot runs without the Message Content intent, so it cannot see links or files.',
     noManageMessages: 'I need the Manage Messages permission to remove messages.',
     noLogChannel:
-      'No moderation log channel is set, so removals are not reported. Use /moderation log.',
+      'No moderation log channel is set, so removals are not reported. Use /moderation log cases.',
   },
 } as const;

@@ -1,6 +1,5 @@
 export const logsEnUS = {
-  command: { name: 'logs', description: 'Configure the server event log' },
-  channel: { name: 'channel', description: 'Set the log channel (empty disables logging)' },
+  server: { name: 'server', description: 'Set the server event log channel (empty disables it)' },
   toggle: { name: 'toggle', description: 'Enable or disable logging an event type' },
   ignore: { name: 'ignore', description: 'Stop logging messages from a channel' },
   unignore: { name: 'unignore', description: 'Resume logging messages from a channel' },
@@ -40,12 +39,13 @@ export const logsEnUS = {
     eventDisabled: 'No longer logging: {event}.',
     ignored: 'Messages in {channel} will no longer be logged.',
     alreadyIgnored: '{channel} is already ignored.',
-    ignoreFull: 'You can ignore at most {max} channels. Remove one with /logs unignore first.',
+    ignoreFull:
+      'You can ignore at most {max} channels. Remove one with /moderation log unignore first.',
     unignored: 'Messages in {channel} will be logged again.',
     notIgnored: '{channel} was not ignored.',
     statusTitle: 'Event log',
     statusChannel: 'Channel',
-    statusNoChannel: 'Not set. Run /logs channel.',
+    statusNoChannel: 'Not set. Run /moderation log server.',
     statusEvents: 'Events',
     statusIgnored: 'Ignored channels',
     statusAuditLog: 'Audit log',

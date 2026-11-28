@@ -15,7 +15,7 @@ Moderators act on members with slash commands. Every action becomes a numbered *
 | `/purge count [user]` | Manage Messages | Bulk-deletes up to 100 recent messages in the channel, optionally from one user. Discord can't bulk-delete messages older than 14 days |
 | `/case view case`, `/case reason case reason` | Moderate Members | Shows a case. Changing the reason also edits the original log message |
 | `/history user` | Moderate Members | The user's 10 most recent cases, with the total count |
-| `/moderation log [channel]`, `/moderation dm enabled`, `/moderation status` | Manage Server | Sets or clears the log channel, chooses whether users get a DM, shows the settings |
+| `/moderation log cases [channel]`, `/moderation dm enabled`, `/moderation status` | Manage Server | Sets or clears the moderation log channel, chooses whether users get a DM, shows the settings |
 | `/moderation escalation warnings [action] [duration]` | Manage Server | Every Nth active warning applies a timeout (default 1h), kick or ban automatically, as a case by the bot. `0` disables |
 | `/moderation warn-expiry days` | Manage Server | Warnings older than this stop counting for escalation (default 30; `0` = forever) |
 | Right-click a member → *Warn* / *Timeout* | Moderate Members | Opens a form for the reason (and duration, e.g. `10m`), then runs the same flow as the slash commands |

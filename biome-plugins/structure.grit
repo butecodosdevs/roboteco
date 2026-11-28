@@ -9,6 +9,10 @@ or {
     $filename <: not r".*\.subcommand\.ts$",
     register_diagnostic(span=$d, message="@Subcommand() belongs in a *.subcommand.ts file.")
   },
+  `@SubcommandGroup($...)` as $d where {
+    $filename <: not r".*\.group\.ts$",
+    register_diagnostic(span=$d, message="@SubcommandGroup() belongs in a *.group.ts file.")
+  },
   `@UserContextMenu($...)` as $d where {
     $filename <: not r".*\.context\-menu\.ts$",
     register_diagnostic(span=$d, message="@UserContextMenu() belongs in a *.context-menu.ts file.")
@@ -60,6 +64,11 @@ or {
         $decs <: contains `@Subcommand($...)`,
         $name <: not r".*Subcommand$",
         register_diagnostic(span=$name, message="Classes decorated with @Subcommand() must be named *Subcommand.")
+      },
+      and {
+        $decs <: contains `@SubcommandGroup($...)`,
+        $name <: not r".*Group$",
+        register_diagnostic(span=$name, message="Classes decorated with @SubcommandGroup() must be named *Group.")
       },
       and {
         $decs <: contains `@UserContextMenu($...)`,
