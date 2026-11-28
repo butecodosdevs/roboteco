@@ -5,7 +5,7 @@ import { cache } from '@/cache';
 import { config } from '@/config';
 import { Injectable, inject, isBuiltInCommand } from '@/core';
 import { reportError } from '@/logger';
-import { type LoadedPlugin, PluginEngineService, permissions } from './plugin-engine.service';
+import { type LoadedPlugin, PluginEngineService } from './plugin-engine.service';
 import type {
   PluginCommandSpec,
   PluginContextMenuSpec,
@@ -31,7 +31,7 @@ const registrySchema = z.object({
       wasm: z.string(),
       /** `false` keeps the definition on disk but out of the runtime. */
       enabled: z.boolean().default(true),
-      permissions: z.array(z.enum(permissions)).default([]),
+      permissions: z.array(z.string()).default([]),
       allowedHosts: z.array(z.string()).optional(),
     }),
   ),

@@ -9,7 +9,7 @@ import type { PluginSource } from './plugin-build.service';
 import { PluginBuildService } from './plugin-build.service';
 import { PluginDeployService } from './plugin-deploy.service';
 import type { LoadedPlugin, Permission } from './plugin-engine.service';
-import { PluginEngineService, permissions } from './plugin-engine.service';
+import { PluginEngineService } from './plugin-engine.service';
 import { PluginManifestService } from './plugin-manifest.service';
 import {
   type PluginDefinitionEntry,
@@ -199,7 +199,7 @@ const toggleSchema = z.object({
 
 const pluginSchema = z.object({
   enabled: z.boolean().optional(),
-  permissions: z.array(z.enum(permissions)).optional(),
+  permissions: z.array(z.string()).optional(),
   allowedHosts: z.array(z.string().min(1).max(253)).optional(),
 });
 
