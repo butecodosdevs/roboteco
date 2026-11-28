@@ -9,8 +9,6 @@ export class StatusSubcommand {
   async execute(interaction: GuildInteraction) {
     const tr = translator(interaction.locale);
     const settings = await getGuildSettings(interaction.guildId);
-    const disabled = new Set(settings?.embedsDisabledSites ?? []);
-    const ignored = settings?.embedsIgnoredChannels ?? [];
 
     const embed = new EmbedBuilder().setColor(0x5865f2).setTitle(tr('embeds.replies.statusTitle'));
     embed.addFields({
@@ -21,16 +19,8 @@ export class StatusSubcommand {
     });
     embed.addFields({
       name: tr('embeds.replies.statusSites'),
-      value: embedSites
-        .map((site) => `${disabled.has(site) ? '🔴' : '🟢'} ${tr(`embeds.sites.${site}`)}`)
-        .join('\n'),
+      value: embedSites.map((site) => tr(`embeds.sites.${site}`)).join(', '),
     });
-    if (ignored.length > 0) {
-      embed.addFields({
-        name: tr('embeds.replies.statusIgnored'),
-        value: ignored.map((id) => `<#${id}>`).join(' '),
-      });
-    }
     return interaction.reply({
       embeds: [embed],
       flags: MessageFlags.Ephemeral,

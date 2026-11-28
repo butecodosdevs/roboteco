@@ -1,14 +1,9 @@
 export const embedsEnUS = {
   command: { name: 'embeds', description: 'Fix broken link previews with embeds.now' },
   toggle: { name: 'toggle', description: 'Turn link fixing on or off for this server' },
-  site: { name: 'site', description: 'Enable or disable fixing a specific site' },
-  ignore: { name: 'ignore', description: 'Stop fixing links in a channel' },
-  unignore: { name: 'unignore', description: 'Resume fixing links in a channel' },
   status: { name: 'status', description: 'Show the current link-fixing configuration' },
   options: {
     enabled: { name: 'enabled', description: 'Whether to fix links' },
-    site: { name: 'site', description: 'Site' },
-    ignoreChannel: { name: 'channel', description: 'Channel to ignore' },
   },
   sites: {
     twitter: 'X / Twitter',
@@ -21,21 +16,15 @@ export const embedsEnUS = {
     pinterest: 'Pinterest',
     facebook: 'Facebook',
   },
+  deleteReason: 'Reposted with a fixed link preview (embeds.now)',
   replies: {
     enabled:
-      'Link fixing is on. I need Manage Messages and Manage Webhooks in the channels where it should work.',
+      'Link fixing is on. It works in channels where I have Manage Messages and Manage Webhooks, so to leave a channel out, deny me one of those there.',
     disabled: 'Link fixing is off.',
-    siteEnabled: 'Now fixing: {site}.',
-    siteDisabled: 'No longer fixing: {site}.',
-    ignored: 'Links in {channel} will no longer be fixed.',
-    alreadyIgnored: '{channel} is already ignored.',
-    unignored: 'Links in {channel} will be fixed again.',
-    notIgnored: '{channel} was not ignored.',
     statusTitle: 'Link fixing',
     statusState: 'Status',
     statusOn: 'On',
     statusOff: 'Off',
     statusSites: 'Sites',
-    statusIgnored: 'Ignored channels',
   },
 } as const;

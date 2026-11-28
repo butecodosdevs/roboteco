@@ -1,14 +1,9 @@
 export const embedsPtBR = {
   command: { name: 'embeds', description: 'Conserta previews de link quebrados com o embeds.now' },
   toggle: { name: 'alternar', description: 'Liga ou desliga o conserto de links neste servidor' },
-  site: { name: 'site', description: 'Ativa ou desativa o conserto de um site específico' },
-  ignore: { name: 'ignorar', description: 'Para de consertar links em um canal' },
-  unignore: { name: 'designorar', description: 'Volta a consertar links em um canal' },
   status: { name: 'status', description: 'Mostra a configuração atual do conserto de links' },
   options: {
     enabled: { name: 'ativado', description: 'Se deve consertar os links' },
-    site: { name: 'site', description: 'Site' },
-    ignoreChannel: { name: 'canal', description: 'Canal a ignorar' },
   },
   sites: {
     twitter: 'X / Twitter',
@@ -21,21 +16,15 @@ export const embedsPtBR = {
     pinterest: 'Pinterest',
     facebook: 'Facebook',
   },
+  deleteReason: 'Repostada com o preview do link corrigido (embeds.now)',
   replies: {
     enabled:
-      'Conserto de links ligado. Preciso das permissões Gerenciar Mensagens e Gerenciar Webhooks nos canais onde ele deve funcionar.',
+      'Conserto de links ligado. Ele funciona nos canais onde tenho Gerenciar Mensagens e Gerenciar Webhooks; para deixar um canal de fora, tire uma delas de mim lá.',
     disabled: 'Conserto de links desligado.',
-    siteEnabled: 'Agora consertando: {site}.',
-    siteDisabled: 'Deixando de consertar: {site}.',
-    ignored: 'Os links em {channel} não serão mais consertados.',
-    alreadyIgnored: '{channel} já está sendo ignorado.',
-    unignored: 'Os links em {channel} voltarão a ser consertados.',
-    notIgnored: '{channel} não estava sendo ignorado.',
     statusTitle: 'Conserto de links',
     statusState: 'Status',
     statusOn: 'Ligado',
     statusOff: 'Desligado',
     statusSites: 'Sites',
-    statusIgnored: 'Canais ignorados',
   },
 } as const;

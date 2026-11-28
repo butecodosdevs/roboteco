@@ -1,5 +1,5 @@
 {
-  "id": "8e907a43-c620-4c72-85b6-644cae261087",
+  "id": "778fcd8f-0cad-4d91-b8fd-cf14e99b8f37",
   "prevId": "8f671118-93f2-40ad-9791-6018db476931",
   "version": "7",
   "dialect": "postgresql",
@@ -655,20 +655,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
-        },
-        "embeds_disabled_sites": {
-          "name": "embeds_disabled_sites",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "embeds_ignored_channels": {
-          "name": "embeds_ignored_channels",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
         },
         "purge_job_id": {
           "name": "purge_job_id",

@@ -1,0 +1,1 @@
+ALTER TABLE "guilds" ADD COLUMN "embeds_enabled" boolean DEFAULT false NOT NULL;

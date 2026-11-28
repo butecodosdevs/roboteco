@@ -4,11 +4,13 @@ import {
   type Message,
   PermissionsBitField,
   RESTJSONErrorCodes,
+  Routes,
   type Webhook,
   type WebhookMessageCreateOptions,
 } from 'discord.js';
 import { Injectable, inject } from '@/core';
 import { getGuildSettings } from '@/db';
+import { t } from '@/i18n';
 import { LogsService } from '@/modules/logs/logs.service';
 
 /** Sites Discord previews poorly that embeds.now fixes. Also the i18n keys under `embeds.sites`. */
@@ -60,27 +62,27 @@ export class EmbedsService {
   private readonly webhooks = new Map<string, Webhook>();
 
   /**
-   * Rewrites every supported, non-disabled link in `content` to its embeds.now form. Links in code
+   * Rewrites every supported link in `content` to its embeds.now form. Links in code
    * and links wrapped in `<>` (the member asked for no preview) are kept as they are.
    */
-  fix(content: string, disabled: ReadonlySet<string>): FixResult {
+  fix(content: string): FixResult {
     let changed = false;
     let out = '';
     let last = 0;
     for (const code of content.matchAll(codePattern)) {
-      out += this.fixText(content.slice(last, code.index), disabled, () => {
+      out += this.fixText(content.slice(last, code.index), () => {
         changed = true;
       });
       out += code[0];
       last = code.index + code[0].length;
     }
-    out += this.fixText(content.slice(last), disabled, () => {
+    out += this.fixText(content.slice(last), () => {
       changed = true;
     });
     return { changed, content: out };
   }
 
-  private fixText(text: string, disabled: ReadonlySet<string>, onChange: () => void): string {
+  private fixText(text: string, onChange: () => void): string {
     return text.replace(urlPattern, (raw, offset: number) => {
       if (text[offset - 1] === '<') return raw;
       const tail = trailing.exec(raw)?.[0] ?? '';
@@ -91,8 +93,7 @@ export class EmbedsService {
       } catch {
         return raw;
       }
-      const site = hostToSite(url.hostname);
-      if (!site || disabled.has(site)) return raw;
+      if (!hostToSite(url.hostname)) return raw;
       onChange();
       // `www.` is always an alias of the apex; keep meaningful subdomains (vm., open., mobile.).
       const host = url.host.replace(/^www\./i, '');
@@ -103,11 +104,8 @@ export class EmbedsService {
   async process(message: Message<true>): Promise<void> {
     const settings = await getGuildSettings(message.guildId);
     if (!settings?.embedsEnabled) return;
-    const ignored = settings.embedsIgnoredChannels;
-    const parentId = message.channel.isThread() ? message.channel.parentId : null;
-    if (ignored.includes(message.channelId) || (parentId && ignored.includes(parentId))) return;
 
-    const { changed, content } = this.fix(message.content, new Set(settings.embedsDisabledSites));
+    const { changed, content } = this.fix(message.content);
     if (!changed || content.length > maxContent) return;
     // Reposting through a webhook drops attachments, stickers and polls, so leave those messages alone.
     if (message.attachments.size > 0 || message.stickers.size > 0 || message.poll) return;
@@ -134,8 +132,12 @@ export class EmbedsService {
       allowedMentions: { parse: [] },
     });
     if (!sent) return;
-    await this.logs.expectMessageDelete(message.guildId, message.id);
-    await message.delete().catch(() => undefined);
+    const reason = t(message.guild.preferredLocale, 'embeds.deleteReason');
+    await this.logs.expectMessageDelete(message.guildId, message.id, reason);
+    // Message#delete takes no reason; the audit log should say why the bot removed a member's message.
+    await message.client.rest
+      .delete(Routes.channelMessage(message.channelId, message.id), { reason })
+      .catch(() => undefined);
   }
 
   /** Sends through the channel's webhook, replacing it once if someone deleted it. */
