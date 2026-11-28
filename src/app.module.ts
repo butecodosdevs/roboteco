@@ -24,6 +24,7 @@ import { PrivacyModule } from '@/modules/privacy/privacy.module';
 import { RemindersModule } from '@/modules/reminders/reminders.module';
 import { ReportsModule } from '@/modules/reports/reports.module';
 import { RolesModule } from '@/modules/roles/roles.module';
+import { SafetyModule } from '@/modules/safety/safety.module';
 import { ScheduledPostsModule } from '@/modules/scheduled-posts/scheduled-posts.module';
 import { StarboardModule } from '@/modules/starboard/starboard.module';
 import { SuggestionsModule } from '@/modules/suggestions/suggestions.module';
@@ -66,6 +67,7 @@ import { WelcomeModule } from '@/modules/welcome/welcome.module';
     AutomodModule,
     EmbedsModule,
     PanelModule,
+    SafetyModule,
     ...(config.env === 'development' ? [DevModule] : []),
   ],
 })

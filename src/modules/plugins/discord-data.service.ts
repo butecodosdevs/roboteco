@@ -1,14 +1,7 @@
-import {
-  type APIRole,
-  type Channel,
-  type Client,
-  type Guild,
-  type GuildMember,
-  PermissionFlagsBits,
-  type Role,
-} from 'discord.js';
+import type { APIRole, Channel, Client, Guild, GuildMember, Role } from 'discord.js';
 import { z } from 'zod';
 import { CapabilityError, Expose, Injectable, type PluginScope, snowflake } from '@/core';
+import { elevatedPermissions } from '@/lib/permissions';
 
 export const memberSchema = z.object({
   id: z.string(),
@@ -68,28 +61,6 @@ export const roleData = (role: Role | APIRole) => ({
   color: role.color,
   position: role.position,
 });
-
-/** Permissions that make a role a staff role. Plugins hand these out only for staff. */
-export const elevatedPermissions = [
-  PermissionFlagsBits.Administrator,
-  PermissionFlagsBits.ManageGuild,
-  PermissionFlagsBits.ManageRoles,
-  PermissionFlagsBits.ManageChannels,
-  PermissionFlagsBits.ManageMessages,
-  PermissionFlagsBits.ManageThreads,
-  PermissionFlagsBits.ManageWebhooks,
-  PermissionFlagsBits.ManageNicknames,
-  PermissionFlagsBits.ManageGuildExpressions,
-  PermissionFlagsBits.ManageEvents,
-  PermissionFlagsBits.KickMembers,
-  PermissionFlagsBits.BanMembers,
-  PermissionFlagsBits.ModerateMembers,
-  PermissionFlagsBits.MentionEveryone,
-  PermissionFlagsBits.ViewAuditLog,
-  PermissionFlagsBits.MuteMembers,
-  PermissionFlagsBits.DeafenMembers,
-  PermissionFlagsBits.MoveMembers,
-];
 
 @Injectable()
 export class DiscordDataService {

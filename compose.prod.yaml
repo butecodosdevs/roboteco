@@ -47,6 +47,20 @@ services:
       timeout: 3s
       retries: 10
 
+  # Optional virus scanning for the safety module: set COMPOSE_PROFILES=clamav and CLAMAV_HOST=clamav.
+  clamav:
+    image: clamav/clamav:1.5.5
+    profiles: ["clamav"]
+    restart: unless-stopped
+    volumes:
+      - clamav-data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 10m
+
   migrate:
     image: roboteco:${ROBOTECO_VERSION:-latest}
     build: .
@@ -114,3 +128,4 @@ volumes:
   postgres-data:
   garage-meta:
   garage-data:
+  clamav-data:

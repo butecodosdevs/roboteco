@@ -54,6 +54,8 @@ export const guilds = pgTable('guilds', {
   antiraidPreviousLevel: integer('antiraid_previous_level'),
   birthdayChannelId: text('birthday_channel_id'),
   birthdayRoleId: text('birthday_role_id'),
+  safetyEnabled: boolean('safety_enabled').notNull().default(false),
+  safetyTimeoutMinutes: integer('safety_timeout_minutes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
@@ -432,5 +434,21 @@ export const commandUsage = pgTable(
   (table) => [
     index('command_usage_guild_idx').on(table.guildId, table.usedAt),
     index('command_usage_command_idx').on(table.guildId, table.command, table.usedAt),
+  ],
+);
+
+export const reactionRoles = pgTable(
+  'reaction_roles',
+  {
+    messageId: text('message_id').notNull(),
+    emoji: text('emoji').notNull(),
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    roleId: text('role_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.messageId, table.emoji] }),
+    index('reaction_roles_guild_idx').on(table.guildId),
   ],
 );

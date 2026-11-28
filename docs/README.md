@@ -34,6 +34,7 @@ Each concept page has the same shape: **what it is**, **what it's for**, **how i
 - [Privacy and data lifecycle](examples/privacy.md): `/privacy`, module erase and purge hooks.
 - [Moderation](examples/moderation.md): commands sharing one service for checks, numbered cases and a moderation log.
 - [Honeypot](examples/honeypot.md): a complete feature using every concept, which logs its bans through moderation.
+- [Safety](examples/safety.md): removes links and files that threat databases and ClamAV confirm are malicious, with rechecks.
 
 ## How do I…
 

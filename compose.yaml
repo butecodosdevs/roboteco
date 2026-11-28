@@ -45,7 +45,25 @@ services:
       timeout: 3s
       retries: 10
 
+  # Optional virus scanning for the safety module. Start it with COMPOSE_PROFILES=clamav.
+  # It needs about 1.5 GB of RAM, and a few minutes on first start to download signatures.
+  clamav:
+    image: clamav/clamav:1.5.5
+    profiles: ["clamav"]
+    restart: unless-stopped
+    ports:
+      - "${CLAMAV_PORT:-3310}:3310"
+    volumes:
+      - clamav-data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 10m
+
 volumes:
   postgres-data:
   garage-meta:
   garage-data:
+  clamav-data:
