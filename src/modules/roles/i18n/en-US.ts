@@ -51,6 +51,9 @@ export const rolesEnUS = {
     removed: '{role} is no longer self-assignable.',
     notListed: '{role} is not self-assignable.',
     tooMany: 'The picker holds at most 25 roles.',
+    aboveYou: "You can't hand out {role}: it isn't below your highest role.",
+    staffRole:
+      "{role} grants staff permissions, so it can't be handed to whoever picks or reacts. Give it by hand.",
     unassignable:
       "I can't assign {role}: it is managed by an integration or is not below my highest role.",
     panelPosted: 'Role picker posted in {channel}.',

@@ -54,6 +54,9 @@ export const rolesPtBR: Messages['roles'] = {
     removed: '{role} não pode mais ser escolhido.',
     notListed: '{role} não está entre os cargos escolhíveis.',
     tooMany: 'O seletor comporta no máximo 25 cargos.',
+    aboveYou: 'Você não pode distribuir {role}: ele não está abaixo do seu cargo mais alto.',
+    staffRole:
+      '{role} dá permissões de equipe, então não pode ir para quem escolher ou reagir. Dê esse cargo manualmente.',
     unassignable:
       'Não posso atribuir {role}: ele é gerenciado por uma integração ou não está abaixo do meu cargo mais alto.',
     panelPosted: 'Seletor de cargos postado em {channel}.',

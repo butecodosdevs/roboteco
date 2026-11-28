@@ -65,10 +65,15 @@ export class SetupSubcommand {
     for (const pair of pairs) {
       const role = guild.roles.cache.get(pair.roleId);
       const already = this.reactionRoles.roleFor(message.id, pair.emoji);
+      const refusal = role ? this.roles.grantRefusal(interaction.member, role) : 'unassignable';
       if (seen.has(pair.emoji)) {
         lines.push(tr('roles.reaction.replies.duplicate', { emoji: pair.reaction }));
-      } else if (!role || !this.roles.canAssign(guild, role)) {
-        lines.push(tr('roles.replies.unassignable', { role: role?.toString() ?? pair.roleId }));
+      } else if (!role || refusal) {
+        lines.push(
+          tr(`roles.replies.${refusal ?? 'unassignable'}`, {
+            role: role?.toString() ?? pair.roleId,
+          }),
+        );
       } else if (!already && this.reactionRoles.count(message.id) >= maxReactionsPerMessage) {
         lines.push(tr('roles.reaction.replies.tooMany', { max: maxReactionsPerMessage }));
       } else if (

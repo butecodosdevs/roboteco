@@ -14,7 +14,7 @@ export class MessageReactionRemoveEvent {
     const guild = reaction.message.guild;
     if (!roleId || !guild) return;
     const role = guild.roles.cache.get(roleId);
-    if (!role || !this.roles.canAssign(guild, role)) return;
+    if (!role || !this.roles.canHandOut(guild, role)) return;
     const member = await guild.members.fetch(user.id).catch(() => null);
     if (!member?.roles.cache.has(roleId)) return;
     await member.roles.remove(roleId, 'Reaction role');
