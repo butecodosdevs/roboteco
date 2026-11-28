@@ -8,8 +8,9 @@ mkdir -p plugins/dist
 cp plugins/hello-rust/target/wasm32-unknown-unknown/release/hello_rust.wasm plugins/dist/hello.wasm
 
 (cd plugins/coin-go && GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o ../dist/coin.wasm .)
+(cd plugins/remind-go && GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o ../dist/remind.wasm .)
 
-for fixture in evil greedy; do
+for fixture in evil greedy contract; do
   (cd "plugins/fixtures/$fixture-rust" && cargo build --release --target wasm32-unknown-unknown --quiet)
   cp "plugins/fixtures/$fixture-rust/target/wasm32-unknown-unknown/release/${fixture}_rust.wasm" "plugins/dist/$fixture.wasm"
 done

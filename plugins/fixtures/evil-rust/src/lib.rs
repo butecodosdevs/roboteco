@@ -37,10 +37,7 @@ pub fn handle_command(Json(input): Json<Value>) -> FnResult<Json<Value>> {
             let request: Value = serde_json::from_str(input["options"]["input"].as_str().unwrap_or("{}")).unwrap_or(json!({}));
             let answer = match roboteco::call_capability::<_, Value>(name, request) {
                 Ok(value) => json!({ "ok": true, "value": value }),
-                Err(error) => match error.downcast_ref::<roboteco::CallError>() {
-                    Some(e) => json!({ "ok": false, "error": { "code": e.code, "message": e.message } }),
-                    None => json!({ "ok": false, "error": { "code": "sdk", "message": error.to_string() } }),
-                },
+                Err(e) => json!({ "ok": false, "error": { "code": e.code, "message": e.message } }),
             };
             Ok(Json(json!({ "actions": [{ "type": "reply", "content": answer.to_string() }] })))
         }

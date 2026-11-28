@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand/v2"
+	"strings"
 
 	"roboteco.dev/sdk"
 )
@@ -11,7 +12,7 @@ import (
 func manifest() int32 {
 	return roboteco.Manifest(roboteco.Plugin{
 		Name:    "coin",
-		Version: "0.3.0",
+		Version: "0.4.0",
 		Uses:    []string{"kv.increment", "kv.get"},
 		Commands: []roboteco.CommandSpec{{
 			Name:                     "coin",
@@ -42,24 +43,49 @@ func manifest() int32 {
 //go:wasmexport handle_command
 func handleCommand() int32 { return roboteco.HandleCommand(run) }
 
+//go:wasmexport handle_component
+func handleComponent() int32 { return roboteco.HandleComponent(click) }
+
 func run(cmd roboteco.Command) (roboteco.Response, error) {
 	switch cmd.Subcommand {
 	case "flip":
-		side := []string{"heads", "tails"}[rand.IntN(2)]
-		result := "lost"
-		if cmd.String("call") == side {
-			result = "won"
-		}
-		if _, err := roboteco.KV.Increment("flips:"+cmd.UserID+":"+result, 1); err != nil {
-			return roboteco.Response{}, err
-		}
-		return roboteco.Reply(fmt.Sprintf("🪙 **%s**, you called %s: you %s! (from Go)", side, cmd.String("call"), result)), nil
+		msg, err := flip(cmd.UserID, cmd.String("call"))
+		return roboteco.ReplyWith(msg), err
 	case "stats":
 		won, _, _ := roboteco.KV.Get("flips:" + cmd.UserID + ":won")
 		lost, _, _ := roboteco.KV.Get("flips:" + cmd.UserID + ":lost")
-		return roboteco.Reply(fmt.Sprintf("<@%s>: %s won, %s lost.", cmd.UserID, orZero(won), orZero(lost))), nil
+		stats := roboteco.Embed{Title: "🪙 Coin flips", Color: 0xF1C40F}.
+			Inline("Won", orZero(won)).
+			Inline("Lost", orZero(lost))
+		if m := cmd.Context.Member; m != nil {
+			stats = stats.WithAuthor(m.DisplayName, m.AvatarURL)
+		}
+		return roboteco.Reply("").WithEmbed(stats), nil
 	}
 	return roboteco.Private("Unknown subcommand " + cmd.Subcommand + "."), nil
+}
+
+// The button id carries the call, so whoever clicks flips again with the same bet.
+func click(cmd roboteco.Command) (roboteco.Response, error) {
+	call, ok := strings.CutPrefix(cmd.Component.ID, "again:")
+	if !ok {
+		return roboteco.Private("This button is no longer supported."), nil
+	}
+	msg, err := flip(cmd.UserID, call)
+	return roboteco.Update(msg), err
+}
+
+func flip(userID, call string) (roboteco.Message, error) {
+	side := []string{"heads", "tails"}[rand.IntN(2)]
+	result := "lost"
+	if call == side {
+		result = "won"
+	}
+	if _, err := roboteco.KV.Increment("flips:"+userID+":"+result, 1); err != nil {
+		return roboteco.Message{}, err
+	}
+	text := fmt.Sprintf("🪙 **%s**, <@%s> called %s: they %s! (from Go)", side, userID, call, result)
+	return roboteco.Text(text).WithButtons(roboteco.Secondary("again:"+call, "Flip again").WithEmoji("🔁")), nil
 }
 
 func orZero(s string) string {

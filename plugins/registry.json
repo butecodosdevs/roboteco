@@ -14,6 +14,18 @@
       "permissions": [
         "kv"
       ]
+    },
+    {
+      "id": "remind",
+      "wasm": "plugins/dist/remind.wasm",
+      "permissions": [
+        "schedule",
+        "messages.send",
+        "reactions",
+        "kv",
+        "events.messages",
+        "events.levels"
+      ]
     }
   ]
 }

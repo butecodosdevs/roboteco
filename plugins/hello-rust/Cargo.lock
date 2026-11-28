@@ -118,7 +118,7 @@ checksum = "735eaa21a6a5ffb2e84362faaeb90c05ba8e19797ca30428478cb6ea3a4921bc"
 
 [[package]]
 name = "hello-rust"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "extism-pdk",
  "roboteco",
@@ -269,7 +269,7 @@ dependencies = [
 
 [[package]]
 name = "roboteco"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "extism-pdk",
  "serde",
