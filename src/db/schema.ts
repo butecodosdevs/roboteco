@@ -392,3 +392,28 @@ export const tempVoiceChannels = pgTable(
   },
   (table) => [index('temp_voice_owner_idx').on(table.guildId, table.ownerId)],
 );
+
+export const pluginKv = pgTable(
+  'plugin_kv',
+  {
+    pluginId: text('plugin_id').notNull(),
+    guildId: text('guild_id').notNull(),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.pluginId, table.guildId, table.key] })],
+);
+
+/** Messages a plugin posted, so it can edit or delete its own messages and nobody else's. */
+export const pluginMessages = pgTable(
+  'plugin_messages',
+  {
+    messageId: text('message_id').primaryKey(),
+    pluginId: text('plugin_id').notNull(),
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('plugin_messages_guild_idx').on(table.guildId)],
+);

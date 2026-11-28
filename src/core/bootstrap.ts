@@ -3,7 +3,7 @@ import { closeCache } from '@/cache';
 import { closeDb } from '@/db';
 import { t } from '@/i18n';
 import { flushErrors, logger, reportError } from '@/logger';
-import { kindOf, parseCustomId } from './component';
+import { isDelegatedComponent, kindOf, parseCustomId } from './component';
 import { contextMenuKey } from './context-menu';
 import { startHealthServer } from './health';
 import { JobRunner } from './job';
@@ -41,6 +41,7 @@ async function route(app: ResolvedApp, interaction: Interaction): Promise<unknow
     return app.contextMenus.get(key)?.handle(interaction);
   }
   if (interaction.isMessageComponent() || interaction.isModalSubmit()) {
+    if (isDelegatedComponent(interaction.customId)) return undefined;
     const { id, args } = parseCustomId(interaction.customId);
     const handler = app.components.get(id);
     if (!handler || handler.kind !== kindOf(interaction) || !interaction.inCachedGuild()) {

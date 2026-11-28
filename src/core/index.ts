@@ -9,6 +9,7 @@ export {
 export {
   Button,
   customId,
+  delegateComponents,
   type GuildButtonInteraction,
   type GuildModalInteraction,
   type GuildSelectInteraction,
@@ -22,6 +23,19 @@ export {
   UserContextMenu,
 } from './context-menu';
 export { On, Once } from './event';
+export {
+  allCapabilities,
+  type Capability,
+  CapabilityError,
+  CapabilityInputError,
+  callerMay,
+  capability,
+  Expose,
+  invokeCapability,
+  type PluginCaller,
+  type PluginScope,
+  snowflake,
+} from './expose';
 export { Injectable, inject, provide } from './injector';
 export { cancelJob, ensureScheduled, Job, schedule } from './job';
 export { eraseUserData, isBuiltInCommand, purgeGuildData } from './lifecycle';

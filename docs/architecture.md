@@ -23,9 +23,10 @@ src/
   lib/                  shared helpers: durations, safe URL fetching, WASM inspection
   i18n/                 translation helpers; locales/ combines module translations
 drizzle/                SQL migrations
-plugins/                WASM plugin sources, registry.json, dist/ (built)
+plugins/                WASM plugin SDKs and examples, registry.json (empty), registry.example.json, dist/ (built)
 biome-plugins/          custom lint rules
-scripts/                build.ts, build-plugins.sh, lint-structure.ts, storage-init.sh, backup.sh
+scripts/                build.ts, build-plugins.sh, plugin.ts (plugin dev CLI), lint-structure.ts, storage-init.sh, backup.sh
+tests/                  pnpm test: behaviour tests against the real Postgres and Valkey
 ```
 
 ## What it's for

@@ -38,6 +38,20 @@ export function customId(target: Type, ...args: (string | number)[]): string {
   return id;
 }
 
+const delegated = new Set<string>();
+
+/**
+ * Lets a module answer, through its own event listener, components whose custom id starts with
+ * `prefix:`. The router then leaves them alone instead of calling them expired.
+ */
+export function delegateComponents(prefix: string): void {
+  delegated.add(prefix);
+}
+
+export function isDelegatedComponent(customId: string): boolean {
+  return delegated.has(customId.slice(0, customId.indexOf(':')));
+}
+
 export function parseCustomId(value: string): { id: string; args: string[] } {
   const [id = '', ...args] = value.split(separator);
   return { id, args };

@@ -18,6 +18,7 @@ Read [docs/README.md](docs/README.md) first. Each concept doc explains what the 
 - Use `inject(Service)` for shared state. Never use module-level mutable state.
 - Components and staff-only buttons must check permissions themselves. Messages the bot posts on behalf of a member use `allowedMentions: { parse: [] }`.
 - Time-based work goes through `schedule()` and a `@Job`, never `setTimeout`.
+- Plugins reach bot data only through `@Expose`d service methods with zod input and output schemas. Never give them raw database or Discord access, and never add host functions other than `call` ([plugins](docs/concepts/plugins.md#how-it-works)).
 - Use Valkey (`@/cache`) for counters, cooldowns and expiring state, with atomic commands and a TTL. Use Postgres for anything that must last ([cache](docs/concepts/cache.md)).
 - Log with `logger` and report failures with `reportError` (`src/logger.ts`). Never use `console`.
 - A new table with server or user data needs `onGuildRemove` / `onUserErase` on its module ([privacy](docs/examples/privacy.md#module-hooks)).
@@ -29,7 +30,7 @@ Read [docs/README.md](docs/README.md) first. Each concept doc explains what the 
 
 ## Tests
 
-No tautological tests. Each test must be able to fail when the behaviour is wrong:
+Tests live in `tests/` and run with `pnpm test` (Node's test runner via tsx), against the Postgres and Valkey in `.env`. Use unique IDs and delete what you create. No tautological tests. Each test must be able to fail when the behaviour is wrong:
 - **Entry points:** drive the code through its public entry points: command and component handlers, events, jobs, services.
 - **What to fake:** use a real test database. Fake only the Discord boundary, and only with the fields the code reads.
 - **What to assert:** observable outcomes. That means rows written or deleted, messages sent, roles changed, and the user being refused with the right reason.
@@ -44,7 +45,7 @@ No tautological tests. Each test must be able to fail when the behaviour is wron
 ## Verify
 
 ```sh
-pnpm typecheck && pnpm lint && pnpm build
+pnpm typecheck && pnpm lint && pnpm build && pnpm test
 ```
 
 `pnpm lint` runs Biome and the structure linter. If you changed slash command names, descriptions or options, `pnpm deploy-commands` must be run before they appear in Discord.
