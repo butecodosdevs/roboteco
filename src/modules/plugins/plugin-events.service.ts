@@ -10,7 +10,6 @@ import {
 } from './plugin-manifest.service';
 import { PluginRegistryService } from './plugin-registry.service';
 
-/** A gateway dispatch as discord.js re-emits it on `Events.Raw`. */
 export interface GatewayPacket {
   t?: string | null;
   d?: unknown;
@@ -22,7 +21,6 @@ type Json = Record<string, unknown>;
 const maxPayloadBytes = 64 * 1024;
 const contentFields = ['content', 'embeds', 'attachments', 'components', 'poll'];
 
-/** Removes what the Message Content intent covers from a message and the messages it quotes. */
 function withoutContent(message: Json): Json {
   const copy: Json = { ...message };
   for (const field of contentFields) delete copy[field];

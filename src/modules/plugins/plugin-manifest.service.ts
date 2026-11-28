@@ -113,10 +113,9 @@ export const pluginEvents = {
 export type PluginEvent = keyof typeof pluginEvents;
 
 /**
- * Discord's own gateway events, delivered as Discord sends them, keyed by the intent that
- * delivers each one (https://discord.com/developers/docs/events/gateway#list-of-intents).
- * Left out on purpose: INTERACTION_CREATE and VOICE_SERVER_UPDATE carry tokens that act as the
- * bot, GUILD_CREATE is a full server dump, and events without a server don't belong to one.
+ * Intents from https://discord.com/developers/docs/events/gateway#list-of-intents. Left out on
+ * purpose: INTERACTION_CREATE and VOICE_SERVER_UPDATE carry tokens that act as the bot,
+ * GUILD_CREATE is a full server dump, and events without a server don't belong to one.
  */
 export const gatewayEvents = {
   GUILD_UPDATE: 'Guilds',
@@ -183,7 +182,6 @@ export const gatewayEvents = {
 export type GatewayEvent = keyof typeof gatewayEvents;
 const gatewayEventName = z.enum(Object.keys(gatewayEvents) as [GatewayEvent, ...GatewayEvent[]]);
 
-/** The permission that grants a plugin the events an intent delivers, e.g. `intents.GuildMessages`. */
 export const intentPermission = (intent: keyof typeof GatewayIntentBits) => `intents.${intent}`;
 /**
  * Without it, messages reach plugins without content, embeds, attachments, components and polls,
@@ -297,7 +295,6 @@ export const eventDataSchemas = {
 
 /** What `handle_event` receives. `data` has the shape of `eventDataSchemas[event]`. */
 export const eventInputSchema = z.object({
-  /** One of `events`, or one of `discordEvents` with `data` exactly as Discord sent it. */
   event: z.union([eventName, gatewayEventName]),
   guildId: z.string(),
   channelId: z.string().nullable(),
