@@ -393,7 +393,6 @@ export const tempVoiceChannels = pgTable(
   (table) => [index('temp_voice_owner_idx').on(table.guildId, table.ownerId)],
 );
 
-/** Plugin key-value storage: one space per plugin and server. */
 export const pluginKv = pgTable(
   'plugin_kv',
   {

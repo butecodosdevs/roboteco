@@ -4,7 +4,6 @@ import type { Type } from './types';
 
 export const snowflake = z.string().regex(/^\d{15,21}$/, 'must be a Discord ID');
 
-/** The member whose command, click or form triggered a plugin call. */
 export interface PluginCaller {
   userId: string;
   /** Their permissions in the channel, as Discord computed them for the interaction. */
@@ -23,7 +22,6 @@ export interface PluginScope {
   caller: PluginCaller | null;
 }
 
-/** True when there is no caller (the server's grant applies) or the caller has `flag`. */
 export function callerMay(scope: PluginScope, flag: bigint): boolean {
   return !scope.caller || new PermissionsBitField(scope.caller.permissions).has(flag);
 }

@@ -18,7 +18,6 @@ const spaceOf = (scope: PluginScope) =>
   and(eq(kv.pluginId, scope.pluginId), eq(kv.guildId, scope.guildId));
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-/** Storage and logging every plugin gets, one Postgres space per plugin and server. */
 @Injectable()
 export class PluginHostService {
   @Expose('kv.get', {

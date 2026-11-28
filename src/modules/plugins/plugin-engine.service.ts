@@ -35,10 +35,6 @@ import {
 export type { Invocation, PluginAction, PluginChoice } from './plugin-manifest.service';
 export type Permission = string;
 
-/**
- * Permissions an admin can grant: `http` for Extism's own HTTP, every exposed capability's, and
- * one per family of events.
- */
 export const knownPermissions = (): Set<string> =>
   new Set<string>([
     'http',
@@ -236,7 +232,6 @@ export class PluginEngineService {
     void Promise.race([old.close(), sleep(1000)]).catch(() => undefined);
   }
 
-  /** Runs a command, context menu, button, select or form, and returns what to answer with. */
   async interact(
     plugin: LoadedPlugin,
     input: Invocation,

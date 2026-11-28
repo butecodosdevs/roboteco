@@ -70,7 +70,6 @@ export interface ModerationOutcome {
   notified: boolean;
   /** A line `onApplied` returned, e.g. when a temporary ban ends. */
   extra?: string;
-  /** The case a warning escalated into, if it did. */
   escalated?: ModerationCase;
 }
 

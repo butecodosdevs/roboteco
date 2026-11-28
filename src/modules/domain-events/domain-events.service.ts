@@ -1,7 +1,6 @@
 import { Injectable } from '@/core';
 import { reportError } from '@/logger';
 
-/** Things that happened inside the bot that other features may react to. */
 export interface DomainEvents {
   'levels.levelUp': { guildId: string; userId: string; level: number; xp: number };
   'moderation.caseCreated': {

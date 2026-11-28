@@ -27,7 +27,6 @@ export function levelFor(xp: number): { level: number; current: number; needed: 
   return { level, current: remaining, needed: xpToNext(level) };
 }
 
-/** XP a plugin may give one member, per window. */
 const pluginXpBudget = { amount: 100, windowSeconds: 600 };
 
 @Injectable()

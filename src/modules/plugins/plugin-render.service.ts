@@ -31,14 +31,12 @@ const buttonStyles = {
 type ModalAction = Extract<PluginAction, { type: 'modal' }>;
 type Row = NonNullable<MessageBody['components']>[number];
 
-/** Turns plugin JSON into discord.js payloads, namespacing every component id by plugin. */
 @Injectable()
 export class PluginRenderService {
   customId(pluginId: string, id: string): string {
     return `${pluginComponentPrefix}:${pluginId}:${id}`;
   }
 
-  /** The plugin and its own id for a custom id this service made, or null. */
   parseCustomId(customId: string): { pluginId: string; id: string } | null {
     const match = /^plg:([a-z0-9-]{1,32}):(.+)$/.exec(customId);
     return match?.[1] && match[2] ? { pluginId: match[1], id: match[2] } : null;

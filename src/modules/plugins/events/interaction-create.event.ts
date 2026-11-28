@@ -163,7 +163,6 @@ function componentInput(
   return { ...input, component: { id, values, fields, messageId: message?.id ?? null } };
 }
 
-/** Plugin commands, context menus, buttons, selects and forms. */
 @On(Events.InteractionCreate)
 export class InteractionCreateEvent {
   private readonly registry = inject(PluginRegistryService);
@@ -270,7 +269,6 @@ export class InteractionCreateEvent {
     };
   }
 
-  /** Runs the plugin and answers, acknowledging first when the plugin is slow. */
   private async answer(interaction: Answerable, plugin: LoadedPlugin, input: Invocation) {
     const running = this.engine.interact(plugin, input, this.caller(interaction));
     const settled = running.then(

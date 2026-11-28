@@ -17,7 +17,6 @@ const ofPlugin = (scope: PluginScope) =>
 const withKey = (scope: PluginScope, key: string) =>
   and(ofPlugin(scope), sql`${jobs.payload}->>'key' = ${key}`);
 
-/** Lets a plugin run code later: the bot calls its `handle_job` export at the given time. */
 @Injectable()
 export class PluginJobsService {
   @Expose('schedule.create', {

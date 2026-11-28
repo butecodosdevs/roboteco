@@ -4,7 +4,6 @@ import { PluginCallError, PluginEngineService } from './plugin-engine.service';
 import type { PluginEvent } from './plugin-manifest.service';
 import { PluginRegistryService } from './plugin-registry.service';
 
-/** Hands Discord and bot events to the plugins subscribed to them. */
 @Injectable()
 export class PluginEventsService {
   private readonly registry = inject(PluginRegistryService);

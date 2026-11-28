@@ -21,7 +21,6 @@ after(async () => {
   await closeCache();
 });
 
-/** A /command interaction from `moderatorId` with the given options. */
 function interaction(
   s: ReturnType<typeof fakeServer>,
   moderatorId: string,

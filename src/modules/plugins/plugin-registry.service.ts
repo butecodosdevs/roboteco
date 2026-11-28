@@ -83,7 +83,6 @@ export class PluginRegistryService {
     return this.menus.get(menuKey(type, name));
   }
 
-  /** Plugins subscribed to `event`. */
   subscribers(event: PluginEvent): LoadedPlugin[] {
     return this.all().filter((plugin) => plugin.events.includes(event));
   }

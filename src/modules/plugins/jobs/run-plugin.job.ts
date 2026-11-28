@@ -11,7 +11,6 @@ export interface RunPluginPayload {
   data: unknown;
 }
 
-/** A run a plugin asked for with `schedule.create`. */
 @Job('plugins.run')
 export class RunPluginJob {
   async execute(payload: RunPluginPayload) {

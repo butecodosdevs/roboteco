@@ -93,7 +93,7 @@ export const commandSchema = z
     'a command has options or subcommands, not both',
   );
 
-/** Right-click menus on a member or a message. Discord shows menu names as typed. */
+/** Discord shows context menu names as typed, so unlike commands they allow spaces and capitals. */
 export const contextMenuSchema = z.object({
   type: z.enum(['user', 'message']),
   name: z.string().min(1).max(32),
@@ -101,7 +101,6 @@ export const contextMenuSchema = z.object({
   defaultMemberPermissions: z.array(permissionName).optional(),
 });
 
-/** Events a plugin can subscribe to, and the permission each one needs. */
 export const pluginEvents = {
   messageCreate: 'events.messages',
   memberJoin: 'events.members',
@@ -131,9 +130,6 @@ export const manifestSchema = z.object({
   context: z.array(z.enum(contextKinds)).default([]),
 });
 
-// ---------------------------------------------------------------------------------------------
-// What plugins receive
-
 const optionValue = z.union([z.string(), z.number(), z.boolean()]);
 export const roleSchema = z.object({
   id: z.string(),
@@ -149,7 +145,6 @@ export const messageSchema = z.object({
   attachments: z.array(z.string()),
 });
 
-/** Everything an interaction hands a plugin: commands, menus, autocomplete, clicks and forms. */
 export const invocationSchema = z.object({
   kind: z.enum(['command', 'autocomplete', 'userMenu', 'messageMenu', 'button', 'select', 'modal']),
   /** The command or menu name; empty for buttons, selects and forms. */
@@ -234,9 +229,6 @@ export const jobInputSchema = z.object({
   channelId: z.string().nullable(),
   data: z.unknown(),
 });
-
-// ---------------------------------------------------------------------------------------------
-// What plugins answer with
 
 /** Plugin ids for buttons, selects and forms; the bot prefixes them with the plugin's id. */
 export const componentId = z
@@ -412,7 +404,6 @@ export class PluginManifestService {
     return manifestSchema.parse(raw);
   }
 
-  /** The permissions a member needs to see and use a plugin command or menu, if any. */
   requiredPermissions(spec: { defaultMemberPermissions?: string[] }): bigint | undefined {
     return permissionBits(spec.defaultMemberPermissions);
   }
