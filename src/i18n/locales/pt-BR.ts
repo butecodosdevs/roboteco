@@ -19,6 +19,7 @@ import { privacyPtBR } from '@/modules/privacy/i18n/pt-BR';
 import { remindersPtBR } from '@/modules/reminders/i18n/pt-BR';
 import { reportsPtBR } from '@/modules/reports/i18n/pt-BR';
 import { rolesPtBR } from '@/modules/roles/i18n/pt-BR';
+import { safetyPtBR } from '@/modules/safety/i18n/pt-BR';
 import { scheduledPostsPtBR } from '@/modules/scheduled-posts/i18n/pt-BR';
 import { starboardPtBR } from '@/modules/starboard/i18n/pt-BR';
 import { suggestionsPtBR } from '@/modules/suggestions/i18n/pt-BR';
@@ -65,4 +66,5 @@ export const ptBR: Messages = {
   invites: invitesPtBR,
   automod: automodPtBR,
   embeds: embedsPtBR,
+  safety: safetyPtBR,
 };

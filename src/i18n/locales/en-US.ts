@@ -19,6 +19,7 @@ import { privacyEnUS } from '@/modules/privacy/i18n/en-US';
 import { remindersEnUS } from '@/modules/reminders/i18n/en-US';
 import { reportsEnUS } from '@/modules/reports/i18n/en-US';
 import { rolesEnUS } from '@/modules/roles/i18n/en-US';
+import { safetyEnUS } from '@/modules/safety/i18n/en-US';
 import { scheduledPostsEnUS } from '@/modules/scheduled-posts/i18n/en-US';
 import { starboardEnUS } from '@/modules/starboard/i18n/en-US';
 import { suggestionsEnUS } from '@/modules/suggestions/i18n/en-US';
@@ -65,4 +66,5 @@ export const enUS = {
   invites: invitesEnUS,
   automod: automodEnUS,
   embeds: embedsEnUS,
+  safety: safetyEnUS,
 } as const;

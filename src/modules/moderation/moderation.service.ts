@@ -166,14 +166,20 @@ export class ModerationService {
     return { entry, notified, extra, escalated };
   }
 
-  recordAutomatic(guild: Guild, action: CaseAction, target: User, reason: string) {
+  recordAutomatic(
+    guild: Guild,
+    action: CaseAction,
+    target: User,
+    reason: string,
+    durationSeconds: number | null = null,
+  ) {
     return this.record(guild, {
       guildId: guild.id,
       action,
       targetId: target.id,
       moderatorId: guild.client.user.id,
       reason,
-      durationSeconds: null,
+      durationSeconds,
     });
   }
 

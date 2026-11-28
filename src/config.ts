@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+const optionalString = z
+  .string()
+  .optional()
+  .transform((v) => v || undefined);
+
 const schema = z.object({
   DISCORD_TOKEN: z.string().min(1, 'DISCORD_TOKEN is required'),
   DISCORD_CLIENT_ID: z.string().min(1, 'DISCORD_CLIENT_ID is required'),
@@ -29,6 +34,25 @@ const schema = z.object({
     .string()
     .optional()
     .transform((v) => v || undefined),
+  PHISHING_LIST_URLS: z
+    .string()
+    .default('https://raw.githubusercontent.com/Discord-AntiScam/scam-links/main/list.txt')
+    .transform((v) =>
+      v
+        .split(',')
+        .map((url) => url.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.url())),
+  CLAMAV_HOST: optionalString,
+  CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  SAFE_BROWSING_API_KEY: optionalString,
+  ABUSECH_AUTH_KEY: optionalString,
+  VIRUSTOTAL_API_KEY: optionalString,
+  VIRUSTOTAL_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).default(4),
+  VIRUSTOTAL_REQUESTS_PER_DAY: z.coerce.number().int().min(1).default(500),
+  VIRUSTOTAL_MIN_DETECTIONS: z.coerce.number().int().min(1).default(3),
+  SAFETY_MAX_FILE_MB: z.coerce.number().positive().default(25),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -60,5 +84,22 @@ export const config = {
     accessKeyId: parsed.data.S3_ACCESS_KEY_ID,
     secretAccessKey: parsed.data.S3_SECRET_ACCESS_KEY,
     bucket: parsed.data.S3_BUCKET,
+  },
+  safety: {
+    phishingListUrls: parsed.data.PHISHING_LIST_URLS,
+    clamav: parsed.data.CLAMAV_HOST
+      ? { host: parsed.data.CLAMAV_HOST, port: parsed.data.CLAMAV_PORT }
+      : undefined,
+    safeBrowsingApiKey: parsed.data.SAFE_BROWSING_API_KEY,
+    abuseChAuthKey: parsed.data.ABUSECH_AUTH_KEY,
+    virusTotal: parsed.data.VIRUSTOTAL_API_KEY
+      ? {
+          apiKey: parsed.data.VIRUSTOTAL_API_KEY,
+          perMinute: parsed.data.VIRUSTOTAL_REQUESTS_PER_MINUTE,
+          perDay: parsed.data.VIRUSTOTAL_REQUESTS_PER_DAY,
+          minDetections: parsed.data.VIRUSTOTAL_MIN_DETECTIONS,
+        }
+      : undefined,
+    maxFileBytes: Math.floor(parsed.data.SAFETY_MAX_FILE_MB * 1024 * 1024),
   },
 };
