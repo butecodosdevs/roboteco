@@ -23,15 +23,16 @@ export interface PanelIdentity {
   image: string | null;
 }
 
-/** Google only, and only for the addresses in PANEL_ALLOWED_EMAILS. */
+/** Discord only, and only for the addresses in PANEL_ALLOWED_EMAILS. */
 export const allowedEmails = (): string[] =>
   (liveSetting('PANEL_ALLOWED_EMAILS') ?? '')
     .split(',')
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
 
-export const googleConfigured = () =>
-  Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+/** The OAuth app is the bot's own: same client id, plus the client secret. */
+export const discordConfigured = () =>
+  Boolean(config.clientId && process.env.DISCORD_CLIENT_SECRET);
 
 /**
  * An allowlist, not a sign-up form: unknown addresses are refused before a user row exists, so a
@@ -59,9 +60,9 @@ const auth = config.panelSecret
         updateAge: 60 * 60,
       },
       socialProviders: {
-        google: {
-          clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+        discord: {
+          clientId: config.clientId,
+          clientSecret: process.env.DISCORD_CLIENT_SECRET ?? '',
         },
       },
       databaseHooks: {
@@ -72,8 +73,11 @@ const auth = config.panelSecret
               if (allow.length === 0) {
                 throw new APIError('FORBIDDEN', { message: 'PANEL_ALLOWED_EMAILS está vazio' });
               }
+              // Discord returns a null email for phone-only accounts; those never get in.
               if (!user.email || !allow.includes(user.email.toLowerCase())) {
-                throw new APIError('FORBIDDEN', { message: 'este e-mail não tem acesso' });
+                throw new APIError('FORBIDDEN', {
+                  message: 'esta conta do Discord não tem acesso',
+                });
               }
             },
           },
@@ -104,8 +108,8 @@ export class PanelAuthService {
         const identity = await this.identity(request);
         return {
           body: {
-            ready: Boolean(auth) && googleConfigured(),
-            google: googleConfigured(),
+            ready: Boolean(auth) && discordConfigured(),
+            discord: discordConfigured(),
             secret: Boolean(auth),
             allowlist: allowedEmails().length,
             authenticated: identity !== null,

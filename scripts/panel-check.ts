@@ -16,8 +16,7 @@ process.env.PANEL_TOKEN ??= 'panel-check-token-123456';
 process.env.PANEL_URL = 'http://127.0.0.1:4399';
 process.env.PANEL_SECRET ??= 'panel-check-secret-0123456789abcdef';
 process.env.PANEL_ALLOWED_EMAILS ??= 'eu@exemplo.com';
-process.env.GOOGLE_CLIENT_ID ??= 'check-client-id';
-process.env.GOOGLE_CLIENT_SECRET ??= 'check-client-secret';
+process.env.DISCORD_CLIENT_SECRET ??= 'check-client-secret';
 // Never touch the real panel/settings.json: this check edits the allowlist on purpose.
 process.env.ROBOTECO_SETTINGS_PATH = `${tmpdir()}/roboteco-panel-check-${process.pid}.json`;
 
@@ -58,8 +57,9 @@ assert.equal(await (await fetch(`${base}/`)).text().then((t) => t.includes('robo
 // The login screen has to answer before anyone is authenticated, which is what makes it usable.
 const status = await fetch(`${base}/api/panel/auth/status`);
 assert.equal(status.status, 200, 'auth status is public');
-const statusBody = (await status.json()) as { authenticated: boolean };
+const statusBody = (await status.json()) as { authenticated: boolean; discord: boolean };
 assert.equal(statusBody.authenticated, false, 'no cookie → not authenticated');
+assert.equal(statusBody.discord, true, 'the client id and secret make Discord sign-in ready');
 
 assert.equal((await fetch(`${base}/api/panel/guilds`)).status, 401, 'no token → 401');
 assert.equal(
@@ -117,7 +117,7 @@ const restored = (await (
 assert.deepEqual(restored.disabled, [], 'enabling it again clears the toggle');
 assert.equal((await fetch(`${base}/api/panel/settings`)).status, 401, 'settings needs a session');
 assert.equal((await fetch(`${base}/api/panel/settings`, { headers: auth })).status, 200);
-// No password path exists any more: the only way in is the Google redirect.
+// No password path exists any more: the only way in is the Discord redirect.
 assert.equal(
   (await fetch(`${base}/api/panel/auth/login`, { method: 'POST', body: '{"password":"x"}' }))
     .status,
@@ -127,13 +127,17 @@ assert.equal(
 const social = await fetch(`${base}/api/auth/sign-in/social`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: '{"provider":"google","callbackURL":"http://127.0.0.1:4399/","disableRedirect":true}',
+  body: '{"provider":"discord","callbackURL":"http://127.0.0.1:4399/","disableRedirect":true}',
 });
 assert.equal(social.status, 200, 'better-auth answers on /api/auth');
 const socialBody = (await social.json()) as { url?: string };
 assert.ok(
-  socialBody.url?.startsWith('https://accounts.google.com/'),
-  'sign-in hands back the Google redirect url',
+  socialBody.url?.startsWith('https://discord.com/api/oauth2/authorize'),
+  'sign-in hands back the Discord redirect url',
+);
+assert.ok(
+  socialBody.url?.includes('scope=identify+email'),
+  'the email scope is what the allowlist matches on',
 );
 // The allowlist is enforced on every request, so removing an email also kills its live session.
 const { createHmac } = await import('node:crypto');

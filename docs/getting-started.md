@@ -31,10 +31,10 @@ Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
 | `SENTRY_DSN` | no | error reporting, off when empty |
 | `HEALTH_PORT` | no | serves `GET /health` and the panel when set |
 | `PANEL_TOKEN` | no | 16+ char secret; enables the panel and lets scripts authenticate with the `x-panel-token` header |
-| `PANEL_URL` | no | public panel URL (default `http://localhost:4321`); Google OAuth callbacks use it |
+| `PANEL_URL` | no | public panel URL (default `http://localhost:4321`); OAuth callbacks use it |
 | `PANEL_SECRET` | no | 32+ chars, signs sessions with Better Auth; without it the panel refuses logins |
-| `PANEL_ALLOWED_EMAILS` | no | comma-separated, case-insensitive Google emails allowed in; also editable from the panel, where changes apply without a restart |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | no | OAuth client from Google Cloud Console; redirect URI is `${PANEL_URL}/api/auth/callback/google` |
+| `PANEL_ALLOWED_EMAILS` | no | comma-separated, case-insensitive Discord account emails allowed in; also editable from the panel, where changes apply without a restart |
+| `DISCORD_CLIENT_SECRET` | no | OAuth2 client secret from the Discord Developer Portal; reuses `DISCORD_CLIENT_ID`, redirect URI is `${PANEL_URL}/api/auth/callback/discord` |
 | `GUILD_DATA_RETENTION_DAYS` | no | days to keep a server's data after the bot leaves (default 30) |
 | `PLUGIN_REGISTRY` | no | plugin registry to load (default `plugins/registry.json`, empty; `plugins/registry.example.json` loads the examples) |
 | `DISCORD_GUILD_ID` | no | your test server ID. When set, `deploy-commands` registers commands on that server instantly instead of globally |
@@ -84,7 +84,7 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm typecheck` | TypeScript, including `scripts/` and `tests/` |
 | `pnpm test` | Behaviour tests in `tests/`, against the Postgres and Valkey in `.env` (run `pnpm db:migrate` first) |
 | `pnpm zip:check` | Asserts the in-memory zip reader used by the panel upload |
-| `pnpm panel:check` | Asserts the panel's HTTP boundary: session gate, Google sign-in, grouping, command toggles |
+| `pnpm panel:check` | Asserts the panel's HTTP boundary: session gate, Discord sign-in, grouping, command toggles |
 | `pnpm lint` | Biome plus [structure rules](concepts/structure-rules.md) |
 | `pnpm lint:structure` | Structure rules only |
 | `pnpm format` | Format and apply safe Biome fixes |

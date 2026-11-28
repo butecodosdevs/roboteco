@@ -140,8 +140,8 @@ const DICT = {
     "set.lede": "O que o bot usa para falar com o Discord. Salvar grava em panel/settings.json; o que é lido na inicialização só vale depois de reiniciar.",
     "set.empty": "vazio", "set.active": "ativo", "set.saved": "salvo, reinicie", "set.loading": "Carregando…",
     "set.notSet": "não definido", "set.restartTitle": "lido na inicialização",
-    "access.title": "Quem tem acesso", "access.hint": "Só estes e-mails entram pelo Google. Tirar um encerra a sessão dele na hora, sem reiniciar.",
-    "access.you": "você", "access.add": "Adicionar", "access.remove": "Remover", "access.placeholder": "pessoa@gmail.com",
+    "access.title": "Quem tem acesso", "access.hint": "Só estes e-mails entram pelo login do Discord. Tirar um encerra a sessão dele na hora, sem reiniciar.",
+    "access.you": "você", "access.add": "Adicionar", "access.remove": "Remover", "access.placeholder": "pessoa@exemplo.com",
     "access.empty": "A lista está vazia — ninguém entra.", "access.only": "não dá para remover o último e-mail",
     "access.bad": "e-mail inválido: {e}", "access.dupe": "já está na lista",
     "toast.accessAdd": "{e} entrou na lista", "toast.accessDel": "{e} perdeu o acesso",
@@ -154,7 +154,7 @@ const DICT = {
     "ab.steps.title": "Do evento do Discord até esta tela",
     "ab.s1.t": "O bot monta os módulos na inicialização",
     "ab.s1.d": "Cada módulo liga comandos, eventos e tarefas. O AppModule importa todos; o PanelModule liga login e configurações.",
-    "ab.s2.t": "O login é do Google, com allowlist",
+    "ab.s2.t": "O login é do Discord, com allowlist",
     "ab.s2.d": "Better Auth guarda usuário e sessão nas tabelas auth_* do Postgres. Só os e-mails de PANEL_ALLOWED_EMAILS entram; o cookie dura 24 horas.",
     "ab.s3.t": "Os comandos vão para o Discord",
     "ab.s3.d": "Publicar manda um PUT que substitui a lista do servidor. Embutidos e plugins carregados entram, menos os desligados.",
@@ -166,21 +166,21 @@ const DICT = {
     "ab.s6.d": "Um .wasm em plugins/dist com entrada em plugins/registry.json. Inativar só marca enabled: false. Instalar e compilar é no repositório.",
     "ab.env.title": "Este processo", "ab.env.bot": "Bot", "ab.env.gateway": "Gateway",
     "ab.env.guilds": "Servidores", "ab.env.plugins": "Plugins", "ab.env.session": "Sessão",
-    "ab.env.sessionGoogle": "login do Google", "ab.env.sessionToken": "PANEL_TOKEN no header",
+    "ab.env.sessionDiscord": "login do Discord", "ab.env.sessionToken": "PANEL_TOKEN no header",
     "ab.write.title": "O que este painel escreve",
     "ab.write.body": "Três arquivos: panel/settings.json, panel/commands.json (comandos desligados) e enabled/permissions em plugins/registry.json. O banco é escrito só pelos comandos dentro do Discord.",
 
     "guild.none": "sem servidor",
     "nogs.title": "Sem servidores", "nogs.lede": "O bot está no ar mas não entrou em nenhum servidor ainda.",
 
-    "login.title": "Painel do roboteco", "login.sub": "Entre com sua conta do Google.",
-    "login.google": "Entrar com Google", "login.enter": "Entrando…",
-    "login.unconfigured": "Login indisponível: faltam GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET.",
+    "login.title": "Painel do roboteco", "login.sub": "Entre com sua conta do Discord.",
+    "login.discord": "Entrar com Discord", "login.enter": "Entrando…",
+    "login.unconfigured": "Login indisponível: faltam DISCORD_CLIENT_ID e DISCORD_CLIENT_SECRET.",
     "login.nosecret": "Login indisponível: falta PANEL_SECRET com 32 caracteres ou mais.",
     "login.noallow": "Login indisponível: PANEL_ALLOWED_EMAILS está vazio.",
     "login.off": "O painel está desligado neste processo.",
     "login.error": "não consegui falar com o bot: {m}", "login.expired": "sessão expirada; entre de novo",
-    "login.denied": "este e-mail não tem acesso a este painel.", "login.failed": "não entrou: {m}",
+    "login.denied": "esta conta do Discord não tem acesso a este painel.", "login.failed": "não entrou: {m}",
     "login.leaving": "Você saiu.", "login.bye": "Sair",
 
     "toast.reloaded": "{n}", "toast.published": "{n} em {guild}", "toast.pluginPublished": "{id}: {n}, o resto foi mantido",
@@ -284,8 +284,8 @@ const DICT = {
     "set.lede": "What the bot uses to talk to Discord. Saving writes panel/settings.json; values read at startup only apply after a restart.",
     "set.empty": "empty", "set.active": "active", "set.saved": "saved, restart", "set.loading": "Loading…",
     "set.notSet": "not set", "set.restartTitle": "read at startup",
-    "access.title": "Who has access", "access.hint": "Only these emails get in through Google. Removing one ends their session right away, no restart.",
-    "access.you": "you", "access.add": "Add", "access.remove": "Remove", "access.placeholder": "person@gmail.com",
+    "access.title": "Who has access", "access.hint": "Only these emails get in through Discord sign-in. Removing one ends their session right away, no restart.",
+    "access.you": "you", "access.add": "Add", "access.remove": "Remove", "access.placeholder": "person@example.com",
     "access.empty": "The list is empty — nobody gets in.", "access.only": "the last email cannot be removed",
     "access.bad": "invalid email: {e}", "access.dupe": "already on the list",
     "toast.accessAdd": "{e} was added", "toast.accessDel": "{e} lost access",
@@ -298,7 +298,7 @@ const DICT = {
     "ab.steps.title": "From the Discord event to this screen",
     "ab.s1.t": "The bot wires modules at startup",
     "ab.s1.d": "Each module brings commands, events and jobs. AppModule imports them all; PanelModule wires auth and settings.",
-    "ab.s2.t": "Sign-in is Google, behind an allowlist",
+    "ab.s2.t": "Sign-in is Discord, behind an allowlist",
     "ab.s2.d": "Better Auth stores user and session in the auth_* tables. Only PANEL_ALLOWED_EMAILS get in; the cookie lasts 24 hours.",
     "ab.s3.t": "Commands go to Discord",
     "ab.s3.d": "Publishing sends a PUT that replaces the server list. Built-ins and loaded plugins go in, minus the disabled ones.",
@@ -310,21 +310,21 @@ const DICT = {
     "ab.s6.d": "A .wasm in plugins/dist with an entry in plugins/registry.json. Disabling only sets enabled: false. Installing and building stay in the repo.",
     "ab.env.title": "This process", "ab.env.bot": "Bot", "ab.env.gateway": "Gateway",
     "ab.env.guilds": "Servers", "ab.env.plugins": "Plugins", "ab.env.session": "Session",
-    "ab.env.sessionGoogle": "Google sign-in", "ab.env.sessionToken": "PANEL_TOKEN header",
+    "ab.env.sessionDiscord": "Discord sign-in", "ab.env.sessionToken": "PANEL_TOKEN header",
     "ab.write.title": "What this panel writes",
     "ab.write.body": "Three files: panel/settings.json, panel/commands.json (disabled commands) and enabled/permissions in plugins/registry.json. The database is only written by commands inside Discord.",
 
     "guild.none": "no server",
     "nogs.title": "No servers", "nogs.lede": "The bot is up but has not joined any server yet.",
 
-    "login.title": "roboteco panel", "login.sub": "Sign in with your Google account.",
-    "login.google": "Sign in with Google", "login.enter": "Signing in…",
-    "login.unconfigured": "Sign-in unavailable: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are missing.",
+    "login.title": "roboteco panel", "login.sub": "Sign in with your Discord account.",
+    "login.discord": "Sign in with Discord", "login.enter": "Signing in…",
+    "login.unconfigured": "Sign-in unavailable: DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET are missing.",
     "login.nosecret": "Sign-in unavailable: PANEL_SECRET needs 32 characters or more.",
     "login.noallow": "Sign-in unavailable: PANEL_ALLOWED_EMAILS is empty.",
     "login.off": "The panel is disabled in this process.",
     "login.error": "cannot reach the bot: {m}", "login.expired": "session expired; sign in again",
-    "login.denied": "this email has no access to this panel.", "login.failed": "sign-in failed: {m}",
+    "login.denied": "this Discord account has no access to this panel.", "login.failed": "sign-in failed: {m}",
     "login.leaving": "You signed out.", "login.bye": "Sign out",
 
     "toast.reloaded": "{n}", "toast.published": "{n} in {guild}", "toast.pluginPublished": "{id}: {n}, the rest was kept",
@@ -428,8 +428,8 @@ const DICT = {
     "set.lede": "机器人连接 Discord 所用的配置。保存会写入 panel/settings.json；启动时读取的项需重启后生效。",
     "set.empty": "空", "set.active": "生效中", "set.saved": "已保存，需重启", "set.loading": "加载中…",
     "set.notSet": "未设置", "set.restartTitle": "启动时读取",
-    "access.title": "访问权限", "access.hint": "只有这些邮箱可以通过 Google 登录。移除后其会话立即失效，无需重启。",
-    "access.you": "你", "access.add": "添加", "access.remove": "移除", "access.placeholder": "person@gmail.com",
+    "access.title": "访问权限", "access.hint": "只有这些邮箱可以通过 Discord 登录。移除后其会话立即失效，无需重启。",
+    "access.you": "你", "access.add": "添加", "access.remove": "移除", "access.placeholder": "person@example.com",
     "access.empty": "列表为空 —— 无人可进入。", "access.only": "无法移除最后一个邮箱",
     "access.bad": "邮箱无效：{e}", "access.dupe": "已在列表中",
     "toast.accessAdd": "{e} 已加入", "toast.accessDel": "{e} 已失去访问权限",
@@ -442,7 +442,7 @@ const DICT = {
     "ab.steps.title": "从 Discord 事件到这块屏幕",
     "ab.s1.t": "启动时装配模块",
     "ab.s1.d": "每个模块带来命令、事件和任务。AppModule 引入全部模块；PanelModule 负责登录和设置。",
-    "ab.s2.t": "登录使用 Google，并带白名单",
+    "ab.s2.t": "登录使用 Discord，并带白名单",
     "ab.s2.d": "Better Auth 将用户和会话存入 auth_* 表。只有 PANEL_ALLOWED_EMAILS 中的邮箱可进入；Cookie 有效 24 小时。",
     "ab.s3.t": "命令发布到 Discord",
     "ab.s3.d": "发布会发送 PUT 替换服务器的命令列表。内置命令和已加载插件进入，已停用除外。",
@@ -454,21 +454,21 @@ const DICT = {
     "ab.s6.d": "plugins/dist 中的 .wasm 加 plugins/registry.json 条目。停用只写入 enabled: false。安装和编译在仓库中进行。",
     "ab.env.title": "当前进程", "ab.env.bot": "机器人", "ab.env.gateway": "网关",
     "ab.env.guilds": "服务器", "ab.env.plugins": "插件", "ab.env.session": "会话",
-    "ab.env.sessionGoogle": "Google 登录", "ab.env.sessionToken": "请求头 PANEL_TOKEN",
+    "ab.env.sessionDiscord": "Discord 登录", "ab.env.sessionToken": "请求头 PANEL_TOKEN",
     "ab.write.title": "面板会写入什么",
     "ab.write.body": "三个文件：panel/settings.json、panel/commands.json（已停用命令）以及 plugins/registry.json 中的 enabled/permissions。数据库只由 Discord 内的命令写入。",
 
     "guild.none": "无服务器",
     "nogs.title": "没有服务器", "nogs.lede": "机器人已上线，但尚未加入任何服务器。",
 
-    "login.title": "roboteco 面板", "login.sub": "使用 Google 账号登录。",
-    "login.google": "使用 Google 登录", "login.enter": "登录中…",
-    "login.unconfigured": "无法登录：缺少 GOOGLE_CLIENT_ID 和 GOOGLE_CLIENT_SECRET。",
+    "login.title": "roboteco 面板", "login.sub": "使用 Discord 账号登录。",
+    "login.discord": "使用 Discord 登录", "login.enter": "登录中…",
+    "login.unconfigured": "无法登录：缺少 DISCORD_CLIENT_ID 和 DISCORD_CLIENT_SECRET。",
     "login.nosecret": "无法登录：PANEL_SECRET 需要至少 32 个字符。",
     "login.noallow": "无法登录：PANEL_ALLOWED_EMAILS 为空。",
     "login.off": "此进程已关闭面板。",
     "login.error": "无法连接机器人：{m}", "login.expired": "会话已过期，请重新登录",
-    "login.denied": "该邮箱无权访问此面板。", "login.failed": "登录失败：{m}",
+    "login.denied": "该 Discord 账号无权访问此面板。", "login.failed": "登录失败：{m}",
     "login.leaving": "已退出。", "login.bye": "退出",
 
     "toast.reloaded": "{n}", "toast.published": "{n}，服务器 {guild}", "toast.pluginPublished": "{id}: {n}，其余保留",
@@ -1028,7 +1028,7 @@ function viewAbout() {
       <dt>${esc(t("ab.env.gateway"))}</dt><dd>${meta?.ping == null ? "—" : `${meta.ping} ms`}</dd>
       <dt>${esc(t("ab.env.guilds"))}</dt><dd>${nf(meta?.guilds?.length ?? 0)}</dd>
       <dt>${esc(t("ab.env.plugins"))}</dt><dd>${nf((plugins ?? []).filter((p) => p.loaded).length)} / ${nf(plugins?.length ?? meta?.plugins?.length ?? 0)}</dd>
-      <dt>${esc(t("ab.env.session"))}</dt><dd>${esc(meta?.session === "google" ? t("ab.env.sessionGoogle") : t("ab.env.sessionToken"))}</dd>
+      <dt>${esc(t("ab.env.session"))}</dt><dd>${esc(meta?.session === "discord" ? t("ab.env.sessionDiscord") : t("ab.env.sessionToken"))}</dd>
     </dl>
   </section>`;
   const caveat = `<section class="card pad">
@@ -1095,17 +1095,17 @@ function navigate(next) {
   setTimeout(() => { if (tokenId === navToken) render(); }, 320);
 }
 
-/* Sem senha: o botão manda o navegador para o Google pelo Better Auth. */
+/* Sem senha: o botão manda o navegador para o Discord pelo Better Auth. */
 function showLogin(message) {
   state.loginMessage = message;
   meta = null; data = null; plugins = null; builtins = null; settings = null; access = null;
   const ready = Boolean(state.auth?.ready);
-  const hint = !state.auth ? "" : !state.auth.secret ? t("login.nosecret") : !state.auth.google ? t("login.unconfigured") : !state.auth.allowlist ? t("login.noallow") : "";
+  const hint = !state.auth ? "" : !state.auth.secret ? t("login.nosecret") : !state.auth.discord ? t("login.unconfigured") : !state.auth.allowlist ? t("login.noallow") : "";
   $("#view").innerHTML = `<div class="auth"><div class="auth-card">
     <div class="auth-mark">${icon("brand", 16)}</div>
     <h1>${esc(t("login.title"))}</h1>
     <p>${esc(message || t("login.sub"))}${hint ? ` ${esc(hint)}` : ""}</p>
-    <button class="btn pri lg" data-act="google"${ready ? "" : " disabled"}>${esc(t("login.google"))}</button>
+    <button class="btn pri lg" data-act="discord"${ready ? "" : " disabled"}>${esc(t("login.discord"))}</button>
     ${langSelect()}
   </div></div>`;
   document.body.classList.add("auth-mode");
@@ -1123,7 +1123,7 @@ async function signIn(button) {
       method: "POST",
       credentials: "same-origin",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ provider: "google", callbackURL: location.origin + "/", disableRedirect: true }),
+      body: JSON.stringify({ provider: "discord", callbackURL: location.origin + "/", disableRedirect: true }),
     });
     const payload = await res.json().catch(() => null);
     if (payload?.url) return void (location.href = payload.url);
@@ -1154,7 +1154,7 @@ async function boot() {
   } catch (err) {
     return showLogin(t("login.error", { m: err.message }));
   }
-  meta.session = status.user ? "google" : "token";
+  meta.session = status.user ? "discord" : "token";
   state.guild = meta.guilds[0]?.id ?? null;
   if (!state.guild) {
     $("#view").innerHTML = shell(pageHead(t("nogs.title"), esc(t("nogs.lede"))), "");
@@ -1273,7 +1273,7 @@ document.addEventListener("click", (e) => {
     try { localStorage.setItem("theme", document.documentElement.dataset.theme); } catch {}
     return render();
   }
-  if (act.dataset.act === "google") {
+  if (act.dataset.act === "discord") {
     e.preventDefault();
     return signIn(act);
   }
@@ -1309,7 +1309,7 @@ setInterval(async () => {
   if (!meta || !state.guild || state.view === "settings") return;
   try {
     meta = await api("/api/panel/guilds");
-    meta.session = meta.session ?? (state.auth?.user ? "google" : "token");
+    meta.session = meta.session ?? (state.auth?.user ? "discord" : "token");
     await loadGuild();
     paintHead();
   } catch { /* mantém a última leitura */ }
