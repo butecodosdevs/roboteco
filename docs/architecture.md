@@ -25,7 +25,8 @@ src/
 drizzle/                SQL migrations
 plugins/                WASM plugin sources, registry.json, dist/ (built)
 biome-plugins/          custom lint rules
-scripts/                build.ts, build-plugins.sh, lint-structure.ts, storage-init.sh, backup.sh
+scripts/                build.ts, build-plugins.sh, plugin.ts (plugin dev CLI), lint-structure.ts, storage-init.sh, backup.sh
+tests/                  pnpm test: behaviour tests against the real Postgres and Valkey
 ```
 
 ## What it's for
