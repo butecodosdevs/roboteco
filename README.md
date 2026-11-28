@@ -330,28 +330,14 @@ Migrations must stay compatible with the previous release, so a rollback never b
 
 ### CI/CD
 
-| Workflow | Runner | When | What |
-| --- | --- | --- | --- |
-| [`ci.yml`](.github/workflows/ci.yml) | `ubuntu-latest` | every PR and push to `main` | `typecheck`, `lint`, migration on a fresh Postgres, `panel:check` |
-| [`image.yml`](.github/workflows/image.yml) | `vps-arm64` | push to `main` | tests again, arm64 image, push to the cluster registry, hand the digest to the deploy repo |
+[`ci.yml`](.github/workflows/ci.yml) runs `typecheck`, `lint`, a migration on a
+fresh Postgres and `panel:check` on every pull request and on `main`.
 
-The CI runs on GitHub's runner because this repository is public: a fork PR
-would otherwise execute third-party code in a pod that has the registry
-credential mounted.
-
-`image.yml` does not write the manifest. The digest goes to
-`giomartinsdev/gio-random-projects` as a `repository_dispatch`, and
-`roboteco-deploy.yml` there commits it and refreshes ArgoCD. One copy of the
-registry credential, one copy of the SSH key.
-
-One-time setup (repo Settings → Secrets):
-
-- `butecodosdevs/roboteco` → `DEPLOY_DISPATCH_TOKEN`: fine-grained PAT limited to
-  `gio-random-projects`, `Contents: Read and write`.
-- `giomartinsdev/gio-random-projects` → `BOT_RUNNER_PAT`: fine-grained PAT
-  limited to `butecodosdevs/roboteco`, `Administration: Read and write` (what
-  registers the self-hosted runner).
-
+The image is built by `giomartinsdev/gio-random-projects`, which owns the
+self-hosted arm64 runner, the registry credential and the manifests. Its
+`roboteco-image.yml` polls this repository's `main` every 15 minutes, builds
+when the commit changes, and commits the new digest. Nothing here needs a
+secret: the deploy side never trusts code from a public repository.
 
 ---
 
