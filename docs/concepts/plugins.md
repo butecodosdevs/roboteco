@@ -127,7 +127,9 @@ The CLI uses a fake member and server (`100000000000000001`) and grants every pe
 
 **Install it.** The bot loads the plugins listed in `plugins/registry.json`. That list is empty in releases, so the plugins in this repo are examples only. Each entry is `{ "id", "wasm", "permissions" }`, using the permissions `pnpm plugin check` printed. Restart the bot, then run `pnpm deploy-commands`.
 
-**Try the example** in a test server: set `PLUGIN_REGISTRY=plugins/registry.example.json` in `.env`, then run `pnpm plugins:build`, restart the bot and run `pnpm deploy-commands`. Removing the variable and deploying again takes its commands away. The production image doesn't build plugins (see [production](../operations/production.md)).
+The panel's Plugins tab does the same from a browser: it takes a `.wasm` or a zip carrying one, reads it in memory and writes only `plugins/dist/<id>.wasm` — other files in the zip, including paths, are never touched. Re-sending an id ships a new version and keeps the permissions already granted; if the WASM cannot be parsed or its commands collide with another plugin, the previous file and registry come back untouched. Turning a plugin on or off writes `enabled` in the registry, and the next request sees it.
+
+**Try the examples** in a test server: set `PLUGIN_REGISTRY=plugins/registry.example.json` in `.env`, then run `pnpm plugins:build`, restart the bot and run `pnpm deploy-commands`. Removing the variable and deploying again takes their commands away. The production image doesn't build plugins (see [production](../operations/production.md)).
 
 ## How it works
 
@@ -267,7 +269,7 @@ The events above are shaped by the bot. Any other Discord gateway event can be h
 ```
 
 - **Permissions are Discord's intents.** Each event needs the permission of the intent that delivers it, e.g. `intents.GuildMessages` for `MESSAGE_DELETE`, `intents.GuildVoiceStates` for `VOICE_STATE_UPDATE`, `intents.GuildPresences` for `PRESENCE_UPDATE`. `pnpm plugin check` prints them, and `pnpm plugin schema` lists every event with its permission.
-- **The bot requests the intents the registry grants.** Intents are chosen before plugins load, so granting `intents.GuildMessageTyping` to a plugin makes the bot ask Discord for typing events. Privileged intents (`GuildMembers`, `GuildPresences`, `MessageContent`) also need `DISCORD_PRIVILEGED_INTENTS=true` and the switch in the Developer Portal.
+- **The bot requests the intents the registry grants.** Intents are chosen before plugins load, so granting `intents.GuildMessageTyping` to a plugin makes the bot ask Discord for typing events. Privileged intents (`GuildMembers`, `GuildPresences`, `MessageContent`) also need `DISCORD_PRIVILEGED_INTENTS=true` and the switch in the Developer Portal. A change to `permissions` only takes effect after a **restart**, because the gateway intent list is fixed when the client connects — and the panel does not edit permissions at all: it shows them and refuses a save, so the grant stays a reviewed `registry.json` diff.
 - **Message content is its own grant.** Without `intents.MessageContent`, `MESSAGE_CREATE` and `MESSAGE_UPDATE` arrive without `content`, `embeds`, `attachments`, `components` and `poll` (also in the messages they quote), and `AUTO_MODERATION_ACTION_EXECUTION` without `content` and `matched_content`, as Discord does for bots without that intent.
 - **What's covered:** every guild event in Discord's intents table: server, roles, channels, threads, stage instances, members, bans, the audit log, emojis, stickers, soundboard, integrations, webhooks, invites, voice states and effects, presences, messages, reactions, typing, scheduled events, AutoMod and poll votes.
 - **What's not:**

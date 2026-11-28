@@ -18,7 +18,7 @@ import {
   PermissionsBitField,
   type UserContextMenuCommandInteraction,
 } from 'discord.js';
-import { inject, On, type PluginCaller, type PluginScope } from '@/core';
+import { inject, On, type PluginCaller, type PluginScope, panelGateway } from '@/core';
 import { Cooldowns, replyCooldown } from '@/core/cooldown';
 import { translator } from '@/i18n';
 import {
@@ -181,7 +181,23 @@ export class InteractionCreateEvent {
       if (entry.spec.guildOnly && !interaction.inGuild()) {
         return this.fail(interaction, 'guildOnly', entry.plugin.id);
       }
+      // A disabled plugin command answers like a disabled built-in one, instead of leaving the
+      // interaction unacknowledged for Discord to time out.
+      if (panelGateway()?.isDisabled(entry.spec.name)) {
+        return interaction.reply({
+          content: translator(interaction.locale)('errors.commandDisabled'),
+          flags: MessageFlags.Ephemeral,
+        });
+      }
       if (await this.refuse(interaction, entry.plugin, entry.spec)) return;
+      if (interaction.inGuild()) {
+        panelGateway()?.recordUsage(
+          interaction.guildId,
+          entry.spec.name,
+          interaction.user.id,
+          'plugin',
+        );
+      }
       return this.answer(interaction, entry.plugin, commandInput(interaction, entry.plugin));
     }
 
@@ -221,7 +237,7 @@ export class InteractionCreateEvent {
 
   private async autocomplete(interaction: AutocompleteInteraction) {
     const entry = this.registry.command(interaction.commandName);
-    if (!entry) return;
+    if (!entry || panelGateway()?.isDisabled(entry.spec.name)) return;
     const focused = interaction.options.getFocused(true);
     const input = commandInput(interaction, entry.plugin);
     const choices = await this.engine

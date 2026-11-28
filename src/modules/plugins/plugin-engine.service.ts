@@ -112,7 +112,13 @@ export class PluginEngineService {
   private readonly queues = new Map<string, Promise<unknown>>();
   private readonly queuedEvents = new Map<string, number>();
 
-  private importedPermissions(wasm: Uint8Array): Permission[] {
+  /**
+   * The permissions the module's imports require. Public for the panel, which shows them before
+   * a plugin has been loaded — a plugin that fails to load still gets a card with what to grant.
+   * Capability permissions (from the manifest's `uses`) are only known after a load, and the
+   * failure message of a refused plugin spells those out.
+   */
+  requiredPermissions(wasm: Uint8Array): Permission[] {
     const required = new Set<Permission>();
     for (const { module: namespace, name } of wasmImports(wasm)) {
       if (runtimeModules.has(namespace)) continue;
@@ -144,7 +150,7 @@ export class PluginEngineService {
     const manifest = this.manifests.parse((await instance.call('manifest'))?.json());
 
     const needed = new Map<string, string[]>();
-    for (const permission of this.importedPermissions(wasm)) needed.set(permission, ['(imports)']);
+    for (const permission of this.requiredPermissions(wasm)) needed.set(permission, ['(imports)']);
     for (const name of manifest.uses) {
       const cap = capability(name);
       if (!cap) {
@@ -221,7 +227,7 @@ export class PluginEngineService {
     access: PluginAccess,
   ): Promise<Plugin> {
     const http =
-      this.importedPermissions(wasm).includes('http') && definition.permissions.includes('http');
+      this.requiredPermissions(wasm).includes('http') && definition.permissions.includes('http');
     return createPlugin(
       { wasm: [{ data: wasm }] },
       {

@@ -1,0 +1,190 @@
+name: image
+
+# Build arm64 + deploy. The whole pipeline lives here, in the bot repo.
+#
+# ## Why it is split in two, and why that split is not negotiable
+#
+# `ci.yml` runs the tests on `ubuntu-latest` (typecheck, lint, a migration against an empty
+# database, the test suite) on every PR and on push to `main`.
+# This repository is public and takes fork PRs, so a test NEVER runs on the
+# cluster runner: that pod has the registry's `~/.docker/config.json` mounted,
+# and stranger code next to that credential is exactly what must not happen.
+#
+# This workflow builds and publishes, and runs on `vps-arm64` for a physical
+# reason: the registry is `registry.support.svc.cluster.local:5000`, plain HTTP,
+# no public DNS and no open port. Only from inside the cluster can an image be
+# pushed to it — a GitHub-hosted runner cannot, credentials or not.
+#
+# ## The three entry points
+#
+# - `workflow_run` of `ci`, on `main`, `conclusion == 'success'`: build, push,
+#   and record the digest in the infra repo. This is the only path that deploys.
+#   `needs` cannot give this guarantee: it only links jobs inside ONE workflow.
+# - `pull_request`: build only, no push and no deploy. This is the path that
+#   answers "does this PR still compile?" before it merges — the plugin stage
+#   in the Dockerfile needs a Rust toolchain, and that is worth failing on a PR
+#   rather than on `main`.
+# - `workflow_dispatch`: republish without a new commit. No tests on this path;
+#   that is a deliberate act by whoever runs it, not a hole.
+#
+# ## Fork PRs never reach the cluster runner
+#
+# The `pull_request` path runs on `vps-arm64`, which is a pod inside the cluster.
+# Running a stranger's `Dockerfile` there is the same hazard as running their
+# tests there, so the job is gated on the PR head living in this repository.
+# A fork PR gets no build; a maintainer can still build it locally.
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One build at a time: the runner is a pod with a single daemon and 20Gi of
+  # disk, and the push to the infra repo must not compete with itself.
+  group: image-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+env:
+  APP: roboteco
+  REGISTRY: registry.support.svc.cluster.local:5000
+  INFRA_REPO: giomartinsdev/gio-random-projects
+  # The sha the CI approved. In `workflow_run`, `github.sha` is not the commit
+  # that fired the event; in `workflow_dispatch` it is the HEAD of the chosen
+  # branch; in `pull_request` it is the merge commit, which is what a build of
+  # the PR should test. One variable, used for the tag, the push and the commit
+  # message, so all three name the same commit.
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  build:
+    # `workflow_run` fires on success AND failure; this `if` is what turns it
+    # into "only after the tests passed". `workflow_dispatch` has no
+    # `conclusion`, so both cases are tested here.
+    #
+    # The second half is the fork guard: on `pull_request` the runner is inside
+    # the cluster, so the head branch must be this repository's own.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    # arm64 NATIVE: the node is Oracle ARM and the runner is a pod on it. No QEMU.
+    runs-on: vps-arm64
+    timeout-minutes: 40
+    steps:
+      # `workflow_run` does not inherit the event's commit: without an explicit
+      # `ref` the checkout takes the default branch tip at this moment, which may
+      # already be another commit. The build has to be of the commit CI approved.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      # The pod's `config.json` only knows `registry.giomartins.dev:5000` (the
+      # public name). The push uses the Service name, which is another host for
+      # Docker, so the entry is duplicated into a writable directory — the
+      # original is read-only and BuildKit needs to write next to it.
+      #
+      # A PR build does not push, so this step is skipped there: it needs a
+      # credential that a PR has no reason to see.
+      - name: Make the registry credential usable from the cluster name
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          src="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+          [ -s "$src" ] || { echo "::error::no registry credential on the runner pod"; exit 1; }
+          dir=$(mktemp -d); chmod 700 "$dir"
+          python3 - "$src" "$dir/config.json" "$REGISTRY" <<'PY'
+          import json, sys
+          src, dst, host = sys.argv[1:4]
+          cfg = json.load(open(src))
+          auths = cfg.setdefault("auths", {})
+          if host not in auths:
+              donor = next((v for v in auths.values() if v), None)
+              if donor is None:
+                  sys.exit("::error::config.json has no auths")
+              auths[host] = dict(donor)
+          json.dump(cfg, open(dst, "w"))
+          PY
+          chmod 600 "$dir/config.json"
+          echo "DOCKER_CONFIG=$dir" >> "$GITHUB_ENV"
+
+      - name: Build (arm64)
+        run: |
+          set -euo pipefail
+          docker build --platform linux/arm64 \
+            --tag "$REGISTRY/$APP:latest" \
+            --tag "$REGISTRY/$APP:$SHA" \
+            --file Dockerfile .
+          # On a PR the tags are local only; nothing is pushed. Say so, because
+          # otherwise a green PR build looks like it published something.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PR build: image built locally, not pushed, not deployed"
+          fi
+
+      - name: Push and read the digest
+        if: github.event_name != 'pull_request'
+        id: push
+        run: |
+          set -euo pipefail
+          # Both names go to the registry: `:latest` is what a manual
+          # `docker pull` uses, the sha is what stays auditable. The manifest
+          # pins the DIGEST, which is the same blob for both.
+          out=$(docker push "$REGISTRY/$APP:$SHA")
+          printf '%s\n' "$out" | tail -3
+          docker push "$REGISTRY/$APP:latest" >/dev/null
+          # `docker push` has no structured output: the digest is on the
+          # `...: digest: sha256:...` line. Matching `sha256:` + 64 hex covers
+          # both formats and ignores the progress lines.
+          digest=$(printf '%s\n' "$out" | grep -oE 'sha256:[0-9a-f]{64}' | tail -1)
+          case "$digest" in sha256:*) ;; *) echo "::error::push did not return a digest"; exit 1 ;; esac
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "$APP -> $digest"
+
+      # Deploy = write the digest into the infra repo's manifest and commit. The
+      # ArgoCD applies it. The deploy key has write on ONE repository; no account
+      # PAT here, and the pod never talks to the cluster API.
+      - name: Record the digest in the infra repo
+        if: github.event_name != 'pull_request'
+        env:
+          DEPLOY_KEY: ${{ secrets.INFRA_DEPLOY_KEY }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [ -n "$DEPLOY_KEY" ] || { echo "::error::missing the INFRA_DEPLOY_KEY secret"; exit 1; }
+
+          # `GIT_SSH_COMMAND` with `IdentitiesOnly`: without it ssh offers the
+          # runner agent's keys first and GitHub refuses on the wrong key before
+          # reaching the right one.
+          keyfile=$(mktemp); chmod 600 "$keyfile"
+          printf '%s\n' "$DEPLOY_KEY" > "$keyfile"
+          export GIT_SSH_COMMAND="ssh -i $keyfile -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+          git clone --depth 1 "git@github.com:$INFRA_REPO.git" _infra
+          cd _infra
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          .github/scripts/bump-digest.sh "$APP" "$DIGEST"
+          if git diff --cached --quiet; then
+            echo "digest already in the manifest; nothing to commit"
+            exit 0
+          fi
+          git commit -m "deploy: roboteco arm64 image ($SHA)"
+
+          # The infra repo takes commits from other workflows: rebase and retry.
+          for i in 1 2 3 4; do
+            if git push origin HEAD:main; then
+              echo "digest published"; exit 0
+            fi
+            echo "  push failed (attempt $i); rebasing and retrying"
+            git pull --rebase --autostash origin main || true
+            sleep $((i * 3))
+          done
+          echo "::error::could not publish the digest commit"
+          exit 1

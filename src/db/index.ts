@@ -1,3 +1,4 @@
+import * as authSchema from './auth-schema';
 import * as schema from './schema';
 
 export { closeDb, db } from './client';
@@ -9,4 +10,4 @@ export {
   updateGuildSettings,
 } from './guilds';
 export { userScope } from './scope';
-export { schema };
+export { authSchema, schema };

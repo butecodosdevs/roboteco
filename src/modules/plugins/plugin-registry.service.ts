@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, rename, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 import { config } from '@/config';
@@ -28,6 +28,8 @@ const registrySchema = z.object({
     z.object({
       id: z.string().regex(/^[a-z0-9-]{1,32}$/),
       wasm: z.string(),
+      /** `false` keeps the definition on disk but is not loaded at runtime. */
+      enabled: z.boolean().default(true),
       permissions: z.array(z.string()).default([]),
       allowedHosts: z.array(z.string()).optional(),
     }),
@@ -35,6 +37,7 @@ const registrySchema = z.object({
 });
 
 export const registryPath = resolve(config.pluginRegistry);
+export type PluginDefinitionEntry = z.infer<typeof registrySchema>['plugins'][number];
 
 @Injectable()
 export class PluginRegistryService {
@@ -42,11 +45,28 @@ export class PluginRegistryService {
   private readonly loaded = new Map<string, LoadedPlugin>();
   private readonly commands = new Map<string, PluginCommandEntry>();
   private readonly menus = new Map<string, PluginMenuEntry>();
+  /** Why a definition that is on disk did not become a loaded plugin, for the panel card. */
+  private readonly failed = new Map<string, string>();
+
+  async definitions(path = registryPath): Promise<PluginDefinitionEntry[]> {
+    const raw = await readFile(path, 'utf8').catch(() => null);
+    if (!raw) return [];
+    return registrySchema.parse(JSON.parse(raw)).plugins;
+  }
+
+  /** Rewrites the registry atomically, so a crash never leaves half a JSON file. */
+  async save(definitions: PluginDefinitionEntry[], path = registryPath): Promise<void> {
+    const body = `${JSON.stringify({ plugins: definitions }, null, 2)}\n`;
+    const temporary = `${path}.tmp`;
+    await writeFile(temporary, body, 'utf8');
+    await rename(temporary, path);
+  }
 
   async loadAll(
     path = registryPath,
     reserved: (name: string) => boolean = isBuiltInCommand,
   ): Promise<void> {
+    this.failed.clear();
     const raw = await readFile(path, 'utf8').catch(() => null);
     if (raw === null) {
       logger.warn({ registry: path }, 'Plugin registry not found; check PLUGIN_REGISTRY');
@@ -62,11 +82,14 @@ export class PluginRegistryService {
       return;
     }
     for (const definition of plugins) {
+      if (!definition.enabled) continue;
       const wasm = resolve(path, '../..', definition.wasm);
       try {
         this.add(await this.engine.load({ ...definition, wasm }), reserved);
       } catch (error) {
         // A missing build is a setup step, not a bug: point at the fix instead of reporting a stack.
+        // The panel still gets the reason, which is what its card shows.
+        this.failed.set(definition.id, error instanceof Error ? error.message : String(error));
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           logger.warn(
             { plugin: definition.id, wasm },
@@ -77,6 +100,18 @@ export class PluginRegistryService {
         reportError(error, { plugin: definition.id }, 'Plugin failed to load');
       }
     }
+  }
+
+  async reload(
+    path = registryPath,
+    reserved: (name: string) => boolean = isBuiltInCommand,
+  ): Promise<void> {
+    await this.unloadAll();
+    await this.loadAll(path, reserved);
+  }
+
+  failure(id: string): string | undefined {
+    return this.failed.get(id);
   }
 
   add(plugin: LoadedPlugin, reserved: (name: string) => boolean = isBuiltInCommand): void {

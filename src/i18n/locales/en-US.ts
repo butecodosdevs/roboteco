@@ -37,6 +37,8 @@ export const enUS = {
     guildOnly: 'This command only works inside a server.',
     cooldown: 'Slow down. You can use this again {when}.',
     componentExpired: 'This control no longer works. Run the command again.',
+    commandDisabled:
+      'This command is turned off. An administrator can turn it back on in the panel.',
   },
   ping: pingEnUS,
   honeypot: honeypotEnUS,

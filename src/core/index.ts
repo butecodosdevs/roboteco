@@ -48,4 +48,6 @@ export {
   type OnUserErase,
   resolveApp,
 } from './module';
+export type { RegisteredCommand } from './panel-gateway';
+export { type PanelGateway, panelGateway, registerPanelGateway } from './panel-gateway';
 export type { Type } from './types';

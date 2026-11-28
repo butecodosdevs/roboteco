@@ -329,6 +329,20 @@ pnpm prod:logs
 
 Migrations must stay compatible with the previous release, so a rollback never breaks the database. See [docs/operations/production.md](docs/operations/production.md) for releases, Sentry, health checks, backups and restores.
 
+### CI/CD
+
+[`ci.yml`](.github/workflows/ci.yml) runs `typecheck`, `lint`, `build`, a
+migration on a fresh Postgres and the test suite on every pull request and on
+`main`. The suite includes [`tests/panel/boundary.test.ts`](tests/panel/boundary.test.ts),
+which forges sessions and hits the panel over real HTTP.
+
+[`image.yml`](.github/workflows/image.yml) builds the arm64 image on the
+cluster runner — the registry is `registry.support.svc.cluster.local:5000`,
+plain HTTP, reachable only from inside. On a pull request it builds and stops;
+on `main`, gated on `ci` passing via `workflow_run`, it pushes and commits the
+new digest to `giomartinsdev/gio-random-projects`, where ArgoCD picks it up.
+Neither workflow needs a secret in this repository.
+
 ---
 
 ## Project structure

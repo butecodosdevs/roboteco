@@ -88,8 +88,17 @@ services:
     environment:
       <<: *app-env
       HEALTH_PORT: "3000"
+      # Only reachable through the host, never from the network: a session cookie must not travel
+      # over plain HTTP. Put nginx/Caddy in front for TLS; the published port below is loopback.
+      PANEL_HOST: "0.0.0.0"
+      # Lets the Settings tab restart the container after saving a writable setting.
+      ROBOTECO_RESTART: docker
     ports:
-      - "${HEALTH_PUBLISH_PORT:-3000}:3000"
+      - "127.0.0.1:${HEALTH_PUBLISH_PORT:-3000}:3000"
+    volumes:
+      # Uploads and settings live outside the image, so a redeploy keeps them.
+      - ./panel:/app/panel
+      - ./plugins:/app/plugins
     depends_on:
       migrate:
         condition: service_completed_successfully

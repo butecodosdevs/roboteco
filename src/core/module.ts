@@ -57,6 +57,8 @@ export interface ResolvedModule {
   name: string;
   intents: GatewayIntentBits[];
   instance: Partial<OnReady & OnGuildRemove & OnUserErase & OnCommandDeploy>;
+  /** Slash command names this module decorated, so the panel can group them by owner. */
+  commands: string[];
 }
 
 export interface ResolvedApp {
@@ -94,14 +96,17 @@ export function resolveApp(root: Type): ResolvedApp {
     const options = moduleMeta.get(target);
     if (!options) throw new Error(`${target.name} is not decorated with @Module()`);
     options.imports?.forEach(visit);
+    const names: string[] = [];
 
     for (const command of options.commands ?? []) {
       const handler = new CommandHandler(command);
       add(app.commands, handler.name, handler, 'command', target.name);
+      names.push(handler.name);
     }
     for (const menu of options.contextMenus ?? []) {
       const handler = new ContextMenuHandler(menu);
       add(app.contextMenus, handler.key, handler, 'context menu', target.name);
+      names.push(menu.name);
     }
     for (const component of options.components ?? []) {
       const handler = new ComponentHandler(component);
@@ -111,7 +116,12 @@ export function resolveApp(root: Type): ResolvedApp {
     app.jobs.push(...(options.jobs ?? []));
     app.intents.push(...(options.intents ?? []));
     app.partials.push(...(options.partials ?? []));
-    app.modules.push({ name: target.name, intents: options.intents ?? [], instance: new target() });
+    app.modules.push({
+      name: target.name,
+      intents: options.intents ?? [],
+      instance: new target(),
+      commands: names,
+    });
   };
 
   visit(root);

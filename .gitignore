@@ -161,4 +161,6 @@ backups/
 
 # compiled plugins
 plugins/dist/
+# Panel runtime state (settings and the command toggles written by the Settings tab).
+/panel/
 plugins/**/target/

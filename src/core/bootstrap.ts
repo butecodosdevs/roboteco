@@ -1,14 +1,22 @@
-import { Client, Events, type GatewayIntentBits, type Interaction, MessageFlags } from 'discord.js';
+import {
+  Client,
+  Events,
+  type GatewayIntentBits,
+  type Interaction,
+  MessageFlags,
+  type RepliableInteraction,
+} from 'discord.js';
 import { closeCache } from '@/cache';
 import { closeDb } from '@/db';
 import { t } from '@/i18n';
 import { flushErrors, logger, reportError } from '@/logger';
 import { isDelegatedComponent, kindOf, parseCustomId } from './component';
 import { contextMenuKey } from './context-menu';
-import { startHealthServer } from './health';
+import { startHttpServer } from './http';
 import { JobRunner } from './job';
 import { registerCommandNames, registerModules } from './lifecycle';
 import { privilegedIntents, type ResolvedApp, resolveApp } from './module';
+import { panelGateway } from './panel-gateway';
 import type { Type } from './types';
 
 export interface BootstrapOptions {
@@ -29,16 +37,44 @@ function selectIntents(app: ResolvedApp, allowPrivileged: boolean): GatewayInten
   return app.intents.filter((i) => !privilegedIntents.includes(i));
 }
 
+/**
+ * The member asked for a command the panel turned off. Saying so beats leaving the interaction
+ * unacknowledged, which shows up as "The application did not respond" to whoever ran it.
+ */
+function disabledReply(interaction: RepliableInteraction): Promise<unknown> {
+  return interaction.reply({
+    content: t(interaction.locale, 'errors.commandDisabled'),
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
 async function route(app: ResolvedApp, interaction: Interaction): Promise<unknown> {
+  const panel = panelGateway();
   if (interaction.isChatInputCommand()) {
-    return app.commands.get(interaction.commandName)?.handle(interaction);
+    /**
+     * A disabled command answers instead of vanishing: returning `undefined` here left the
+     * interaction unacknowledged, and Discord tells the member "The application did not respond"
+     * three seconds later. The toggle is per bot, not per server, so the text says so.
+     */
+    if (panel?.isDisabled(interaction.commandName)) return disabledReply(interaction);
+    const handler = app.commands.get(interaction.commandName);
+    if (handler && interaction.inGuild()) {
+      panel?.recordUsage(interaction.guildId, handler.name, interaction.user.id, 'builtin');
+    }
+    return handler?.handle(interaction);
   }
   if (interaction.isAutocomplete()) {
+    if (panel?.isDisabled(interaction.commandName)) return interaction.respond([]);
     return app.commands.get(interaction.commandName)?.autocomplete(interaction);
   }
   if (interaction.isContextMenuCommand()) {
+    if (panel?.isDisabled(interaction.commandName)) return disabledReply(interaction);
     const key = contextMenuKey(interaction.commandType, interaction.commandName);
-    return app.contextMenus.get(key)?.handle(interaction);
+    const handler = app.contextMenus.get(key);
+    if (handler && interaction.inGuild()) {
+      panel?.recordUsage(interaction.guildId, handler.name, interaction.user.id, 'builtin');
+    }
+    return handler?.handle(interaction);
   }
   if (interaction.isMessageComponent() || interaction.isModalSubmit()) {
     if (isDelegatedComponent(interaction.customId)) return undefined;
@@ -59,6 +95,18 @@ export async function bootstrap(root: Type, options: BootstrapOptions): Promise<
   const app = resolveApp(root);
   registerModules(app.modules);
   registerCommandNames([...app.commands.keys(), ...app.contextMenus.map((m) => m.name)]);
+  // Handed straight to the panel, which is the only reader: keeping a copy here would be the
+  // module-level state the structure rules forbid.
+  panelGateway()?.describe({
+    catalog: [
+      ...[...app.commands.values()].map((command) => command.toJSON()),
+      ...[...app.contextMenus.values()].map((menu) => menu.toJSON()),
+    ],
+    builtIn: [...app.commands.keys(), ...app.contextMenus.map((menu) => menu.name)],
+    owners: Object.fromEntries(
+      app.modules.flatMap((module) => module.commands.map((name) => [name, module.name])),
+    ),
+  });
   const client = new Client({
     intents: selectIntents(app, options.privilegedIntents),
     partials: app.partials,
@@ -117,7 +165,7 @@ export async function bootstrap(root: Type, options: BootstrapOptions): Promise<
     }
   });
 
-  const health = options.healthPort ? startHealthServer(client, options.healthPort) : undefined;
+  const health = options.healthPort ? startHttpServer(client, options.healthPort) : undefined;
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutting down');

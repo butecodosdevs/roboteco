@@ -30,7 +30,12 @@ Copy `.env.example` to `.env`. `src/config.ts` validates these at startup:
 | `NODE_ENV` | no | `development` (default; readable logs), `production` (JSON logs) or `test` |
 | `LOG_LEVEL` | no | `info` (default); `debug` for more |
 | `SENTRY_DSN` | no | error reporting, off when empty |
-| `HEALTH_PORT` | no | serves `GET /health` when set |
+| `HEALTH_PORT` | no | serves `GET /health` and the panel when set |
+| `PANEL_TOKEN` | no | 16+ char secret; enables the panel and lets scripts authenticate with the `x-panel-token` header |
+| `PANEL_URL` | no | public panel URL (default `http://localhost:4321`); OAuth callbacks use it |
+| `PANEL_SECRET` | no | 32+ chars, signs sessions with Better Auth; without it the panel refuses logins |
+| `PANEL_ALLOWED_EMAILS` | no | comma-separated, case-insensitive Discord account emails allowed in; also editable from the panel, where changes apply without a restart |
+| `DISCORD_CLIENT_SECRET` | no | OAuth2 client secret from the Discord Developer Portal; reuses `DISCORD_CLIENT_ID`, redirect URI is `${PANEL_URL}/api/auth/callback/discord` |
 | `GUILD_DATA_RETENTION_DAYS` | no | days to keep a server's data after the bot leaves (default 30) |
 | `PLUGIN_REGISTRY` | no | plugin registry to load (default `plugins/registry.json`, empty; `plugins/registry.example.json` loads the `hello-rust` example) |
 | `DISCORD_GUILD_ID` | no | your test server ID. When set, `deploy-commands` registers commands on that server instantly instead of globally |
@@ -81,8 +86,10 @@ Two more are for the [plugin](concepts/plugins.md#recorded-discord-payloads) tes
 | `pnpm dev` | Run with reload on change |
 | `pnpm build` / `pnpm start` | Bundle to `dist/` with esbuild and run it (with source maps) |
 | `pnpm deploy-commands` | Register slash commands with Discord. Run after changing command names, descriptions or options |
+| `pnpm deploy-plugins [ids...]` | Publish only the plugins' commands, all of them or just the ones listed. The others stop being registered, so name every plugin you want to keep |
 | `pnpm typecheck` | TypeScript, including `scripts/` and `tests/` |
 | `pnpm test` | Behaviour tests in `tests/`, against the Postgres and Valkey in `.env` (run `pnpm db:migrate` first) |
+| `pnpm zip:check` | Asserts the in-memory zip reader used by the panel upload |
 | `pnpm lint` | Biome plus [structure rules](concepts/structure-rules.md) |
 | `pnpm lint:structure` | Structure rules only |
 | `pnpm format` | Format and apply safe Biome fixes |

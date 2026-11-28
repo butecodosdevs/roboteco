@@ -28,6 +28,34 @@ const schema = z.object({
     .optional()
     .transform((v) => v || undefined),
   HEALTH_PORT: z.coerce.number().int().positive().optional(),
+  PANEL_TOKEN: z
+    .string()
+    .min(16, 'PANEL_TOKEN must be at least 16 characters')
+    .optional()
+    .transform((v) => v || undefined),
+  /** Public URL of the panel, used as the OAuth callback base. */
+  PANEL_URL: z
+    .url({ error: 'PANEL_URL must be a full URL, e.g. http://localhost:4321' })
+    .default('http://localhost:4321'),
+  /** Better Auth signing secret. Required whenever the panel is on. */
+  PANEL_SECRET: z
+    .string()
+    .min(32, 'PANEL_SECRET must be at least 32 characters')
+    .optional()
+    .transform((v) => v || undefined),
+  /**
+   * Interface the HTTP server binds. Loopback by default: a session cookie must not travel over
+   * plain HTTP on a public interface. Behind a TLS-terminating reverse proxy, set `0.0.0.0` on
+   * purpose and keep a proxy rule that refuses to forward the panel over http.
+   */
+  PANEL_HOST: z
+    .string()
+    .min(1)
+    .default('127.0.0.1')
+    .refine(
+      (host) => !/^https?:\/\//.test(host),
+      'PANEL_HOST is an interface (127.0.0.1, 0.0.0.0), not a URL',
+    ),
   GUILD_DATA_RETENTION_DAYS: z.coerce.number().int().min(0).default(30),
   PLUGIN_REGISTRY: z.string().min(1).default('plugins/registry.json'),
   DISCORD_GUILD_ID: z
@@ -74,6 +102,10 @@ export const config = {
   logLevel: parsed.data.LOG_LEVEL,
   sentryDsn: parsed.data.SENTRY_DSN,
   healthPort: parsed.data.HEALTH_PORT,
+  panelToken: parsed.data.PANEL_TOKEN,
+  panelUrl: parsed.data.PANEL_URL,
+  panelSecret: parsed.data.PANEL_SECRET,
+  panelHost: parsed.data.PANEL_HOST,
   guildDataRetentionDays: parsed.data.GUILD_DATA_RETENTION_DAYS,
   pluginRegistry: parsed.data.PLUGIN_REGISTRY,
   databaseUrl: parsed.data.DATABASE_URL,

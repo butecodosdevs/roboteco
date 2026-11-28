@@ -1,0 +1,129 @@
+name: ci
+
+# The bot's tests, on every PR and on push to `main`.
+#
+# ## Why `ubuntu-latest` and not the cluster runner
+#
+# This repository is public: a fork PR runs a stranger's code. On a self-hosted
+# runner that means third-party code with the registry's `config.json` mounted
+# and the cluster daemon next door — not a theoretical risk. A GitHub-hosted
+# runner has no credential at all, and on a public repo it is free.
+#
+# The image build is another workflow (`image.yml`). It runs on `main` AND only
+# AFTER this passes: it listens to `workflow_run` of this workflow, not to the
+# `push` event.
+#
+# This workflow runs on `pull_request` AND on `push: main`, on purpose. The PR run
+# is what catches the defect before the merge; the `main` run is what serves as
+# the trigger for the build — without it, a direct merge (or a commit without a
+# PR) would test nothing and `image.yml` would have no `workflow_run` to await.
+#
+# ## Why only Postgres and Valkey, and not the whole `docker compose`
+#
+# `tests/panel/boundary.test.ts` forges sessions in the database and proves the allowlist, the
+# guild guard and the read-only settings over real HTTP; the plugin tests count calls through the
+# cache (kv increments, the XP window, the DM rate limit). Neither talks to S3. `config` validates
+# the whole environment at import, so the S3 keys come in as any value.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: roboteco
+          POSTGRES_PASSWORD: roboteco
+          POSTGRES_DB: roboteco
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U roboteco -d roboteco"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      # The plugin tests count calls through the cache, so a missing Valkey makes
+      # them crash with ECONNREFUSED instead of failing on the assertion. Same
+      # image and flags as compose.prod.yaml, minus persistence: a rate limit
+      # counter does not need a disk.
+      valkey:
+        image: valkey/valkey:9.2.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # `src/config.ts` validates the WHOLE environment at import: even the
+      # migrator needs these keys so it does not die on "DISCORD_TOKEN is
+      # required" before touching the database.
+      DISCORD_TOKEN: x
+      DISCORD_CLIENT_ID: x
+      DATABASE_URL: postgres://roboteco:roboteco@localhost:5432/roboteco
+      S3_ENDPOINT: http://localhost:3900
+      S3_ACCESS_KEY_ID: x
+      S3_SECRET_ACCESS_KEY: x
+      S3_BUCKET: roboteco
+    steps:
+      - uses: actions/checkout@v4
+
+      # Toolchain from `mise.toml` and `rust-toolchain.toml`: the same Node,
+      # pnpm, Rust and Go a contributor gets locally, so "it builds" means the
+      # same thing in CI and on a laptop. First step because it provides pnpm.
+      - uses: jdx/mise-action@v2
+
+      # `cache: pnpm` reads pnpm's store path, so pnpm must already exist —
+      # mise installed it above.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      # The image only ships what esbuild writes, so a file that typecheck accepts but the bundle
+      # cannot resolve would break on deploy and not here.
+      - name: Build
+        run: pnpm build
+
+      # Empty database, migration from scratch: the path a new deploy takes. The
+      # production `initContainer` runs exactly this script.
+      - name: Migrate
+        run: pnpm db:migrate:runtime
+
+      # Plugins are Rust/Go source (plugins/dist is gitignored), and the test
+      # suite loads built WASM — `tests/plugins/*` fails with "run pnpm
+      # plugins:build first". The image build compiles the same sources, so this
+      # step is also what catches a plugin that stops compiling, before it
+      # reaches a registry the bot reads.
+      #
+      # `rustup target add` is not redundant with rust-toolchain.toml: mise
+      # exports RUSTUP_TOOLCHAIN, which takes precedence over that file, so
+      # rustup never sees `targets = ["wasm32-unknown-unknown"]` and the build
+      # dies with "can't find crate for `std`".
+      - name: Tests
+        run: |
+          rustup target add wasm32-unknown-unknown
+          pnpm plugins:build
+          pnpm test
