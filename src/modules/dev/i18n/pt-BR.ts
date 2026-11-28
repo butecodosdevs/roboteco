@@ -87,7 +87,6 @@ export const devPtBR = {
     noOtherVoiceChannel: 'Mover precisa de um segundo canal de voz no servidor.',
     noTextChannel: 'Escolha um canal com mensagens na opção canal.',
     unused: 'Não usado por este cenário, ignorado: {options}.',
-    adminOnly: 'Só administradores podem usar /dev.',
     received: 'Recebido.',
     recordingOn:
       'Gravando este servidor em tests/fixtures/discord. Use /dev fidelidade, o painel dele e os menus Fidelidade, depois faça os eventos que quer cobrir.',

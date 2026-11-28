@@ -11,6 +11,7 @@ import {
 } from 'discord.js';
 import { t } from '@/i18n';
 import { Cooldowns, replyCooldown } from './cooldown';
+import { lacksDefaultPermissions, refuseMissing } from './permissions';
 import type { Type } from './types';
 
 export type CommandData =
@@ -127,6 +128,8 @@ export class CommandHandler {
         flags: MessageFlags.Ephemeral,
       });
     }
+    const missing = this.missingPermissions(interaction);
+    if (missing !== null) return refuseMissing(interaction, missing);
     const subcommand = interaction.options.getSubcommand(false);
     const handler = this.handlerFor(subcommand);
     if (!handler?.execute) throw new Error(`No handler for /${this.name}`);
@@ -140,9 +143,19 @@ export class CommandHandler {
 
   autocomplete(interaction: AutocompleteInteraction): Promise<unknown> {
     if (this.meta.guildOnly && !interaction.inCachedGuild()) return interaction.respond([]);
+    if (this.missingPermissions(interaction) !== null) return interaction.respond([]);
     const handler = this.handlerFor(interaction.options.getSubcommand(false));
     if (!handler?.autocomplete) return interaction.respond([]);
     return handler.autocomplete(interaction);
+  }
+
+  private missingPermissions(
+    interaction: ChatInputCommandInteraction | AutocompleteInteraction,
+  ): bigint | null {
+    return lacksDefaultPermissions(
+      this.meta.data.default_member_permissions,
+      interaction.memberPermissions,
+    );
   }
 
   private handlerFor(subcommand: string | null): Partial<Handler> | undefined {

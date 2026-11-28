@@ -38,7 +38,6 @@ export const safetyEnUS = {
     '{user}, I removed your message because a security check ({sources}) confirmed it contains something malicious. If you did not mean to send it, your account may be compromised: change your password.',
   dm: 'Your message in **{server}** was removed because a security check confirmed it is malicious:\n{findings}\nIf you did not mean to send it, your account or device may be compromised: change your password and scan your device.',
   replies: {
-    noPermission: 'You need the Manage Server permission to use /safety.',
     enabled:
       'Scanning is on. Messages are only removed when a check confirms a threat; anything unknown stays up. Removals are reported in the moderation log (/moderation log).',
     disabled: 'Scanning is off.',

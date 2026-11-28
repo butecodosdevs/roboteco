@@ -3,12 +3,10 @@ import { type GuildInteraction, Subcommand } from '@/core';
 import { getGuildSettings } from '@/db';
 import { localize, translator } from '@/i18n';
 import { embedSites } from '../../embeds.service';
-import { refuseWithoutManageGuild } from './require-manage-guild';
 
 @Subcommand(localize(new SlashCommandSubcommandBuilder(), 'embeds.status'))
 export class StatusSubcommand {
   async execute(interaction: GuildInteraction) {
-    if (await refuseWithoutManageGuild(interaction)) return;
     const tr = translator(interaction.locale);
     const settings = await getGuildSettings(interaction.guildId);
 

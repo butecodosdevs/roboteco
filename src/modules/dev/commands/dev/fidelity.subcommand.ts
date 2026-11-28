@@ -4,7 +4,6 @@ import {
   ButtonStyle,
   ChannelSelectMenuBuilder,
   MessageFlags,
-  PermissionFlagsBits,
   RoleSelectMenuBuilder,
   SlashCommandSubcommandBuilder,
   StringSelectMenuBuilder,
@@ -37,12 +36,6 @@ import { FidelitySelect } from '../../components/fidelity.select';
 export class FidelitySubcommand {
   async execute(interaction: GuildInteraction) {
     const tr = translator(interaction.locale);
-    if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-      return interaction.reply({
-        content: tr('dev.replies.adminOnly'),
-        flags: MessageFlags.Ephemeral,
-      });
-    }
     const row = <
       T extends
         | ButtonBuilder

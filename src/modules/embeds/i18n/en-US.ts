@@ -18,7 +18,6 @@ export const embedsEnUS = {
   },
   deleteReason: 'Reposted with a fixed link preview (embeds.now)',
   replies: {
-    noPermission: 'You need the Manage Server permission to use /embeds.',
     enabled:
       'Link fixing is on. It works in channels where I have Manage Messages and Manage Webhooks, so to leave a channel out, deny me one of those there.',
     disabled: 'Link fixing is off.',
