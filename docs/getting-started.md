@@ -8,7 +8,7 @@
 | [Node.js](https://nodejs.org) | 26.10.0 (min. 22.12) | Runtime |
 | [pnpm](https://pnpm.io) | 12.5.1 | Package manager |
 | [Docker](https://docs.docker.com/get-docker/) + Compose | Compose v2+ | Runs PostgreSQL, Garage and Valkey locally |
-| [Rust](https://rustup.rs) with `wasm32-unknown-unknown` | optional | Only to build the example [plugin](concepts/plugins.md) and the test fixture (`pnpm plugins:build`, needed by `pnpm test`). Go plugins need [Go](https://go.dev) 1.24+ |
+| [Rust](https://rustup.rs) with `wasm32-unknown-unknown` | optional | Only to build the example [plugin](concepts/plugins.md) and the test fixtures (`pnpm plugins:build`, needed by `pnpm test`), which also needs [Go](https://go.dev) 1.24+ |
 
 ## Discord application
 
@@ -85,6 +85,7 @@ Add `actor` (and `reason`) to pretend the audit log credits that user, so you ca
 | `pnpm db:generate` / `db:migrate` | Create / apply migrations |
 | `pnpm db:migrate:runtime` | Apply migrations the way production does (no drizzle-kit) |
 | `pnpm prod:up` / `prod:logs` | Build and start `compose.prod.yaml` / follow the bot's logs |
-| `pnpm plugins:build` | Build the example WASM plugins into `plugins/dist/` |
+| `pnpm plugins:build` | Build the example WASM plugin and the test fixtures into `plugins/dist/` |
+| `pnpm record-discord` | Record anonymized Discord payloads for the plugin tests ([plugins](concepts/plugins.md#recorded-discord-payloads)) |
 | `pnpm plugin check\|run\|click\|submit\|event\|job\|schema` | Validate a plugin; run its commands, buttons, forms, events and jobs without Discord; export the contract's JSON Schema ([plugins](concepts/plugins.md#quick-start)) |
 | `pnpm db:push` / `db:studio` | Sync the schema without a migration (local only) / browse data |

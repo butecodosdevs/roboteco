@@ -1,0 +1,106 @@
+{
+  "channelId": "100000000000000018",
+  "command": "",
+  "component": {
+    "fields": {},
+    "id": "where",
+    "messageId": "100000000000000029",
+    "values": ["100000000000000018"]
+  },
+  "context": {
+    "channel": {
+      "id": "100000000000000018",
+      "name": "name-11",
+      "type": 0
+    },
+    "guild": {
+      "iconUrl": null,
+      "id": "100000000000000001",
+      "locale": "en-US",
+      "memberCount": 8,
+      "name": "name-1"
+    },
+    "member": {
+      "avatarUrl": "https://cdn.discordapp.com/avatars/100000000000000003/avatar-19.webp",
+      "bot": false,
+      "displayName": "global_name-18",
+      "id": "100000000000000003",
+      "joinedAt": "2024-08-31T23:52:48.154Z",
+      "owner": true,
+      "roles": [],
+      "username": "username-17"
+    }
+  },
+  "guildId": "100000000000000001",
+  "kind": "select",
+  "locale": "en-US",
+  "options": {},
+  "permissions": [
+    "CreateInstantInvite",
+    "KickMembers",
+    "BanMembers",
+    "Administrator",
+    "ManageChannels",
+    "ManageGuild",
+    "AddReactions",
+    "ViewAuditLog",
+    "PrioritySpeaker",
+    "Stream",
+    "ViewChannel",
+    "SendMessages",
+    "SendTTSMessages",
+    "ManageMessages",
+    "EmbedLinks",
+    "AttachFiles",
+    "ReadMessageHistory",
+    "MentionEveryone",
+    "UseExternalEmojis",
+    "ViewGuildInsights",
+    "Connect",
+    "Speak",
+    "MuteMembers",
+    "DeafenMembers",
+    "MoveMembers",
+    "UseVAD",
+    "ChangeNickname",
+    "ManageNicknames",
+    "ManageRoles",
+    "ManageWebhooks",
+    "ManageEmojisAndStickers",
+    "ManageGuildExpressions",
+    "UseApplicationCommands",
+    "RequestToSpeak",
+    "ManageEvents",
+    "ManageThreads",
+    "CreatePublicThreads",
+    "CreatePrivateThreads",
+    "UseExternalStickers",
+    "SendMessagesInThreads",
+    "UseEmbeddedActivities",
+    "ModerateMembers",
+    "ViewCreatorMonetizationAnalytics",
+    "UseSoundboard",
+    "CreateGuildExpressions",
+    "CreateEvents",
+    "UseExternalSounds",
+    "SendVoiceMessages",
+    "SetVoiceChannelStatus",
+    "SendPolls",
+    "UseExternalApps",
+    "PinMessages",
+    "BypassSlowmode"
+  ],
+  "resolved": {
+    "channels": {
+      "100000000000000018": {
+        "id": "100000000000000018",
+        "name": "name-11",
+        "type": 0
+      }
+    },
+    "members": {},
+    "roles": {}
+  },
+  "subcommand": null,
+  "userId": "100000000000000003"
+}

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// What `handle_command`, `autocomplete` and `handle_component` receive.
@@ -11,7 +11,7 @@ use serde_json::Value;
 /// and [`target_message`](Self::target_message) read context menus, and
 /// [`component_id`](Self::component_id), [`value`](Self::value) and [`field`](Self::field) read
 /// clicks, picks and forms.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Command {
     /// What was used: a slash command, a menu, a button, …
@@ -48,7 +48,7 @@ pub struct Command {
 }
 
 /// What a [`Command`] input came from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Kind {
     /// A slash command.
@@ -151,7 +151,7 @@ impl Command {
 }
 
 /// Data pushed with every call, as asked by the manifest's [`context`](crate::Manifest::context).
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Context {
     /// The member who used the command (`"member"`).
     pub member: Option<Member>,
@@ -162,7 +162,7 @@ pub struct Context {
 }
 
 /// Members, roles and channels Discord sent along with the interaction, by ID.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Resolved {
     #[serde(default)]
     pub members: HashMap<String, Member>,
@@ -173,14 +173,14 @@ pub struct Resolved {
 }
 
 /// The option a member is typing in, for `autocomplete`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Focused {
     pub name: String,
     pub value: String,
 }
 
 /// What a context menu was used on.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Target {
     /// The right-clicked user, or the message's author.
@@ -192,7 +192,7 @@ pub struct Target {
 }
 
 /// A button click, select pick or form submit.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Component {
     /// The id the plugin gave the button, select or form.
@@ -208,7 +208,7 @@ pub struct Component {
 }
 
 /// A server member.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Member {
     pub id: String,
@@ -227,7 +227,7 @@ pub struct Member {
 }
 
 /// A server.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Guild {
     pub id: String,
@@ -238,7 +238,7 @@ pub struct Guild {
 }
 
 /// A channel.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Channel {
     pub id: String,
     pub name: Option<String>,
@@ -248,7 +248,7 @@ pub struct Channel {
 }
 
 /// A role picked in an option or a select.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Role {
     pub id: String,
     pub name: String,
@@ -257,7 +257,7 @@ pub struct Role {
 }
 
 /// A message someone posted: a context menu target or a `messageCreate` event.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MessageData {
     pub id: String,

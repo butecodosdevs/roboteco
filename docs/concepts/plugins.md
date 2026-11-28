@@ -268,7 +268,7 @@ The events above are shaped by the bot. Any other Discord gateway event can be h
 
 - **Permissions are Discord's intents.** Each event needs the permission of the intent that delivers it, e.g. `intents.GuildMessages` for `MESSAGE_DELETE`, `intents.GuildVoiceStates` for `VOICE_STATE_UPDATE`, `intents.GuildPresences` for `PRESENCE_UPDATE`. `pnpm plugin check` prints them, and `pnpm plugin schema` lists every event with its permission.
 - **The bot requests the intents the registry grants.** Intents are chosen before plugins load, so granting `intents.GuildMessageTyping` to a plugin makes the bot ask Discord for typing events. Privileged intents (`GuildMembers`, `GuildPresences`, `MessageContent`) also need `DISCORD_PRIVILEGED_INTENTS=true` and the switch in the Developer Portal.
-- **Message content is its own grant.** Without `intents.MessageContent`, `MESSAGE_CREATE` and `MESSAGE_UPDATE` arrive without `content`, `embeds`, `attachments`, `components` and `poll` (also in the messages they quote), as Discord does for bots without that intent.
+- **Message content is its own grant.** Without `intents.MessageContent`, `MESSAGE_CREATE` and `MESSAGE_UPDATE` arrive without `content`, `embeds`, `attachments`, `components` and `poll` (also in the messages they quote), and `AUTO_MODERATION_ACTION_EXECUTION` without `content` and `matched_content`, as Discord does for bots without that intent.
 - **What's covered:** every guild event in Discord's intents table: server, roles, channels, threads, stage instances, members, bans, the audit log, emojis, stickers, soundboard, integrations, webhooks, invites, voice states and effects, presences, messages, reactions, typing, scheduled events, AutoMod and poll votes.
 - **What's not:**
   - `INTERACTION_CREATE` and `VOICE_SERVER_UPDATE` carry tokens that act as the bot;
@@ -312,6 +312,13 @@ One runnable example lives in the repo. `pnpm plugins:build` builds it, and `PLU
 | --- | --- |
 | `plugins/hello-rust` | `/hello` with autocomplete; `/count` with a button that updates the message; `/flavor`, a select; `/feedback`, a form; `/profile` and the **Profile** user menu (embeds, `levels.get`); the **Quote** message menu |
 | `plugins/fixtures/contract-rust` | The raw JSON contract without an SDK, used by `pnpm test` (including a command that allocates until the memory cap stops it) |
+| `plugins/fixtures/echo-rust`, `plugins/fixtures/echo-go` | Save every input they get, and what each SDK read from it, for the recorded-payload tests below |
+
+### Recorded Discord payloads
+
+`tests/plugins/recorded.test.ts` replays real Discord JSON from `tests/fixtures/discord/`. Interactions go through discord.js and the bot's listener, events through the gateway path. Each test compares what reached the echo fixture with what Discord sent, field by field: every option, resolved member, role and channel, permissions, context, and the event data with only the content fields removed. It also decodes the same input with the Rust and Go SDKs, so a field an SDK names wrong shows up as missing. `tests/fixtures/discord/invocations/` keeps what plugins received for each interaction, so a change in the contract shows up in review.
+
+To record again, for example after a discord.js upgrade or to cover a new event, stop the bot and run `pnpm record-discord` against the server in `DISCORD_GUILD_ID`. It adds a `/fidelity` command and two menus while it runs, saves one example of each event and interaction, and replaces IDs, names, text and URLs with placeholders. Then run `UPDATE_FIXTURES=1 pnpm test` and review the diff.
 
 The samples below cover the rest. Each is a complete `lib.rs` or `main.go`.
 

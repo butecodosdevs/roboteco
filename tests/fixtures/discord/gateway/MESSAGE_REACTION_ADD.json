@@ -1,0 +1,47 @@
+{
+  "t": "MESSAGE_REACTION_ADD",
+  "d": {
+    "user_id": "100000000000000003",
+    "type": 0,
+    "message_id": "100000000000000035",
+    "message_author_id": "100000000000000003",
+    "member": {
+      "user": {
+        "username": "username-17",
+        "public_flags": 0,
+        "primary_guild": null,
+        "id": "100000000000000003",
+        "global_name": "global_name-18",
+        "display_name_styles": {
+          "font_id": 17,
+          "effect_id": 4,
+          "colors": [15999128]
+        },
+        "display_name": "global_name-18",
+        "discriminator": "0",
+        "collectibles": null,
+        "bot": false,
+        "avatar_decoration_data": null,
+        "avatar": "avatar-19"
+      },
+      "roles": [],
+      "premium_since": null,
+      "pending": false,
+      "nick": null,
+      "mute": false,
+      "joined_at": "2024-08-31T23:52:48.154000+00:00",
+      "flags": 0,
+      "deaf": false,
+      "communication_disabled_until": null,
+      "banner": null,
+      "avatar": null
+    },
+    "emoji": {
+      "name": "👍",
+      "id": null
+    },
+    "channel_id": "100000000000000018",
+    "burst": false,
+    "guild_id": "100000000000000001"
+  }
+}
